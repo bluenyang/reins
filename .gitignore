@@ -1,0 +1,11 @@
+# local agent workspace
+.ai/
+__pycache__/
+*.pyc
+.ruff_cache/
+
+.stignore
+# Syncthing
+.stfolder/
+.stversions/
+.stignore

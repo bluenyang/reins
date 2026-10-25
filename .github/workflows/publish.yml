@@ -5,7 +5,9 @@
 #   - version: exact version without a leading v (overrides release_type)
 #   - dry_run: run every check and `npm publish --dry-run`; no commit, tag or upload
 #
-# Order: resolve version → gate (check, build, drift) → npm stage publish → commit package.json, tag, push.
+# Order: install → build → resolve version → set version (npm version; its `version` script rebuilds and syncs
+# .claude-plugin/plugin.json and the SKILL.md pin) → reins update → gate (check, drift, CLI version, pins)
+# → npm stage publish → commit version files and updated installs, tag, push.
 # Staged publishing: the version waits in npm's staging area until the maintainer approves it with 2FA
 # (npmjs.com → Staged Packages, or `npm stage approve <stage-id>`). Nothing is live before that.
 # reins is released on npm only: no GitHub Release, no draft. Update CHANGELOG.md before running.
@@ -57,6 +59,9 @@ jobs:
       # staged publishing needs npm 11.15.0 or later (trusted publishing 11.5.1)
       - run: npm install -g npm@latest
 
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
       - name: Resolve version
         id: version
         shell: bash
@@ -98,20 +103,24 @@ jobs:
           echo "$CURRENT → $NEXT (dist-tag $TAG)"
           { echo "version=$NEXT"; echo "dist_tag=$TAG"; } >> "$GITHUB_OUTPUT"
 
-      - name: Set package version
+      - name: Set version (package.json, plugin manifest, SKILL.md pin)
         env:
           NEXT: ${{ steps.version.outputs.version }}
-        run: npm version "$NEXT" --no-git-tag-version --allow-same-version
-
-      - run: pnpm install --frozen-lockfile
+        run: npm version "$NEXT" --no-git-tag-version --allow-same-version # the `version` script builds and runs sync-version
+      # installed copies follow the harness sources of this version
+      - run: node cli/dist/reins.js update
       # the same gate as CI and the hooks
       - run: pnpm check
-      - run: pnpm build
       - run: node cli/dist/reins.js check --drift
-      - name: The CLI reports the version being published
+      - name: The CLI, package.json, plugin manifest and SKILL.md pin all say the version being published
         env:
           NEXT: ${{ steps.version.outputs.version }}
-        run: test "$(node cli/dist/reins.js --version)" = "$NEXT"
+        run: |
+          set -euo pipefail
+          test "$(node cli/dist/reins.js --version)" = "$NEXT"
+          test "$(node -p "require('./package.json').version")" = "$NEXT"
+          test "$(node -p "require('./.claude-plugin/plugin.json').version")" = "$NEXT"
+          grep -q "@bluenyang/reins@$NEXT" skills/reins-setup/SKILL.md
 
       - name: npm stage publish (approval needed before it is live)
         env:
@@ -138,7 +147,9 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json
+          # explicit paths only: the version files and whatever `reins update` changed in the installed copies
+          git add package.json .claude-plugin/plugin.json skills/reins-setup/SKILL.md
+          git status --porcelain -- .agents .claude | sed -E 's/^.{3}//' | while IFS= read -r f; do git add -- "$f"; done
           git commit -m "release: v$NEXT (staged on npm, live after approval)" # the hooks run here too (C5)
           git tag "v$NEXT"
           for attempt in 1 2 3; do

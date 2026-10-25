@@ -25,3 +25,5 @@ jobs:
       - run: pnpm build
       # the harness verifier on the repository itself: skills format, schemas, installed harness = upstream, generated files untouched (S2)
       - run: node cli/dist/reins.js check --drift
+      # the repository is a Claude Code plugin and marketplace (not --strict: CLAUDE.md and icon warnings are accepted)
+      - run: npx -y @anthropic-ai/claude-code@latest plugin validate .

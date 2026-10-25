@@ -1,5 +1,6 @@
 {
   "name": "bluenyang",
+  "description": "Plugins from BlueNyang: the reins agent harness setup.",
   "owner": { "name": "BlueNyang" },
   "plugins": [
     {

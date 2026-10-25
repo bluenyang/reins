@@ -1,0 +1,14 @@
+name: Question
+description: Ask how something works
+title: "[question] "
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: Please check the [README](https://github.com/bluenyang/reins/blob/master/README.md) and [design](https://github.com/bluenyang/reins/blob/master/docs/design.md) first.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+    validations:
+      required: true

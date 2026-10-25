@@ -1,0 +1,29 @@
+name: Feature request
+description: Propose a change — accepted requests become an intent (.agents/intent/)
+title: "[feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is hard or impossible today, and when it happens.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should be true once this is done.
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: Anything it must not break or must stay within.
+  - type: textarea
+    id: not-doing
+    attributes:
+      label: Not doing
+      description: What is explicitly out of scope.

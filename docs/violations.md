@@ -4,7 +4,7 @@
 
 The design lists 10 common red lines (C1–C10) and 24 stop conditions (A1–G2). This table says, for each of the 34, who catches a violation **in the code as it stands**, not as the design intends. It is the S3 table of intent 003.
 
-`test/e2e/violations.test.ts` backs it. It breaks a rule on purpose in a throwaway git repository, runs the built `cli/dist/reins.js` as a child process, and reads the stop report and the exit code. It currently prints `violations: 18/18 stopped`. Scenarios are numbered V1–V18; a row with `—` has no scenario because no code path exists to exercise (or, for a role's judgement, because the scenarios do not automate it).
+`test/e2e/violations.test.ts` backs it. It breaks a rule on purpose in a throwaway git repository, runs the built `cli/dist/reins.js` as a child process, and reads the stop report and the exit code. It currently prints `violations: 25/25 stopped`. Scenarios are numbered V1–V25; a row with `—` has no scenario because no code path exists to exercise (or, for a role's judgement, because the scenarios do not automate it).
 
 Columns:
 
@@ -14,7 +14,7 @@ Columns:
 | id | what | caught by | where | scenario |
 |---|---|---|---|---|
 | C1 (red line) | implementing "to pass" — hard-coding, or only some paths look right | role | reviewers' judgement; `implementer.md` `must_not`, and the common red-line instruction in every generated Claude agent | — |
-| C2 (red line) | editing `AGENTS.md` managed blocks, `harness/policy/` or `harness/roles/` | verifier | `check --stage pre-commit` (when files under `.agents/harness/` are staged) and `check --drift`, match layer, reported as F2. Managed blocks: none (gap) | V4 |
+| C2 (red line) | editing `AGENTS.md` managed blocks, `harness/policy/` or `harness/roles/` | verifier | `check --stage pre-commit` (when files under `.agents/harness/` are staged) and `check --drift`, match layer, reported as F2. Managed blocks: each block is compared with the packaged one (normalised), skipping `reins:override` names; in pre-commit when `AGENTS.md` is staged, F2 | V4, V24 |
 | C3 (red line) | editing one's own permission file or a generated vendor file | verifier | `check --stage pre-commit` (when `.claude/` or `.agents/harness/` is staged) and `check --drift`, `generated.yaml` hashes | V5 |
 | C4 (red line) | reading secret files | settings deny, verifier | `.claude/settings.json` `Read`/`Edit` rules for the listed patterns (`.env.*` is narrowed to a finite list; other names such as `.env.custom` have no rule); `check --stage pre-commit` rejects a staged secret path, not a read | V1, V18 |
 | C5 (red line) | bypassing hooks, or massaging gate output | verifier, settings deny | `reins gate` refuses a non-single-command gate; `check --stage verdict` rejects piped evidence; `.claude/settings.json` denies `git commit --no-verify` and `git push --no-verify`; short forms such as `-n`: none (gap) | V13, V17, V18 |
@@ -23,7 +23,7 @@ Columns:
 | C8 (red line) | re-raising a rejected proposal | role | `common-red-lines.yaml`; the common red-line instruction in every generated Claude agent (see F3) | — |
 | C9 (red line) | touching running servers, clusters or network devices | role | `common-red-lines.yaml`; the common red-line instruction in every generated Claude agent | — |
 | C10 (red line) | changing files or behaviour outside the intent and plan | role | `code-review.md` (a diff outside the plan is C10) and the `implementer.md` `must_not`. No automatic diff-versus-plan check: none (gap) | — |
-| A1 | force push to a shared branch, moving or deleting a published tag, rewriting main | verifier, settings deny | `check --stage pre-push` (remote commit not an ancestor of the pushed one, for every ref pair including tags); `.claude/settings.json` denies `git push --force`, `-f`, `--force-with-lease`. Deleting a tag, and moving one forward so that ancestry holds: none (gap) | V8, V18 |
+| A1 | force push to a shared branch, moving or deleting a published tag, rewriting main | verifier, settings deny | `check --stage pre-push` (remote commit not an ancestor of the pushed one, for every ref pair including tags); `.claude/settings.json` denies `git push --force`, `-f`, `--force-with-lease`. A push that deletes a tag (zero local sha under `refs/tags/`) is a HOLD; branch deletion and new refs pass. Moving a tag forward so that ancestry holds: none (gap) | V8, V18, V25 |
 | A2 | stable (non-rc) release | none (gap) | — | — |
 | A3 | irreversible data change, touching running servers or clusters | none (gap) | — | — |
 | A4 | anything leaving the machine outside the pre-release loop | none (gap) | — | — |
@@ -52,14 +52,14 @@ Stop conditions P1 and P2 (premise) used to be called C1 and C2, which collided 
 
 ## Notes on rows
 
-- **C2 (red line)**: the match layer compares `.agents/harness/` with the packaged upstream and reports F2. When the pinned version differs from the packaged one, it only warns. `AGENTS.md` managed blocks are not compared with anything; `reins check` does not read `blocks.ts`. The project-root `harness/` source is not checked.
+- **C2 (red line)**: the match layer compares `.agents/harness/` with the packaged upstream and reports F2. When the pinned version differs from the packaged one, it only warns. `driftBlocks` compares each `AGENTS.md` managed block with the packaged one at the pinned version (CRLF, trailing whitespace and surrounding blank lines ignored) and reports F2 `managed block "<name>" was edited by hand`; `reins:override <name>` skips it. The project-root `harness/` source is not checked.
 - **C3**: the stop report carries `reason: C3`. The generated `.claude/settings.json` deny rules do not stop an edit of `.claude/settings.json` itself.
 - **C4**: `settings deny` stops the read inside Claude Code only; other vendors get no deny rules, and the verifier looks at staged paths, never at reads. `denyRules` replaces the `.env.*` pattern with a fixed list (`.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.staging`, `.env.test`), so a name such as `.env.custom` can be read and edited with no deny rule, although the staging check still rejects it. V18 asserts three generated strings (`Read(**/.env)`, `Bash(git push --force *)`, `Bash(git commit --no-verify *)`), not the full pattern list.
 - **C5**: the deny rules match `git commit --no-verify *` and `git push --no-verify *` exactly; short forms such as `-n` are not covered.
 - **C7, C8, C9**: the prohibitions are written in `common-red-lines.yaml`, and every generated Claude agent carries the line "break any common red line in `common-red-lines.yaml`". They are not in the individual roles' `must_not` lists, and nothing checks them. F3 is also in `stops.yaml` as `detect: role`.
 - **C10**: `code-review.md` step 1 treats a diff outside `plan.md` as C10, and `implementer.md` lists it in `must_not`; that is a review, done by a role. T2 lists C10 as a verifier check, but `preCommit` has no diff-versus-plan comparison.
 - **C6**: the deny rules cover force and `--no-verify` pushes only. A plain `git push`, a PR, a merge, a release or a tag is blocked by nothing. `pre-push` only checks that the remote commit is an ancestor (A1).
-- **A1**: `pre-push` applies the ancestry check to every ref pair git passes, tags included, so a tag moved to a commit that is not a descendant is held. It skips new refs and deletions (zero sha), so deleting a tag or branch is not caught. A tag moved forward to a descendant satisfies the ancestry test and is not rejected, although the design calls moving a published tag irreversible.
+- **A1**: `pre-push` applies the ancestry check to every ref pair git passes, tags included, so a tag moved to a commit that is not a descendant is held. A deletion of a tag (zero local sha, ref under `refs/tags/`) is a HOLD `push deletes tag <name>` (V25); new refs and branch deletions pass. A tag moved forward to a descendant satisfies the ancestry test and is not rejected, although the design calls moving a published tag irreversible.
 - **A2, A3, A4**: `stops.yaml` says `detect: verifier` and T4 lists them, but `prePush` implements only A1.
 - **B2**: `stops.yaml` says `detect: verifier`; no code compares a design invariant with a recorded decision.
 - **B3**: the ticket-start approval chain reports `reason: B3`, although `stops.yaml` marks B3 as `detect: role`.
@@ -92,9 +92,8 @@ The 12 `none (gap)` rows; nothing in the code catches them. This document does n
 
 Partial gaps (the row has a working detector for the rest; the uncovered part is listed here too):
 
-- C2 (red line): hand edits to `AGENTS.md` managed blocks.
 - C4 (red line): reads of secret-like names outside the fixed deny list (for example `.env.custom`); the verifier checks staged paths only, and V18 asserts three strings.
 - C10 (red line): no automatic check that the diff stays within the intent and plan (T2 lists it); the code-review role does it by hand.
 - C5 (red line): `git commit -n` and other short or reordered forms of `--no-verify`, which the exact deny patterns do not match.
-- A1: deleting a tag, and moving a published tag forward to a descendant commit.
+- A1: moving a published tag forward to a descendant commit.
 - D4: `reins gate` writes empty command output to its report without a warning.

@@ -51,7 +51,7 @@ Every stop records ① where ② why (`reason: <ID>`) ③ how to resume (R48). R
 ### Twenty-four conditions in seven groups (full table in the draft, D3)
 | Group | IDs | kind |
 |---|---|---|
-| A irreversible | A1 force push · tag deletion · main rewrite / A2 stable release / A3 data · production / A4 leaving the machine outside the pre-release loop | intent |
+| A irreversible | A1 force push · tag deletion (pre-push: HOLD) · main rewrite / A2 stable release / A3 data · production / A4 leaving the machine outside the pre-release loop | intent |
 | B decision | B1 open `asks:` / B2 invariant change without a decision / B3 conflict with intent or spec / B4 roadmap silent or contradictory / B5 external assumption broken, scope changes | intent |
 | P premise | P1 rationale collapsed (fix plan and ticket first) / P2 diff departs from plan with no update (R45) | knowledge |
 | D failure | D1 two rounds in the same unit (ticket before rc.1, rc after) / D2 red check twice / D3 flaky → isolate, continue, report / D4 suspected false pass (gate output that is empty is a WARN, not a STOP) / D5 pass without evidence | knowledge |

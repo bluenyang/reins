@@ -4,7 +4,7 @@
 
 설계에는 공통 금지선 10개(C1~C10)와 정지 조건 24개(A1~G2)가 있습니다. 이 표는 34개 각각에 대해, 설계가 의도한 바가 아니라 **지금 코드에서** 누가 위반을 잡는지 적습니다. intent 003의 S3 표입니다.
 
-`test/e2e/violations.test.ts`가 이 표를 뒷받침합니다. 임시 git 저장소에서 규칙을 일부러 어기고, 빌드된 `cli/dist/reins.js`를 자식 프로세스로 실행해 정지 보고서와 종료 코드를 읽습니다. 지금은 `violations: 18/18 stopped`를 출력합니다. 시나리오 번호는 V1~V18이며, `—`인 행은 시나리오가 없습니다. 실행할 코드 경로가 없거나, 역할의 판단이라 시나리오로 자동화하지 않았기 때문입니다.
+`test/e2e/violations.test.ts`가 이 표를 뒷받침합니다. 임시 git 저장소에서 규칙을 일부러 어기고, 빌드된 `cli/dist/reins.js`를 자식 프로세스로 실행해 정지 보고서와 종료 코드를 읽습니다. 지금은 `violations: 25/25 stopped`를 출력합니다. 시나리오 번호는 V1~V25이며, `—`인 행은 시나리오가 없습니다. 실행할 코드 경로가 없거나, 역할의 판단이라 시나리오로 자동화하지 않았기 때문입니다.
 
 열 설명:
 
@@ -14,7 +14,7 @@
 | id | what | caught by | where | scenario |
 |---|---|---|---|---|
 | C1 (금지선) | "통과용" 구현 — 하드코딩, 일부 경로만 맞아 보이게 함 | role | 검토 역할의 판단. `implementer.md`의 `must_not`, 그리고 생성된 모든 Claude 에이전트에 들어가는 공통 금지선 지시 | — |
-| C2 (금지선) | `AGENTS.md` 관리 블록, `harness/policy/`, `harness/roles/` 편집 | verifier | `check --stage pre-commit`(`.agents/harness/` 아래 파일이 스테이징됐을 때)와 `check --drift`의 match 층, F2로 보고. 관리 블록: none (gap) | V4 |
+| C2 (금지선) | `AGENTS.md` 관리 블록, `harness/policy/`, `harness/roles/` 편집 | verifier | `check --stage pre-commit`(`.agents/harness/` 아래 파일이 스테이징됐을 때)와 `check --drift`의 match 층, F2로 보고. 관리 블록: 블록마다 패키지된 것과 정규화해 비교하고 `reins:override` 이름은 건너뜀. pre-commit에서는 `AGENTS.md`가 스테이징됐을 때, F2 | V4, V24 |
 | C3 (금지선) | 자기 권한 파일이나 생성된 벤더 파일 편집 | verifier | `check --stage pre-commit`(`.claude/`·`.agents/harness/`가 스테이징됐을 때)와 `check --drift`, `generated.yaml` 해시 | V5 |
 | C4 (금지선) | 비밀 파일 읽기 | settings deny, verifier | 나열된 패턴에 대한 `.claude/settings.json`의 `Read`/`Edit` 규칙(`.env.*`는 고정 목록으로 좁혀지므로 `.env.custom` 같은 이름에는 규칙이 없음). `check --stage pre-commit`은 스테이징된 비밀 경로를 거부할 뿐 읽기는 보지 않음 | V1, V18 |
 | C5 (금지선) | 훅 우회, 게이트 출력 가공 | verifier, settings deny | `reins gate`가 단일 명령이 아닌 게이트를 거부. `check --stage verdict`가 파이프를 거친 증거를 거부. `.claude/settings.json`이 `git commit --no-verify`·`git push --no-verify`를 막음. `-n` 같은 줄임 형태: none (gap) | V13, V17, V18 |
@@ -23,7 +23,7 @@
 | C8 (금지선) | 거절된 제안 다시 꺼내기 | role | `common-red-lines.yaml`. 생성된 모든 Claude 에이전트에 들어가는 공통 금지선 지시 (F3 참고) | — |
 | C9 (금지선) | 운영 서버·클러스터·네트워크 장비 건드리기 | role | `common-red-lines.yaml`. 생성된 모든 Claude 에이전트에 들어가는 공통 금지선 지시 | — |
 | C10 (금지선) | intent·plan 밖의 파일·동작 변경 | role | `code-review.md`(plan 밖의 diff는 C10)와 `implementer.md`의 `must_not`. diff를 plan과 자동으로 비교하는 검사는 없음: none (gap) | — |
-| A1 | 공유 브랜치 force push, 공개 태그 이동·삭제, main 재작성 | verifier, settings deny | `check --stage pre-push`(원격 커밋이 푸시할 커밋의 조상이 아님, 태그를 포함한 모든 ref 쌍). `.claude/settings.json`이 `git push --force`·`-f`·`--force-with-lease`를 막음. 태그 삭제, 그리고 조상 관계가 유지되는 태그의 전진 이동: none (gap) | V8, V18 |
+| A1 | 공유 브랜치 force push, 공개 태그 이동·삭제, main 재작성 | verifier, settings deny | `check --stage pre-push`(원격 커밋이 푸시할 커밋의 조상이 아님, 태그를 포함한 모든 ref 쌍). `.claude/settings.json`이 `git push --force`·`-f`·`--force-with-lease`를 막음. 태그를 삭제하는 push(`refs/tags/` 아래 로컬 해시 0)는 HOLD이고, 브랜치 삭제와 새 ref는 통과합니다. 조상 관계가 유지되는 태그의 전진 이동: none (gap) | V8, V18, V25 |
 | A2 | 정식(rc가 아닌) 릴리스 | none (gap) | — | — |
 | A3 | 되돌릴 수 없는 데이터 변경, 운영 서버·클러스터 접촉 | none (gap) | — | — |
 | A4 | pre-release 루프 밖에서 로컬을 떠나는 모든 것 | none (gap) | — | — |
@@ -52,14 +52,14 @@
 
 ## 행별 설명
 
-- **C2 (금지선)**: match 층은 `.agents/harness/`를 패키지된 upstream과 비교해 F2로 보고합니다. 고정된 버전이 패키지 버전과 다르면 경고만 합니다. `AGENTS.md` 관리 블록은 어떤 것과도 비교하지 않습니다. `reins check`는 `blocks.ts`를 읽지 않습니다. 프로젝트 루트의 `harness/` 원본도 검사하지 않습니다.
+- **C2 (금지선)**: match 층은 `.agents/harness/`를 패키지된 upstream과 비교해 F2로 보고합니다. 고정된 버전이 패키지 버전과 다르면 경고만 합니다. `driftBlocks`가 `AGENTS.md`의 관리 블록을 고정된 버전의 패키지 블록과 비교해(CRLF, 줄 끝 공백, 앞뒤 빈 줄은 무시) 다르면 F2 `managed block "<name>" was edited by hand`로 보고합니다. `reins:override <name>`이 있으면 건너뜁니다. 프로젝트 루트의 `harness/` 원본도 검사하지 않습니다.
 - **C3**: 정지 보고서에 `reason: C3`이 담깁니다. 생성된 `.claude/settings.json`의 deny 규칙은 `.claude/settings.json` 자체의 편집을 막지 않습니다.
 - **C4**: `settings deny`는 Claude Code 안에서만 읽기를 막습니다. 다른 벤더에는 deny 규칙이 없고, 검증기는 스테이징된 경로를 볼 뿐 읽기는 보지 않습니다. `denyRules`는 `.env.*` 패턴을 고정 목록(`.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.staging`, `.env.test`)으로 바꾸므로, `.env.custom` 같은 이름은 deny 규칙 없이 읽고 편집할 수 있습니다. 스테이징 검사는 이런 이름도 거부합니다. V18은 세 문자열(`Read(**/.env)`, `Bash(git push --force *)`, `Bash(git commit --no-verify *)`)만 단언하고 패턴 전체 목록은 단언하지 않습니다.
 - **C5**: deny 규칙은 `git commit --no-verify *`와 `git push --no-verify *`만 정확히 대응합니다. `-n` 같은 줄임 형태는 막지 않습니다.
 - **C7, C8, C9**: 금지 내용은 `common-red-lines.yaml`에 있고, 생성된 모든 Claude 에이전트에 "`common-red-lines.yaml`의 공통 금지선을 어기지 않는다"는 줄이 들어갑니다. 개별 역할의 `must_not` 목록에는 없으며, 이를 확인하는 검사도 없습니다. F3은 `stops.yaml`에도 `detect: role`로 있습니다.
 - **C10**: `code-review.md`의 1단계는 `plan.md` 밖의 diff를 C10으로 보고, `implementer.md`는 `must_not`에 둡니다. 역할이 사람 손으로 하는 검토입니다. T2는 C10을 검증기 검사로 나열하지만 `preCommit`에는 diff와 plan을 비교하는 코드가 없습니다.
 - **C6**: deny 규칙은 force push와 `--no-verify` push만 막습니다. 일반 `git push`, PR, merge, release, tag는 아무것도 막지 않습니다. `pre-push`는 원격 커밋이 조상인지(A1)만 봅니다.
-- **A1**: `pre-push`는 git이 넘기는 모든 ref 쌍에 조상 검사를 적용하며 태그도 포함합니다. 자손이 아닌 커밋으로 옮긴 태그는 HOLD로 잡힙니다. 새 ref와 삭제(0 해시)는 건너뛰므로 태그나 브랜치 삭제는 잡히지 않습니다. 자손 커밋으로 앞으로 옮긴 태그는 조상 검사를 통과해 거부되지 않으며, 설계는 공개 태그 이동을 되돌릴 수 없는 일로 봅니다.
+- **A1**: `pre-push`는 git이 넘기는 모든 ref 쌍에 조상 검사를 적용하며 태그도 포함합니다. 자손이 아닌 커밋으로 옮긴 태그는 HOLD로 잡힙니다. 태그 삭제(로컬 해시 0, `refs/tags/` 아래 ref)는 HOLD `push deletes tag <name>`(V25)이고, 새 ref와 브랜치 삭제는 통과합니다. 자손 커밋으로 앞으로 옮긴 태그는 조상 검사를 통과해 거부되지 않으며, 설계는 공개 태그 이동을 되돌릴 수 없는 일로 봅니다.
 - **A2, A3, A4**: `stops.yaml`은 `detect: verifier`로 적고 T4도 이들을 나열하지만, `prePush`는 A1만 구현합니다.
 - **B2**: `stops.yaml`은 `detect: verifier`로 적었지만, 설계 불변식과 기록된 결정을 비교하는 코드가 없습니다.
 - **B3**: `stops.yaml`은 B3을 `detect: role`로 적었으나, ticket-start의 승인 사슬 검사는 `reason: B3`으로 보고합니다.
@@ -92,9 +92,8 @@
 
 부분 공백(나머지는 검출기가 동작하는 행이며, 잡지 못하는 부분을 여기에도 적습니다):
 
-- C2 (금지선): `AGENTS.md` 관리 블록의 손 편집.
 - C4 (금지선): 고정 deny 목록 밖의 비밀 같은 이름(예: `.env.custom`) 읽기. 검증기는 스테이징된 경로만 보고, V18은 문자열 세 개만 단언합니다.
 - C10 (금지선): diff가 intent와 plan 안에 머무는지 확인하는 자동 검사가 없습니다(T2에 나열됨). code-review 역할이 사람 손으로 합니다.
 - C5 (금지선): `git commit -n` 등 `--no-verify`의 줄임·변형 형태. 정확히 일치하는 deny 패턴이 막지 못합니다.
-- A1: 태그 삭제, 그리고 자손 커밋으로의 공개 태그 전진 이동.
+- A1: 자손 커밋으로의 공개 태그 전진 이동.
 - D4: `reins gate`는 빈 명령 출력을 경고 없이 보고서에 씁니다.

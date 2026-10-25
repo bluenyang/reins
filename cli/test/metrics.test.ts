@@ -1,7 +1,8 @@
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { runInstall } from '../src/commands/install.js';
 import { collectMetrics, formatMetrics, recordUsage } from '../src/commands/metrics.js';
@@ -321,4 +322,124 @@ describe('summarize (S-4, C-4)', () => {
     expect(none.present).toBe(false);
     expect(formatMetrics(none)).toBe('no metrics yet\n');
   });
+});
+
+/** The built CLI: exit codes and output are the contract, so these tests run the real binary. */
+describe('CLI wiring (S-2, C-1, C-2)', () => {
+  const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const cli = join(repo, 'cli', 'dist', 'reins.js');
+  const run = (cwd: string, ...args: string[]) => {
+    const r = spawnSync(process.execPath, [cli, ...args], { cwd, encoding: 'utf8' });
+    return { code: r.status, out: r.stdout, err: r.stderr };
+  };
+  let d: string;
+
+  beforeAll(async () => {
+    execFileSync(
+      join(repo, 'node_modules', '.bin', 'tsc'),
+      ['-p', join(repo, 'cli', 'tsconfig.json')],
+      {
+        cwd: repo,
+      },
+    );
+    d = await project();
+    put(
+      d,
+      '.loctx/ticket/001-1_x.md',
+      '---\nid: 001-1\nintent: "001"\nplan_step: 1\ntitle: t\nstatus: todo\nrelease: planned\nrole: implementer\n---\n## 목적\n—\n',
+    );
+    put(d, '.agents/harness/gates.yaml', 'gates:\n  ok: { cmd: "node -v" }\norder: [ok]\n');
+  }, 120_000);
+
+  it('appends one line per check and gate run, with the expected keys', () => {
+    expect(run(d, 'check', '--stage', 'ticket-start', '--ticket', '001-1').code).toBe(10);
+    expect(run(d, 'check', '--drift')).toMatchObject({ code: 0, out: 'drift: ok\n' });
+    expect(run(d, 'gate', '--ticket', '001-1').code).toBe(0);
+    const [t1, drift, gate, ...rest] = lines(d);
+    expect(rest).toEqual([]);
+    expect(t1).toMatchObject({
+      schema: 'reins/metric@1',
+      kind: 'check',
+      stage: 'ticket-start',
+      ticket: '001-1',
+      intent: '001',
+      verdict: 'HOLD',
+    });
+    expect(t1!['reasons']).toContain('B3');
+    expect((t1!['stops'] as { intent: number }).intent).toBeGreaterThan(0);
+    expect(drift).toMatchObject({
+      kind: 'check',
+      stage: 'drift',
+      verdict: 'CONTINUE',
+      reasons: [],
+      warns: [],
+      stops: { intent: 0, knowledge: 0, redline: 0 },
+    });
+    expect(drift).not.toHaveProperty('ticket');
+    expect(gate).toMatchObject({
+      kind: 'gate',
+      ticket: '001-1',
+      intent: '001',
+      gate: 'ok',
+      exit: 0,
+      report: '.loctx/reports/001-1_ok.log',
+    });
+  });
+
+  it('keeps the check exit code and output when the metrics file cannot be written', () => {
+    const args = ['check', '--stage', 'ticket-start', '--ticket', '001-1'];
+    const file = join(d, METRICS_FILE);
+    const normal = [run(d, ...args), run(d, ...args, '--json')];
+    const kept = readFileSync(file, 'utf8');
+    rmSync(file);
+    mkdirSync(file); // the path is now a directory: every append fails
+    const blocked = [run(d, ...args), run(d, ...args, '--json')];
+    rmSync(file, { recursive: true });
+    writeFileSync(file, kept);
+    for (const i of [0, 1]) {
+      expect(blocked[i]).toEqual(normal[i]);
+      expect(blocked[i]!.code).toBe(10);
+    }
+  });
+
+  it('writes nothing and changes nothing in a repository without .loctx/', async () => {
+    const bare = await project();
+    const withLoctx = run(bare, 'check', '--drift');
+    rmSync(join(bare, '.loctx'), { recursive: true, force: true });
+    const without = run(bare, 'check', '--drift');
+    expect(without).toEqual(withLoctx);
+    expect(existsSync(join(bare, '.loctx'))).toBe(false);
+  });
+
+  it('records usage and summarizes it', () => {
+    expect(
+      run(d, 'metrics', 'record', '--role', 'implementer', '--tokens', '900', '--ticket', '001-1')
+        .code,
+    ).toBe(0);
+    for (const bad of [
+      ['--role', 'nobody', '--tokens', '5'],
+      ['--role', 'pl', '--tokens', '-1'],
+      ['--role', 'pl', '--tokens', '1.5'],
+      ['--role', 'pl', '--tokens', 'abc'],
+      ['--role', 'pl', '--tokens', '5', '--ticket', '002-1', '--intent', '003'],
+    ]) {
+      const before = readFileSync(join(d, METRICS_FILE), 'utf8');
+      expect(run(d, 'metrics', 'record', ...bad).code, bad.join(' ')).toBe(2);
+      expect(readFileSync(join(d, METRICS_FILE), 'utf8')).toBe(before);
+    }
+    const text = run(d, 'metrics');
+    expect(text.code).toBe(0);
+    expect(text.out).toContain('check 4 · gate 1 · usage 1');
+    expect(text.out).toContain('tokens: 900');
+    const json = JSON.parse(run(d, 'metrics', '--json', '--intent', '001').out);
+    expect(json.tokens.total).toBe(900);
+    expect(json.intents[0]).toMatchObject({ intent: '001', checks: 3, tickets: 1 });
+    expect(run(mkdtempSyncGit(), 'metrics').out).toBe('no metrics yet\n');
+  });
+
+  function mkdtempSyncGit(): string {
+    const e = mkdtempSync(join(tmpdir(), 'reins-metrics-empty-'));
+    git(e, 'init', '-q');
+    return e;
+  }
 });

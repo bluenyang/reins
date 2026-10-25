@@ -7,13 +7,21 @@ import { runStatus } from './commands/status.js';
 import { runUpdate } from './commands/update.js';
 import { configureBindings } from './commands/configure.js';
 import { runGates } from './commands/gate.js';
+import {
+  collectMetrics,
+  formatMetrics,
+  logCheck,
+  logGates,
+  recordUsage,
+} from './commands/metrics.js';
 import { defaultsAsker, stdinAsker } from './lib/ask.js';
 import { EXIT } from './lib/verdict.js';
 
 const program = new Command()
   .name('reins')
   .description('agent harness — install, migrate, update; check keeps agents inside their roles')
-  .version('0.1.0');
+  .version('0.1.0')
+  .enablePositionalOptions();
 
 const notYet = (name: string) => () => {
   process.stderr.write(`reins ${name}: not implemented yet (see docs/design.md §11)\n`);
@@ -210,6 +218,7 @@ program
   .option('--json')
   .action((names: string[], o: { ticket?: string; all?: boolean; json?: boolean }) => {
     const r = runGates({ names, ticket: o.ticket, all: o.all });
+    logGates(r.runs, { ticket: o.ticket });
     if (o.json) process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
     else if (r.refused) process.stderr.write(`reins gate: ${r.refused}\n`);
     else
@@ -230,6 +239,56 @@ program
     process.stderr.write(r.stderr);
     process.exit(r.code);
   });
+
+const metrics = program
+  .command('metrics')
+  .enablePositionalOptions()
+  .description(
+    'what the loop cost and where it stopped: counts, tokens by role and vendor, per ticket and intent',
+  )
+  .option('--intent <NNN>', 'only this intent')
+  .option('--json')
+  .action((o: { intent?: string; json?: boolean }) => {
+    const m = collectMetrics({ intent: o.intent });
+    process.stdout.write(o.json ? `${JSON.stringify(m, null, 2)}\n` : formatMetrics(m));
+  });
+metrics
+  .command('record')
+  .description(
+    'append a usage line: tokens a role run used (the caller reports; reins calls no model)',
+  )
+  .requiredOption('--role <role>', 'a role in bindings.yaml')
+  .requiredOption('--tokens <n>', 'whole number ≥ 0')
+  .option('--ticket <id>', 'the ticket the run served (fills the intent)')
+  .option('--intent <NNN>', 'the intent, when there is no ticket')
+  .option('--vendor <v>', 'default: the binding of --role')
+  .option('--model <m>', 'default: the binding of --role')
+  .option('--note <text>')
+  .option('--json')
+  .action(
+    (o: {
+      role: string;
+      tokens: string;
+      ticket?: string;
+      intent?: string;
+      vendor?: string;
+      model?: string;
+      note?: string;
+      json?: boolean;
+    }) => {
+      const r = recordUsage(o);
+      if (r.refused) {
+        process.stderr.write(`reins metrics record: ${r.refused}\n`);
+        process.exit(2);
+      }
+      const u = r.record!;
+      process.stdout.write(
+        o.json
+          ? `${JSON.stringify(u, null, 2)}\n`
+          : `recorded: ${u.role} (${u.vendor}/${u.model}) ${u.tokens} tokens${u.ticket ? ` · ticket ${u.ticket}` : ''}${u.intent ? ` · intent ${u.intent}` : ''}\n`,
+      );
+    },
+  );
 
 for (const n of ['recall', 'doctor'])
   program.command(n).allowUnknownOption().allowExcessArguments().action(notYet(n));
@@ -265,6 +324,7 @@ program
         pushRefs = Buffer.concat(chunks).toString('utf8').split('\n').filter(Boolean);
       }
       const r = runCheck({ stage, drift: o.drift, pushRefs, ticket: o.ticket, release: o.release });
+      logCheck(r, { ticket: o.ticket });
       if (o.json) process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
       else {
         process.stdout.write(`${r.summary}\n`);

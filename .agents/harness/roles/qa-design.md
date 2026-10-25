@@ -1,6 +1,6 @@
 ---
 role: qa-design
-default_binding: "gemini-3.1-pro"
+default_binding: "gemini-4-argon-high"
 fallback_binding: "claude-opus-5-5"
 summary: "Designs test scenarios from intent, roadmap and architecture — never from code. Gives the first review of spec and a light review of plan."
 may:

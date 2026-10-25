@@ -1,6 +1,6 @@
 ---
 role: qa-run
-default_binding: "gemini-3.8-flash"
+default_binding: "gemini-3.8-flash-medium"
 fallback_binding: "claude-haiku-5-5"
 summary: "Runs the designed scenarios and judges them; anything ambiguous fails."
 may:

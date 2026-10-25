@@ -106,6 +106,7 @@ export function denyRules(lines: RedLine[]): string[] {
     'Bash(git push -f *)',
     'Bash(git push --force-with-lease *)',
     'Bash(git commit --no-verify *)',
+    'Bash(git commit -n *)',
     'Bash(git push --no-verify *)',
   );
   return rules;

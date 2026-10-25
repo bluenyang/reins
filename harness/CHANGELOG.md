@@ -5,6 +5,8 @@ Read by `reins update`: it lists the entries newer than a project's pinned versi
 where the PM proposes those changes for the user to approve.
 
 ## 0.1.1
+- qa-design default binding is now gemini-4-argon-high and qa-run gemini-3.8-flash-medium (fallbacks unchanged).
+- Generated settings deny `Bash(git commit -n *)` alongside `--no-verify`.
 - Premise stops C1 and C2 are now P1 and P2, so a stop reason id has one meaning; red lines C1–C10 are unchanged. `metrics` still reads old C1/C2 records as P1/P2.
 
 ## 0.1.0

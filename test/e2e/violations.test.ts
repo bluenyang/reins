@@ -362,6 +362,7 @@ const SCENARIOS: Scenario[] = [
           'Read(**/.env)',
           'Bash(git push --force *)',
           'Bash(git commit --no-verify *)',
+          'Bash(git commit -n *)',
         ]),
       );
     },

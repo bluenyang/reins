@@ -120,7 +120,12 @@ jobs:
           test "$(node cli/dist/reins.js --version)" = "$NEXT"
           test "$(node -p "require('./package.json').version")" = "$NEXT"
           test "$(node -p "require('./.claude-plugin/plugin.json').version")" = "$NEXT"
-          grep -q "@bluenyang/reins@$NEXT" skills/reins-setup/SKILL.md
+          node -e '
+            const t = require("fs").readFileSync("skills/reins-setup/SKILL.md", "utf8");
+            const pins = [...t.matchAll(/@bluenyang\/reins@(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)/g)].map((m) => m[1]);
+            if (pins.length === 0 || pins.some((v) => v !== process.env.NEXT)) {
+              console.error("SKILL.md pins:", pins, "expected", process.env.NEXT); process.exit(1);
+            }'
 
       - name: npm stage publish (approval needed before it is live)
         env:

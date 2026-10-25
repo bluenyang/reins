@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
+import { overrides, parseBlocks } from '../lib/blocks.js';
 import { currentBranch, isAncestor, repoRoot, stagedFiles } from '../lib/git.js';
 import { harnessRel, secretPolicy } from '../lib/harness.js';
 import { loadSchemasFrom, schemaFor, validateFile } from '../lib/schema.js';
@@ -82,6 +83,7 @@ export function preCommit(root: string): Finding[] {
   const under = (...dirs: string[]) => staged.some((f) => dirs.some((d) => f.startsWith(d)));
   if (under('harness/', '.agents/harness/', 'skills/', '.agents/skills/'))
     findings.push(...driftMatch(root, rd));
+  if (staged.includes('AGENTS.md')) findings.push(...driftBlocks(root, rd));
   if (under('.claude/', '.agents/harness/', '.agents/skills/'))
     findings.push(...driftGenerated(root, rd));
   return findings;
@@ -94,7 +96,17 @@ export function prePush(root: string, refs: string[]): Finding[] {
   for (const line of refs) {
     const [localRef, localSha, remoteRef, remoteSha] = line.trim().split(/\s+/);
     if (!localSha || !remoteSha || !remoteRef) continue;
-    if (ZERO.test(remoteSha) || ZERO.test(localSha)) continue; // new branch or deletion
+    if (ZERO.test(localSha) && remoteRef.startsWith('refs/tags/')) {
+      findings.push({
+        reason: 'A1',
+        verdict: 'HOLD',
+        path: remoteRef,
+        message: `push deletes tag ${remoteRef.slice('refs/tags/'.length)}`,
+        resume: 'deleting a published tag is irreversible — the user must run it explicitly',
+      });
+      continue;
+    }
+    if (ZERO.test(remoteSha) || ZERO.test(localSha)) continue; // new ref or branch deletion
     if (!isAncestor(remoteSha, localSha, root))
       findings.push({
         reason: 'A1',
@@ -255,6 +267,52 @@ export function driftMatch(root: string, rd: Reader = workTreeReader(root)): Fin
   return findings;
 }
 
+/** Compare a block for drift: CRLF to LF, trailing whitespace per line, blank lines around the content. */
+function normBlock(s: string): string {
+  return s
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((l) => l.replace(/\s+$/, ''))
+    .join('\n')
+    .replace(/^\n+|\n+$/g, '');
+}
+
+/** Drift, managed blocks — AGENTS.md blocks against the packaged ones at the pinned version (design §5). */
+export function driftBlocks(root: string, rd: Reader = workTreeReader(root)): Finding[] {
+  const text = rd.read('AGENTS.md');
+  if (text === undefined) return [];
+  const pinText = rd.read('.agents/harness/install.yaml');
+  if (pinText === undefined) return [];
+  let upBlocks;
+  try {
+    const up = packageHarness();
+    if ((parse(pinText) as { version?: string }).version !== harnessVersion(up)) return []; // driftMatch warns
+    upBlocks = new Map(
+      parseBlocks(readFileSync(join(up, 'templates/agents-md-blocks.md'), 'utf8')).map((b) => [
+        b.name,
+        b,
+      ]),
+    );
+  } catch {
+    return [];
+  }
+  const over = overrides(text);
+  const findings: Finding[] = [];
+  for (const b of parseBlocks(text)) {
+    const want = upBlocks.get(b.name);
+    if (!want || over.has(b.name)) continue;
+    if (normBlock(b.body) !== normBlock(want.body))
+      findings.push({
+        reason: 'F2',
+        verdict: 'STOP',
+        path: 'AGENTS.md',
+        message: `managed block "${b.name}" was edited by hand`,
+        resume: `run \`reins update\`, or add <!-- reins:override ${b.name} -->`,
+      });
+  }
+  return findings;
+}
+
 export function runCheck(opts: CheckOptions): StopReport {
   const root = repoRoot(opts.cwd ?? process.cwd());
   const findings: Finding[] = [];
@@ -280,6 +338,7 @@ export function runCheck(opts: CheckOptions): StopReport {
       ...driftFormat(root),
       ...driftConvention(root),
       ...driftMatch(root),
+      ...driftBlocks(root),
       ...driftGenerated(root),
     );
   if (!currentBranch(root))

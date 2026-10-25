@@ -15,14 +15,14 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 /**
- * Violation scenarios V1–V23 (intents 003, 004): each one breaks a rule on purpose in a throwaway git repository
+ * Violation scenarios V1–V25 (intents 003, 004): each one breaks a rule on purpose in a throwaway git repository
  * and runs the built `cli/dist/reins.js` as a child process. The test reads the stop report (`--json`) and the
  * exit code — it never calls the verifier as a function. `test/e2e/build.ts` (vitest globalSetup) builds first.
  */
 
 const ROOT = join(fileURLToPath(import.meta.url), '..', '..', '..');
 const CLI = join(ROOT, 'cli', 'dist', 'reins.js');
-const TOTAL = 23; // rows of the scenario table in the spec
+const TOTAL = 25; // rows of the scenario table in the spec
 
 const EXIT = { CONTINUE: 0, HOLD: 10, STOP: 20, ESCALATE: 30 } as const;
 type Verdict = keyof typeof EXIT;
@@ -473,6 +473,59 @@ const SCENARIOS: Scenario[] = [
       expect(r.code).toBe(0);
     },
   },
+  {
+    id: 'V24',
+    violation: 'a managed block in AGENTS.md edited by hand (drift, override, staged pre-commit)',
+    run: (d) => {
+      const own = (r: ReturnType<typeof reins>) =>
+        (JSON.parse(r.stdout) as Report).findings.filter(
+          (f) =>
+            f.reason === 'F2' &&
+            f.verdict === 'STOP' &&
+            f.path === 'AGENTS.md' &&
+            f.message === 'managed block "workflow" was edited by hand',
+        );
+      const orig = readFileSync(join(d, 'AGENTS.md'), 'utf8');
+      const edited = orig.replace(
+        '<!-- reins:end workflow -->',
+        'one more rule\n<!-- reins:end workflow -->',
+      );
+      expect(edited).not.toBe(orig);
+      put(d, 'AGENTS.md', edited);
+      const r = reins(d, [...drift, '--json']);
+      expect(own(r).length, r.stdout).toBeGreaterThan(0);
+      expect(r.code).toBe(EXIT.STOP);
+      // pre-commit sees it only once the file is staged
+      expect(own(reins(d, [...preCommit, '--json'])).length).toBe(0);
+      git(d, 'add', '--', 'AGENTS.md');
+      const pc = reins(d, [...preCommit, '--json']);
+      expect(own(pc).length, pc.stdout).toBeGreaterThan(0);
+      expect(pc.code).toBe(EXIT.STOP);
+      // an override silences it
+      put(d, 'AGENTS.md', `${edited}\n<!-- reins:override workflow -->\n`);
+      const ov = reins(d, [...drift, '--json']);
+      expect(own(ov).length, ov.stdout).toBe(0);
+    },
+  },
+  stops(
+    'V25',
+    'push deletes a tag (a branch deletion passes)',
+    ['check', '--stage', 'pre-push'],
+    { reason: 'A1', verdict: 'HOLD', path: 'refs/tags/v0.1.0', message: 'push deletes tag v0.1.0' },
+    () => undefined,
+    (d) => {
+      const sha = git(d, 'rev-parse', 'HEAD');
+      const zero = '0'.repeat(40);
+      // the branch-deletion line must not add a finding of its own
+      const r = reins(
+        d,
+        ['check', '--stage', 'pre-push', '--json'],
+        `(delete) ${zero} refs/heads/old ${sha}\n`,
+      );
+      expect(JSON.parse(r.stdout), r.stdout).toMatchObject({ verdict: 'CONTINUE', findings: [] });
+      return `(delete) ${zero} refs/tags/v0.1.0 ${sha}\n`;
+    },
+  ),
 ];
 
 /**

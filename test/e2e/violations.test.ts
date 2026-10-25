@@ -15,14 +15,14 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 /**
- * Violation scenarios V1–V19 (intent 003): each one breaks a rule on purpose in a throwaway git repository
+ * Violation scenarios V1–V23 (intents 003, 004): each one breaks a rule on purpose in a throwaway git repository
  * and runs the built `cli/dist/reins.js` as a child process. The test reads the stop report (`--json`) and the
  * exit code — it never calls the verifier as a function. `test/e2e/build.ts` (vitest globalSetup) builds first.
  */
 
 const ROOT = join(fileURLToPath(import.meta.url), '..', '..', '..');
 const CLI = join(ROOT, 'cli', 'dist', 'reins.js');
-const TOTAL = 19; // rows of the scenario table in the spec
+const TOTAL = 23; // rows of the scenario table in the spec
 
 const EXIT = { CONTINUE: 0, HOLD: 10, STOP: 20, ESCALATE: 30 } as const;
 type Verdict = keyof typeof EXIT;
@@ -390,6 +390,87 @@ const SCENARIOS: Scenario[] = [
       const ok = reins(d, [...preCommit, '--json']);
       expect(JSON.parse(ok.stdout), ok.stdout).toMatchObject({ verdict: 'CONTINUE', findings: [] });
       expect(ok.code).toBe(0);
+    },
+  },
+  {
+    id: 'V20',
+    violation: 'a bus response that breaks its schema (fixes: "none") reported as pass',
+    run: (d) => {
+      const good = '$ pnpm test\nok\nexit 0';
+      bus(d, '001-1_01', 'pass', good);
+      const rp = '.loctx/bus/001-1_01.response.yaml';
+      const text = readFileSync(join(d, rp), 'utf8');
+      put(d, rp, text + 'fixes: "none"\n');
+      const r = reins(d, [...verdict, '--json']);
+      const report = JSON.parse(r.stdout) as Report;
+      expect(
+        report.findings.some(
+          (f) => f.reason === 'F2' && f.verdict === 'STOP' && f.message.includes('bus-response'),
+        ),
+        r.stdout,
+      ).toBe(true);
+      expect(r.code).toBe(EXIT.STOP);
+      // a request that breaks its schema is the same
+      put(d, rp, text);
+      const qp = '.loctx/bus/001-1_01.request.yaml';
+      put(d, qp, readFileSync(join(d, qp), 'utf8').replace('kind: verify', 'kind: verify\nfoo: 1'));
+      const q = JSON.parse(reins(d, [...verdict, '--json']).stdout) as Report;
+      expect(q.findings.some((f) => f.reason === 'F2' && f.message.includes('bus-request'))).toBe(
+        true,
+      );
+      // only the last exchange is checked: a broken earlier one is ignored
+      put(d, qp, readFileSync(join(d, qp), 'utf8').replace('foo: 1\n', ''));
+      put(
+        d,
+        '.loctx/bus/001-1_00.request.yaml',
+        'schema: reins/bus/request@1\nid: 001-1_00\nbogus: 1\nkind: verify\n',
+      );
+      put(
+        d,
+        '.loctx/bus/001-1_00.response.yaml',
+        'schema: reins/bus/response@1\nfixes: "none"\nverdict: fail\n',
+      );
+      const ok = reins(d, [...verdict, '--json']);
+      expect(JSON.parse(ok.stdout), ok.stdout).toMatchObject({ verdict: 'CONTINUE', findings: [] });
+      expect(ok.code).toBe(0);
+    },
+  },
+  stops(
+    'V21',
+    'an absolute in-repository evidence path is read, and its exit 1 stops',
+    verdict,
+    { reason: 'D4', verdict: 'STOP', message: 'exits 1' },
+    (d) => {
+      put(d, '.loctx/reports/e.log', '$ pnpm test\nfailed\nexit 1\n');
+      bus(d, '001-1_01', 'pass', join(d, '.loctx/reports/e.log'));
+    },
+  ),
+  stops(
+    'V22',
+    'an absolute evidence path outside the repository',
+    verdict,
+    { reason: 'D5', verdict: 'STOP', message: 'evidence path outside the repository' },
+    (d) => {
+      const out = join(mkdtempSync(join(tmpdir(), 'reins-ev-')), 'e.log');
+      writeFileSync(out, '$ pnpm test\nok\nexit 0\n');
+      bus(d, '001-1_01', 'pass', out);
+    },
+  ),
+  {
+    id: 'V23',
+    violation: 'gate output is empty: a warning, the verdict stays',
+    run: (d) => {
+      bus(d, '001-1_01', 'pass', '$ pnpm tsc --noEmit\nexit 0');
+      const r = reins(d, [...verdict, '--json']);
+      const report = JSON.parse(r.stdout) as Report;
+      expect(
+        report.findings.some(
+          (f) => f.reason === 'D4' && f.verdict === 'WARN' && f.message === 'gate output is empty',
+        ),
+        r.stdout,
+      ).toBe(true);
+      expect(report.verdict).toBe('CONTINUE');
+      expect(r.code).toBe(0);
     },
   },
 ];

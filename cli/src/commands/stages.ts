@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, relative } from 'node:path';
 import { harnessDir, readYaml } from '../lib/harness.js';
 import { loadSchemas, validateFile } from '../lib/schema.js';
 import type { Finding } from '../lib/verdict.js';
@@ -215,16 +215,44 @@ export function ticketStart(root: string, id: string): Finding[] {
 export function readEvidence(
   root: string,
   evidence: string,
-): { source: string; text: string; cmd?: string; exit?: number }[] {
+): {
+  source: string;
+  text: string;
+  cmd?: string;
+  exit?: number;
+  outside?: boolean;
+  empty?: boolean;
+}[] {
   const tokens = evidence.split(/\s+/).filter(Boolean);
-  const files = tokens.length > 0 && tokens.every((t) => existsSync(join(root, t)));
-  const pieces = files
-    ? tokens.map((t) => ({ source: t, text: readFileSync(join(root, t), 'utf8') }))
+  // an absolute path inside the repository reads like a relative one; outside it is refused
+  const inside = (t: string) => {
+    const rel = relative(root, t);
+    return !rel.startsWith('..') && !isAbsolute(rel);
+  };
+  const resolve = (t: string) => (isAbsolute(t) ? t : join(root, t));
+  const files = tokens.length > 0 && tokens.every((t) => existsSync(resolve(t)));
+  const pieces: { source: string; text: string; outside?: boolean }[] = files
+    ? tokens.map((t) =>
+        isAbsolute(t) && !inside(t)
+          ? { source: t, text: '', outside: true }
+          : {
+              source: isAbsolute(t) ? relative(root, t) : t,
+              text: readFileSync(resolve(t), 'utf8'),
+            },
+      )
     : [{ source: 'inline', text: evidence }];
   return pieces.map((p) => {
+    const empty =
+      !p.outside &&
+      p.text
+        .split(/\r?\n/)
+        .filter((l) => !l.startsWith('$ ') && !/^exit[: =]?\s*-?\d+\s*$/i.test(l))
+        .join('')
+        .trim() === '';
     const code = /^exit[: =]?\s*(-?\d+)\s*$/im.exec(p.text)?.[1];
     return {
       ...p,
+      empty,
       cmd: /^\$ (.+)$/m.exec(p.text)?.[1]?.trim(),
       exit: code === undefined ? undefined : Number(code),
     };
@@ -256,6 +284,26 @@ export function verdictCheck(root: string, id: string): Finding[] {
     ];
   const findings: Finding[] = [];
   const last = verifies.at(-1)!;
+  const dir = harnessDir(root);
+  const schemas = dir ? loadSchemas(dir) : undefined;
+  const bad: Finding[] = [];
+  for (const [kind, name] of [
+    ['request', 'bus-request'],
+    ['response', 'bus-response'],
+  ] as const) {
+    const v = schemas?.get(name);
+    const rel = `.loctx/bus/${last.id}.${kind}.yaml`;
+    if (v && last[kind])
+      for (const i of validateFile(v, join(root, rel), true))
+        bad.push({
+          reason: 'F2',
+          verdict: 'STOP',
+          path: rel,
+          message: `${name}: ${i.message}`,
+          resume: 'fix the bus file against its schema, then re-run the check',
+        });
+  }
+  if (bad.length > 0) return bad;
   if (!last.response)
     return [
       {
@@ -302,6 +350,24 @@ export function verdictCheck(root: string, id: string): Finding[] {
   else
     for (const e of readEvidence(root, ev)) {
       const at2 = e.source === 'inline' ? at : `${at} → ${e.source}`;
+      if (e.outside) {
+        findings.push({
+          reason: 'D5',
+          verdict: 'STOP',
+          path: at2,
+          message: 'evidence path outside the repository',
+          resume: 'copy the gate output under .loctx/reports/ and cite that path',
+        });
+        continue;
+      }
+      if (e.empty)
+        findings.push({
+          reason: 'D4',
+          verdict: 'WARN',
+          path: at2,
+          message: 'gate output is empty',
+          resume: 'check that the gate produced output; attach it unabridged',
+        });
       if (e.exit === undefined)
         findings.push({
           reason: 'D4',

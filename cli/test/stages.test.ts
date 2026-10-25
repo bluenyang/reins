@@ -154,7 +154,7 @@ describe('T3 verdict', () => {
     expect(verdictCheck(d, '001-1').map((x) => `${x.reason} ${x.verdict}`)).toEqual([
       'D1 ESCALATE',
     ]);
-    bus('001-1_04', 'pass', '$ pnpm test\nexit 0');
+    bus('001-1_04', 'pass', '$ pnpm test\nok\nexit 0');
     expect(verdictCheck(d, '001-1')).toEqual([]);
   });
 });

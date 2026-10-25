@@ -5,7 +5,8 @@ import { harnessDir, secretPolicy } from '../lib/harness.js';
 import { loadSchemas, schemaFor, validateFile } from '../lib/schema.js';
 import { DEFAULT_ALLOWED, DEFAULT_SECRET_PATTERNS, isSecretPath } from '../lib/secrets.js';
 import { findSkillFiles, splitFrontmatter, validateSkillFile } from '../lib/skills.js';
-import { harnessVersion, packageHarness } from '../lib/upstream.js';
+import { harnessVersion, packageHarness, packageSkills, tierSkills } from '../lib/upstream.js';
+import { listFiles } from '../lib/fsx.js';
 import { driftGenerated } from '../lib/vendor-write.js';
 import { rcClose, ticketStart, verdictCheck } from './stages.js';
 import { parse } from 'yaml';
@@ -75,9 +76,10 @@ export function preCommit(root: string): Finding[] {
       resume: 'add ".loctx/" (or ".ai/") to .gitignore',
     });
   findings.push(...driftFormat(root, staged), ...driftConvention(root, staged));
-  if (staged.some((f) => f.startsWith('harness/') || f.startsWith('.agents/harness/')))
+  const under = (...dirs: string[]) => staged.some((f) => dirs.some((d) => f.startsWith(d)));
+  if (under('harness/', '.agents/harness/', 'skills/', '.agents/skills/'))
     findings.push(...driftMatch(root));
-  if (staged.some((f) => f.startsWith('.claude/') || f.startsWith('.agents/harness/')))
+  if (under('.claude/', '.agents/harness/', '.agents/skills/'))
     findings.push(...driftGenerated(root));
   return findings;
 }
@@ -205,7 +207,8 @@ export function driftMatch(root: string): Finding[] {
   } catch {
     return [];
   }
-  const pin = (parse(readFileSync(pinPath, 'utf8')) as { version?: string }).version;
+  const pinned = parse(readFileSync(pinPath, 'utf8')) as { version?: string; tier?: string };
+  const pin = pinned.version;
   const upVersion = harnessVersion(up);
   if (pin !== upVersion)
     return [
@@ -231,6 +234,26 @@ export function driftMatch(root: string): Finding[] {
         message: `differs from upstream v${upVersion} (harness files are not edited in place)`,
         resume: 'run `reins update` to restore it; change behaviour upstream or with an override',
       });
+  }
+  // installed skill entry points = the packaged ones
+  const skillsUp = packageSkills();
+  for (const name of tierSkills(pinned.tier ?? 'graph')) {
+    const dir = join(root, '.agents', 'skills', name);
+    if (!existsSync(dir)) continue;
+    for (const f of listFiles(join(skillsUp, name))) {
+      const mine = join(dir, f);
+      if (
+        !existsSync(mine) ||
+        readFileSync(mine, 'utf8') !== readFileSync(join(skillsUp, name, f), 'utf8')
+      )
+        findings.push({
+          reason: 'F2',
+          verdict: 'STOP',
+          path: `.agents/skills/${name}/${f}`,
+          message: `differs from the packaged skill (v${upVersion})`,
+          resume: 'run `reins update`; a project-specific procedure belongs in its own skill',
+        });
+    }
   }
   return findings;
 }

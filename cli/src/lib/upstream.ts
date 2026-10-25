@@ -15,3 +15,13 @@ export function packageHarness(): string {
 export function harnessVersion(dir: string): string {
   return readFileSync(join(dir, 'VERSION'), 'utf8').trim();
 }
+
+/** The skill entry points shipped with this package: `<pkg>/skills`, next to `harness/`. */
+export function packageSkills(): string {
+  return join(packageHarness(), '..', 'skills');
+}
+
+/** Which packaged skills a tier installs: the harness tier has no loop to run. */
+export function tierSkills(tier: string): string[] {
+  return tier === 'harness' ? ['reins-setup'] : ['reins-setup', 'reins-intent', 'reins-loop'];
+}

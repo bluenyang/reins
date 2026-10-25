@@ -13,8 +13,8 @@ import {
 } from '../lib/detect.js';
 import { apply, listFiles, type Applied, type Write } from '../lib/fsx.js';
 import { repoRoot } from '../lib/git.js';
-import { splitFrontmatter } from '../lib/skills.js';
-import { harnessVersion, packageHarness } from '../lib/upstream.js';
+import { SKILLS_INDEX_HEADER, skillsIndex, splitFrontmatter } from '../lib/skills.js';
+import { harnessVersion, packageHarness, packageSkills, tierSkills } from '../lib/upstream.js';
 import { generateVendorFiles } from '../lib/generate.js';
 import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
 
@@ -244,8 +244,39 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     add('.loctx/README.md', LOCTX_README, 'local workspace layout');
     addIfMissing('.loctx/ROADMAP.local.md', ROADMAP_STUB, 'raw roadmap');
   }
-  addIfMissing('.agents/skills/.gitkeep', '', 'skills (Agent Skills standard path)');
-  addIfMissing('.agents/SKILLS.md', '# Skills\n\n| skill | does |\n|---|---|\n', 'skill index');
+  // skill entry points: upstream-owned copies under the Agent Skills path, plus the index
+  const skillsUp = packageSkills();
+  const installed: { name: string; description: string }[] = [];
+  for (const name of tierSkills(o.tier)) {
+    for (const f of listFiles(join(skillsUp, name)))
+      add(
+        `.agents/skills/${name}/${f}`,
+        readFileSync(join(skillsUp, name, f), 'utf8'),
+        'upstream skill',
+      );
+  }
+  const skillsDir = join(root, '.agents', 'skills');
+  const names = new Set([
+    ...tierSkills(o.tier),
+    ...(existsSync(skillsDir) ? readdirSync(skillsDir) : []).filter((n) =>
+      existsSync(join(skillsDir, n, 'SKILL.md')),
+    ),
+  ]);
+  for (const n of names) {
+    const src = tierSkills(o.tier).includes(n) ? join(skillsUp, n) : join(skillsDir, n);
+    const { data } = splitFrontmatter(readFileSync(join(src, 'SKILL.md'), 'utf8'));
+    installed.push({ name: n, description: String(data?.['description'] ?? '') });
+  }
+  const indexPath = join(root, '.agents', 'SKILLS.md');
+  const index = existsSync(indexPath) ? readFileSync(indexPath, 'utf8') : null;
+  if (
+    index === null ||
+    index.startsWith(SKILLS_INDEX_HEADER) ||
+    /^# Skills\n\n\| skill \| does \|\n\|---\|---\|\n$/.test(index)
+  )
+    add('.agents/SKILLS.md', skillsIndex(installed), 'skill index');
+  else
+    notes.push('.agents/SKILLS.md is written by the project — add the reins skills to it by hand');
 
   const gi = existsSync(join(root, '.gitignore'))
     ? readFileSync(join(root, '.gitignore'), 'utf8')

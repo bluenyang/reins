@@ -158,3 +158,52 @@ describe('re-running install keeps what the project owns', () => {
     ).toEqual([]);
   });
 });
+
+describe('skill entry points (design §6)', () => {
+  it('installs the packaged skills, indexes them and copies them for Claude Code', async () => {
+    const d = repo();
+    const opts = {
+      tier: 'graph' as const,
+      mode: 'auto' as const,
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: onlyClaude,
+    };
+    await runInstall(opts);
+    for (const s of ['reins-setup', 'reins-intent', 'reins-loop']) {
+      const src = readFileSync(join(d, `.agents/skills/${s}/SKILL.md`), 'utf8');
+      expect(readFileSync(join(d, `.claude/skills/${s}/SKILL.md`), 'utf8')).toBe(src);
+    }
+    const index = readFileSync(join(d, '.agents/SKILLS.md'), 'utf8');
+    expect(index.match(/^\| `reins-/gm)).toHaveLength(3);
+    expect(driftMatch(d)).toEqual([]);
+    // a project's own skill is indexed and copied too
+    execFileSync('mkdir', ['-p', join(d, '.agents/skills/deploy-docs')]);
+    writeFileSync(
+      join(d, '.agents/skills/deploy-docs/SKILL.md'),
+      '---\nname: deploy-docs\ndescription: Publish the docs site. Use on release.\n---\n# x\n',
+    );
+    await runInstall(opts);
+    expect(readFileSync(join(d, '.agents/SKILLS.md'), 'utf8')).toContain(
+      '| `deploy-docs` | Publish the docs site. |',
+    );
+    expect(existsSync(join(d, '.claude/skills/deploy-docs/SKILL.md'))).toBe(true);
+    // editing an installed reins skill is drift
+    const p = join(d, '.agents/skills/reins-loop/SKILL.md');
+    writeFileSync(p, `${readFileSync(p, 'utf8')}\nskip T3.\n`);
+    expect(driftMatch(d).map((f) => f.path)).toEqual(['.agents/skills/reins-loop/SKILL.md']);
+  });
+
+  it('the harness tier gets only reins-setup', async () => {
+    const d = repo();
+    await runInstall({
+      tier: 'harness',
+      mode: 'auto',
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: onlyClaude,
+    });
+    expect(existsSync(join(d, '.agents/skills/reins-setup/SKILL.md'))).toBe(true);
+    expect(existsSync(join(d, '.agents/skills/reins-loop'))).toBe(false);
+  });
+});

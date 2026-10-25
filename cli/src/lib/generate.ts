@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse, stringify } from 'yaml';
-import type { Write } from './fsx.js';
+import { listFiles, type Write } from './fsx.js';
 import { redLines } from './harness.js';
 import { splitFrontmatter } from './skills.js';
 
@@ -147,6 +147,18 @@ export function generateVendorFiles(root: string): Generated {
         content: claudeAgent(r, b, version),
         why: `role ${r.role}`,
       });
+    }
+  // skills: Codex, Gemini and Cursor read .agents/skills/ directly; Claude Code reads a byte-identical copy
+  const skills = join(root, '.agents', 'skills');
+  if (existsSync(skills))
+    for (const name of readdirSync(skills).toSorted()) {
+      if (!existsSync(join(skills, name, 'SKILL.md'))) continue;
+      for (const f of listFiles(join(skills, name)))
+        out.writes.push({
+          path: `.claude/skills/${name}/${f}`,
+          content: readFileSync(join(skills, name, f), 'utf8'),
+          why: `skill ${name}`,
+        });
     }
   if (existsSync(join(harness, 'policy')))
     out.writes.push({

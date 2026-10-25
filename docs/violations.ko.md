@@ -54,7 +54,7 @@
 
 - **C2 (금지선)**: match 층은 `.agents/harness/`를 패키지된 upstream과 비교해 F2로 보고합니다. 고정된 버전이 패키지 버전과 다르면 경고만 합니다. `driftBlocks`가 `AGENTS.md`의 관리 블록을 고정된 버전의 패키지 블록과 비교해(CRLF, 줄 끝 공백, 앞뒤 빈 줄은 무시) 다르면 F2 `managed block "<name>" was edited by hand`로 보고하고, 블록이 지워졌으면 `is missing`으로 보고합니다(블록 밖에 같은 `## <제목>` 섹션이 있으면 대체한 것으로 보고 건드리지 않습니다). `reins:override <name>`이 있으면 건너뜁니다. 프로젝트 루트의 `harness/` 원본도 검사하지 않습니다.
 - **C3**: 정지 보고서에 `reason: C3`이 담깁니다. 생성된 `.claude/settings.json`의 deny 규칙은 `.claude/settings.json` 자체의 편집을 막지 않습니다.
-- **C4**: `settings deny`는 Claude Code 안에서만 읽기를 막습니다. 다른 벤더에는 deny 규칙이 없고, 검증기는 스테이징된 경로를 볼 뿐 읽기는 보지 않습니다. `denyRules`는 `.env.*` 패턴을 고정 목록(`.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.staging`, `.env.test`)으로 바꾸므로, `.env.custom` 같은 이름은 deny 규칙 없이 읽고 편집할 수 있습니다. 스테이징 검사는 이런 이름도 거부합니다. V18은 세 문자열(`Read(**/.env)`, `Bash(git push --force *)`, `Bash(git commit --no-verify *)`)만 단언하고 패턴 전체 목록은 단언하지 않습니다.
+- **C4**: `settings deny`는 Claude Code 안에서만 읽기를 막습니다. 다른 벤더에는 deny 규칙이 없고, 검증기는 스테이징된 경로를 볼 뿐 읽기는 보지 않습니다. `denyRules`는 `.env.*` 패턴을 고정 목록(`.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.staging`, `.env.test`)으로 바꾸므로, `.env.custom` 같은 이름은 deny 규칙 없이 읽고 편집할 수 있습니다. 스테이징 검사는 이런 이름도 거부합니다. V18은 네 문자열(`Read(**/.env)`, `Bash(git push --force *)`, `Bash(git commit --no-verify *)`, `Bash(git commit -n *)`)만 단언하고 패턴 전체 목록은 단언하지 않습니다.
 - **C5**: deny 규칙은 `git commit --no-verify *`, `git commit -n *`, `git push --no-verify *`에 대응합니다. 합친 형태(`-nm`)나 뒤쪽 위치의 줄임 형태는 막지 못합니다.
 - **C7, C8, C9**: 금지 내용은 `common-red-lines.yaml`에 있고, 생성된 모든 Claude 에이전트에 "`common-red-lines.yaml`의 공통 금지선을 어기지 않는다"는 줄이 들어갑니다. 개별 역할의 `must_not` 목록에는 없으며, 이를 확인하는 검사도 없습니다. F3은 `stops.yaml`에도 `detect: role`로 있습니다.
 - **C10**: `code-review.md`의 1단계는 `plan.md` 밖의 diff를 C10으로 보고, `implementer.md`는 `must_not`에 둡니다. 역할이 사람 손으로 하는 검토입니다. T2는 C10을 검증기 검사로 나열하지만 `preCommit`에는 diff와 plan을 비교하는 코드가 없습니다.
@@ -92,7 +92,7 @@
 
 부분 공백(나머지는 검출기가 동작하는 행이며, 잡지 못하는 부분을 여기에도 적습니다):
 
-- C4 (금지선): 고정 deny 목록 밖의 비밀 같은 이름(예: `.env.custom`) 읽기. 검증기는 스테이징된 경로만 보고, V18은 문자열 세 개만 단언합니다.
+- C4 (금지선): 고정 deny 목록 밖의 비밀 같은 이름(예: `.env.custom`) 읽기. 검증기는 스테이징된 경로만 보고, V18은 문자열 네 개만 단언합니다.
 - C10 (금지선): diff가 intent와 plan 안에 머무는지 확인하는 자동 검사가 없습니다(T2에 나열됨). code-review 역할이 사람 손으로 합니다.
 - C5 (금지선): `--no-verify`의 합친(`-nm`)·뒤쪽 위치 줄임 형태. `git commit -n *`만 막습니다.
 - A1: 자손 커밋으로의 공개 태그 전진 이동.

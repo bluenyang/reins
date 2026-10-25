@@ -6,6 +6,7 @@ import { loadSchemas, schemaFor, validateFile } from '../lib/schema.js';
 import { DEFAULT_ALLOWED, DEFAULT_SECRET_PATTERNS, isSecretPath } from '../lib/secrets.js';
 import { findSkillFiles, splitFrontmatter, validateSkillFile } from '../lib/skills.js';
 import { harnessVersion, packageHarness } from '../lib/upstream.js';
+import { driftGenerated } from '../lib/vendor-write.js';
 import { parse } from 'yaml';
 import { report, type Finding, type StopReport } from '../lib/verdict.js';
 
@@ -68,6 +69,8 @@ export function preCommit(root: string): Finding[] {
   findings.push(...driftFormat(root, staged), ...driftConvention(root, staged));
   if (staged.some((f) => f.startsWith('harness/') || f.startsWith('.agents/harness/')))
     findings.push(...driftMatch(root));
+  if (staged.some((f) => f.startsWith('.claude/') || f.startsWith('.agents/harness/')))
+    findings.push(...driftGenerated(root));
   return findings;
 }
 
@@ -181,7 +184,7 @@ export function driftConvention(root: string, only?: string[]): Finding[] {
 }
 
 /** Files in an installed harness that belong to the project, not upstream. */
-const PROJECT_OWNED = new Set(['bindings.yaml', 'gates.yaml', 'install.yaml']);
+const PROJECT_OWNED = new Set(['bindings.yaml', 'gates.yaml', 'install.yaml', 'generated.yaml']);
 
 /** Drift, match layer — the installed `.agents/harness/` against the packaged upstream at the pinned version (design §6). */
 export function driftMatch(root: string): Finding[] {
@@ -240,7 +243,12 @@ export function runCheck(opts: CheckOptions): StopReport {
     });
   }
   if (opts.drift || !opts.stage)
-    findings.push(...driftFormat(root), ...driftConvention(root), ...driftMatch(root));
+    findings.push(
+      ...driftFormat(root),
+      ...driftConvention(root),
+      ...driftMatch(root),
+      ...driftGenerated(root),
+    );
   if (!currentBranch(root))
     findings.push({ reason: 'F2', verdict: 'STOP', message: 'not a git repository' });
   return report(stage, findings);

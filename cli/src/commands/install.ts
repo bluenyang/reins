@@ -15,6 +15,8 @@ import { apply, listFiles, type Applied, type Write } from '../lib/fsx.js';
 import { repoRoot } from '../lib/git.js';
 import { splitFrontmatter } from '../lib/skills.js';
 import { harnessVersion, packageHarness } from '../lib/upstream.js';
+import { generateVendorFiles } from '../lib/generate.js';
+import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
 
 export type Tier = 'harness' | 'loop' | 'graph';
 
@@ -37,6 +39,7 @@ export interface InstallResult {
   generation: Generation;
   refused?: string;
   applied?: Applied;
+  generated?: GenWriteResult;
   notes: string[];
   history?: string;
 }
@@ -282,14 +285,20 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
         '` to move it into .agents/ and .loctx/',
     );
   notes.push(
-    'vendor files (.claude/agents, settings.json) are generated in a later step — `reins update` once the generator ships',
-  );
-  notes.push(
     'next: in your agent, run the setup skill (/reins-setup) — the PM reads the project and proposes AGENTS.md project sections',
   );
 
   // 8. apply, then record (only when something changed)
   const applied = apply(root, writes, !!o.dryRun);
+
+  // 9. vendor files from the installed harness (design §6) — never over a file reins did not write
+  const generated = o.dryRun ? undefined : writeGenerated(root, generateVendorFiles(root), false);
+  if (generated) {
+    applied.created.push(...generated.written.filter((p) => !applied.created.includes(p)));
+    for (const s of generated.skipped)
+      notes.push(`not generated this round (vendor CLI files arrive in round two): ${s}`);
+    for (const r of generated.refused) notes.push(`left alone ${r.path}: ${r.why}`);
+  }
   let history: string | undefined;
   const changedAny = applied.created.length + applied.changed.length > 0;
   if (changedAny && !o.dryRun && o.tier !== 'harness') {
@@ -313,5 +322,5 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     ].join('\n');
     apply(root, [{ path: history, content: body, why: 'install record' }], false);
   }
-  return { root, generation: gen, applied, notes, history };
+  return { root, generation: gen, applied, generated, notes, history };
 }

@@ -1,3 +1,4 @@
+# Quoting: wrap any value that contains ": " or " #", or starts with one of - [ { * & ! | > ' " % @, in double quotes.
 schema: reins/bus/response@1
 request: 000-1_01
 from: implementer

@@ -25,6 +25,7 @@ Exit codes 0/10/20/30. Use `npx @bluenyang/reins` (inside the reins repository: 
    A diff outside the plan updates plan.md's departure log in the same commit (P2), or opens a new ticket (C10).
 6. **Verify.** Write `.loctx/bus/<id>_<nn>.request.yaml` (`kind: verify`); verify-tool runs
    `reins gate --ticket <id>` and answers in `<id>_<nn>.response.yaml` with the report paths as `evidence:`.
+   Bus values that contain `: ` or ` #`, or start with one of `- [ { * & ! | > ' " % @`, go in double quotes; an unquoted one breaks the YAML and the check stops with F2.
    **T3** `reins check --stage verdict --ticket <id>`. Fail → back to 5 (a second failure escalates, D1).
 7. **Review.** code-review gets the diff against plan and spec (`kind: review`) and proposes fixes only;
    Prompt = the role's `must_not` + its procedure (body of code-review.md) + the request + the COMPLETE `git diff <range>` (all files; only

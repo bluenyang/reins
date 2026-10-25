@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 
 /** A planned write. Install, migrate and update compute these first, then apply — so --dry-run is exact. */
 export interface Write {
@@ -32,7 +32,13 @@ export function apply(root: string, writes: Write[], dryRun: boolean): Applied {
   return out;
 }
 
-/** Every file under `dir`, as paths relative to `dir`. */
+/** `relative(from, to)` with `/` separators on every platform — the form git, globs and stored paths use. */
+export function relPath(from: string, to: string): string {
+  const rel = relative(from, to);
+  return sep === '/' ? rel : rel.split(sep).join('/');
+}
+
+/** Every file under `dir`, as `/`-separated paths relative to `dir`. */
 export function listFiles(dir: string): string[] {
   const out: string[] = [];
   const walk = (d: string) => {
@@ -40,7 +46,7 @@ export function listFiles(dir: string): string[] {
     for (const e of readdirSync(d)) {
       const p = join(d, e);
       if (statSync(p).isDirectory()) walk(p);
-      else out.push(relative(dir, p));
+      else out.push(relPath(dir, p));
     }
   };
   walk(dir);

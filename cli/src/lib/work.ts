@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 import { parse } from 'yaml';
+import { relPath } from './fsx.js';
 import { splitFrontmatter } from './skills.js';
 
 /** The files people and agents exchange (design §4), read as frontmatter plus body. */
@@ -14,7 +15,7 @@ export interface WorkFile {
 
 function read(root: string, abs: string): WorkFile {
   const { data, body, error } = splitFrontmatter(readFileSync(abs, 'utf8'));
-  return { path: relative(root, abs), data: data ?? {}, body, error };
+  return { path: relPath(root, abs), data: data ?? {}, body, error };
 }
 
 const ls = (dir: string) => (existsSync(dir) ? readdirSync(dir).toSorted() : []);

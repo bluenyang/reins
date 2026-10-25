@@ -1,12 +1,12 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { basename, join, relative } from 'node:path';
+import { basename, join } from 'node:path';
 import { currentBranch, isAncestor, repoRoot, stagedFiles } from '../lib/git.js';
 import { harnessDir, secretPolicy } from '../lib/harness.js';
 import { loadSchemas, schemaFor, validateFile } from '../lib/schema.js';
 import { DEFAULT_ALLOWED, DEFAULT_SECRET_PATTERNS, isSecretPath } from '../lib/secrets.js';
 import { findSkillFiles, splitFrontmatter, validateSkillFile } from '../lib/skills.js';
 import { harnessVersion, packageHarness, packageSkills, tierSkills } from '../lib/upstream.js';
-import { listFiles } from '../lib/fsx.js';
+import { listFiles, relPath } from '../lib/fsx.js';
 import { driftGenerated } from '../lib/vendor-write.js';
 import { rcClose, ticketStart, verdictCheck } from './stages.js';
 import { parse } from 'yaml';
@@ -107,12 +107,12 @@ export function prePush(root: string, refs: string[]): Finding[] {
 /** Drift, format layer — Agent Skills spec on SKILL.md files. */
 export function driftFormat(root: string, only?: string[]): Finding[] {
   const files = findSkillFiles(SKILL_ROOTS.map((r) => join(root, r)));
-  const chosen = only ? files.filter((f) => only.includes(relative(root, f))) : files;
+  const chosen = only ? files.filter((f) => only.includes(relPath(root, f))) : files;
   return chosen.flatMap((f) =>
     validateSkillFile(f).map<Finding>((i) => ({
       reason: 'F2',
       verdict: 'STOP',
-      path: relative(root, i.path),
+      path: relPath(root, i.path),
       message: i.message,
       resume: 'fix the SKILL.md frontmatter; see agentskills.io/specification',
     })),
@@ -145,7 +145,7 @@ export function driftConvention(root: string, only?: string[]): Finding[] {
     ...walk(join(root, '.loctx', 'bus')),
   ];
   for (const abs of candidates) {
-    const rel = relative(root, abs);
+    const rel = relPath(root, abs);
     if (only && !only.includes(rel)) continue;
     const m = schemaFor(rel);
     if (!m) continue;
@@ -164,7 +164,7 @@ export function driftConvention(root: string, only?: string[]): Finding[] {
   const roles = join(dir, 'roles');
   if (existsSync(roles))
     for (const f of readdirSync(roles).filter((x) => x.endsWith('.md'))) {
-      const rel = relative(root, join(roles, f));
+      const rel = relPath(root, join(roles, f));
       if (only && !only.includes(rel)) continue;
       const { data, error } = splitFrontmatter(readFileSync(join(roles, f), 'utf8'));
       const name = basename(f, '.md');
@@ -222,7 +222,7 @@ export function driftMatch(root: string): Finding[] {
     ];
   const findings: Finding[] = [];
   for (const abs of walk(installed)) {
-    const rel = relative(installed, abs);
+    const rel = relPath(installed, abs);
     if (PROJECT_OWNED.has(rel)) continue;
     const src = join(up, rel);
     if (!existsSync(src)) continue;

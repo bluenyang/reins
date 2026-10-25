@@ -22,9 +22,9 @@
   "scripts": {
     "build": "tsc -p cli/tsconfig.json",
     "typecheck": "tsc -p cli/tsconfig.json --noEmit",
-    "lint": "oxlint cli/src cli/test",
-    "fmt": "oxfmt --write cli/src cli/test",
-    "fmt:check": "oxfmt --check cli/src cli/test",
+    "lint": "oxlint cli/src cli/test test",
+    "fmt": "oxfmt --write cli/src cli/test test",
+    "fmt:check": "oxfmt --check cli/src cli/test test",
     "test": "vitest run",
     "check": "pnpm lint && pnpm fmt:check && pnpm typecheck && pnpm test",
     "prepare": "husky"

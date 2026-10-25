@@ -112,11 +112,12 @@ run as `npx @bluenyang/reins <command>`.
 | `gate [names...]` | implemented | runs `gates.yaml` as declared and keeps the raw output in `.loctx/reports/` |
 | `status` | implemented | read-only view of harness, intents, tickets, bus and last history |
 | `check` | implemented | `--stage ticket-start\|pre-commit\|verdict\|pre-push\|rc-close`, or `--drift` |
+| `metrics` | implemented | summary of `.loctx/reports/metrics.jsonl`: tokens by role, vendor, ticket and intent, knowledge stops per ticket; `metrics record` adds a role run's tokens |
 | `recall` | not implemented | search past decisions by symptom |
 | `doctor` | not implemented | — |
 | `configure budget\|gates\|language` | not implemented | — |
 
-`install`, `migrate`, `update`, `gate`, `status` and `check` take `--json`. `check` stages map to
+`install`, `migrate`, `update`, `gate`, `status`, `check` and `metrics` take `--json`. Every `check` and `gate` run also appends a line to `.loctx/reports/metrics.jsonl`. `check` stages map to
 T1 (`ticket-start`), T2 (`pre-commit`), T3 (`verdict`), T4 (`pre-push`) and T5 (`rc-close`).
 
 ## Skills

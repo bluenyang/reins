@@ -37,12 +37,20 @@ and the verifier.
 - `reins status` — read-only view of the harness, intents with their next action, open tickets with
   their next check, bus files and the last history entry. Built through this repository's own loop
   as intent 001.
+- `reins metrics` — every `check` and `gate` run appends a `reins/metric@1` line to
+  `.loctx/reports/metrics.jsonl`; `reins metrics record` adds the tokens of a role run; the summary
+  gives tokens by role, vendor, ticket and intent and knowledge stops per ticket (intent 002).
+- Violation scenarios: `test/e2e/violations.test.ts` runs eighteen deliberate violations against the
+  built CLI (`violations: 18/18 stopped`), and [docs/violations.md](docs/violations.md) lists who
+  catches each red line and stop condition, gaps included (intent 003).
 - Skills `reins-setup`, `reins-intent` and `reins-loop`, installed to `.agents/skills/` and indexed in
   `.agents/SKILLS.md`.
 - GitHub Actions CI: `pnpm check`, build, `reins check --drift`.
 - README in English and Korean, LICENSE (MIT), CONTRIBUTING.
 
 ### Known issues
+- Of the 34 red lines and stop conditions, 12 have no detection yet and 6 only partial; see
+  [docs/violations.md](docs/violations.md) (Gaps).
 - `check` fails in a repository without any commit.
 - Hand edits inside AGENTS.md managed blocks are not reported as drift yet.
 - Generated files exist for Claude Code only; Codex, Gemini and Cursor arrive in 0.2.

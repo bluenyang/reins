@@ -113,11 +113,12 @@ node /path/to/reins/cli/dist/reins.js status                    # intent, ticket
 | `gate [names...]` | 구현됨 | `gates.yaml`을 선언된 대로 실행하고 원본 출력을 `.loctx/reports/`에 남깁니다 |
 | `status` | 구현됨 | 하네스, intent, ticket, bus, 마지막 history를 읽기 전용으로 보여 줍니다 |
 | `check` | 구현됨 | `--stage ticket-start\|pre-commit\|verdict\|pre-push\|rc-close` 또는 `--drift` |
+| `metrics` | 구현됨 | `.loctx/reports/metrics.jsonl` 요약: 역할·벤더·ticket·intent별 토큰, ticket당 knowledge 정지 수. `metrics record`로 역할 실행의 토큰을 남깁니다 |
 | `recall` | 미구현 | 증상으로 과거 결정을 찾습니다 |
 | `doctor` | 미구현 | — |
 | `configure budget\|gates\|language` | 미구현 | — |
 
-`install`, `migrate`, `update`, `gate`, `status`, `check`는 `--json`을 받습니다. `check`의 stage는
+`install`, `migrate`, `update`, `gate`, `status`, `check`, `metrics`는 `--json`을 받습니다. `check`와 `gate`는 실행할 때마다 `.loctx/reports/metrics.jsonl`에 한 줄을 남깁니다. `check`의 stage는
 T1(`ticket-start`), T2(`pre-commit`), T3(`verdict`), T4(`pre-push`), T5(`rc-close`)에 대응합니다.
 
 ## 스킬

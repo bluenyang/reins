@@ -7,6 +7,7 @@
 
 - Session start: `AGENTS.md` → `docs/ROADMAP.md` → open intents in `.agents/intent/` → `reins status`.
 - Work comes from `.loctx/ticket/`; one file is one item; delete it when done after writing a line in `.loctx/history/`.
+- **Committing is part of doing the work.** Land each finished unit — one coherent change that builds on its own — as its own local commit as you go, on the feature branch. Do not batch a whole ticket into one commit, and do not wait for permission to commit locally. Never commit on the default branch; never bypass hooks.
 - Before a non-trivial decision: `reins recall <keyword>` (knowledge, history, symptoms).
 - The verifier runs at every transition (`reins check`). Verdicts: CONTINUE · HOLD (ask the user) · STOP (recorded, resumable) · ESCALATE. A stop names its reason id (A1–G2).
 - Anything that leaves the machine happens only in the deploy role inside the pre-release loop, or on the user's explicit instruction.

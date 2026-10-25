@@ -40,6 +40,7 @@ of this repository.
   `.ai/README.md` → latest `.ai/plan/` → latest `.ai/work/`.
 - Work from the current `.ai/work/` checklist; write `.ai/history/` and delete the work file when
   finished. Before a non-trivial decision: `grep -l 'decisions:.*<keyword>' .ai/history/*`.
+- **Committing is part of doing the work.** Commit each finished unit as you go — one coherent change that builds and passes `pnpm check` on its own — without waiting for permission. Not one commit per task.
 - Branches: never commit on `master`; `type/topic` branches, rebase onto `master`.
 - Commits: `type(scope): title`, one-line summary, bullets, `Co-Authored-By` footer only.
 

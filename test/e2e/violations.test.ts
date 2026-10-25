@@ -1,0 +1,352 @@
+import { execFileSync, spawnSync } from 'node:child_process';
+import {
+  appendFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+/**
+ * Violation scenarios V1–V18 (intent 003): each one breaks a rule on purpose in a throwaway git repository
+ * and runs the built `cli/dist/reins.js` as a child process. The test reads the stop report (`--json`) and the
+ * exit code — it never calls the verifier as a function. `test/e2e/build.ts` (vitest globalSetup) builds first.
+ */
+
+const ROOT = join(fileURLToPath(import.meta.url), '..', '..', '..');
+const CLI = join(ROOT, 'cli', 'dist', 'reins.js');
+const TOTAL = 18; // rows of the scenario table in the spec
+
+const EXIT = { CONTINUE: 0, HOLD: 10, STOP: 20, ESCALATE: 30 } as const;
+type Verdict = keyof typeof EXIT;
+
+interface Finding {
+  reason: string;
+  verdict: string;
+  path?: string;
+  message: string;
+}
+interface Report {
+  verdict: Verdict;
+  findings: Finding[];
+}
+
+const git = (cwd: string, ...args: string[]): string =>
+  execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  }).trim();
+
+function put(root: string, rel: string, text: string) {
+  mkdirSync(dirname(join(root, rel)), { recursive: true });
+  writeFileSync(join(root, rel), text);
+}
+
+function reins(cwd: string, args: string[], input?: string) {
+  const r = spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', input });
+  return { code: r.status, stdout: r.stdout, stderr: r.stderr };
+}
+
+/** The repository that every scenario starts from: an initial commit plus `install graph --mode auto`, committed. */
+let template: string;
+const copies: string[] = [];
+
+beforeAll(() => {
+  template = mkdtempSync(join(tmpdir(), 'reins-violations-tpl-'));
+  git(template, 'init', '-q');
+  git(template, 'commit', '-q', '--allow-empty', '-m', 'init');
+  const r = reins(template, ['install', 'graph', '--mode', 'auto']);
+  if (r.code !== 0) throw new Error(`install failed (${r.code}): ${r.stderr}`);
+  git(template, 'add', '-A');
+  git(template, 'commit', '-q', '-m', 'chore: install reins');
+});
+
+afterAll(() => {
+  for (const d of [template, ...copies]) if (d) rmSync(d, { recursive: true, force: true });
+});
+
+function fresh(): string {
+  const d = mkdtempSync(join(tmpdir(), 'reins-violations-'));
+  cpSync(template, d, { recursive: true });
+  copies.push(d);
+  return d;
+}
+
+// ---- fixtures: the frontmatter shapes of harness/templates and harness/schemas ----
+
+const INTENT = (status: string, extra = '') =>
+  `---\nid: "001"\nslug: demo\nversion: 0.2.0\nstatus: ${status}\norigin: user\napprovals: ${
+    status === 'approved' ? '[{role: user, at: 2026-10-25}]' : '[]'
+  }\n${extra}---\n## 문제\n—\n`;
+const SPEC = `---\nintent: "001"\nstatus: accepted\napprovals: []\nsummary_for_user: "x"\n---\n## 요구 해석\n- S-1 —\n`;
+const PLAN = (tickets = '["001-1", "001-2"]') =>
+  `---\nintent: "001"\nstatus: reviewed\nagents: { implement: [implementer] }\ntickets: ${tickets}\n---\n## 작업 순서\n1. a\n2. b\n`;
+const TICKET = (id: string, extra = '') =>
+  `---\nid: ${id}\nintent: "001"\nplan_step: 1\ntitle: t\nstatus: todo\nrelease: planned\nrole: implementer\n${extra}---\n## 목적\n—\n`;
+
+/** An intent the user approved (committed with the Approved-by trailer), an accepted spec and a reviewed plan. */
+function chain(d: string, o: { intent?: string; plan?: string } = {}) {
+  put(d, '.agents/intent/001_demo/intent.md', INTENT(o.intent ?? 'approved'));
+  put(d, '.agents/intent/001_demo/spec.md', SPEC);
+  put(d, '.agents/intent/001_demo/plan.md', o.plan ?? PLAN());
+  git(d, 'add', '.agents/intent');
+  git(d, 'commit', '-q', '-m', 'docs(intent): approve 001', '-m', 'Approved-by: user');
+}
+
+function bus(d: string, id: string, verdict: string, evidence: string) {
+  put(
+    d,
+    `.loctx/bus/${id}.request.yaml`,
+    `schema: reins/bus/request@1\nid: ${id}\nfrom: pl\nto: verify-tool\nticket: 001-1\nintent: "001"\nkind: verify\nchanges: []\nwhy: w\nrevert: r\n`,
+  );
+  put(
+    d,
+    `.loctx/bus/${id}.response.yaml`,
+    `schema: reins/bus/response@1\nrequest: ${id}\nfrom: verify-tool\nverdict: ${verdict}\ngrounds: g\nmay_proceed: true\nevidence: ${JSON.stringify(evidence)}\n`,
+  );
+}
+
+// ---- the table ----
+
+interface Scenario {
+  id: string;
+  violation: string;
+  /** given a fresh repository, makes the violation and asserts that it is caught; throws otherwise */
+  run: (d: string) => void;
+}
+
+/** A verifier scenario: break a rule, run `reins <args> --json`, expect the reason id, verdict and exit code. */
+function stops(
+  id: string,
+  violation: string,
+  args: string[],
+  expected: { reason: string; verdict: Verdict },
+  setup: (d: string) => void,
+  stdin?: (d: string) => string,
+): Scenario {
+  return {
+    id,
+    violation,
+    run: (d) => {
+      setup(d);
+      const r = reins(d, [...args, '--json'], stdin?.(d));
+      const report = JSON.parse(r.stdout) as Report;
+      expect(
+        report.findings.map((f) => `${f.reason} ${f.verdict}`),
+        r.stdout,
+      ).toContain(`${expected.reason} ${expected.verdict}`);
+      expect(report.verdict).toBe(expected.verdict);
+      expect(r.code).toBe(EXIT[expected.verdict]);
+    },
+  };
+}
+
+const preCommit = ['check', '--stage', 'pre-commit'];
+const drift = ['check', '--drift'];
+const ticketStart = (t: string) => ['check', '--stage', 'ticket-start', '--ticket', t];
+const verdict = ['check', '--stage', 'verdict', '--ticket', '001-1'];
+
+const SCENARIOS: Scenario[] = [
+  stops('V1', '.env staged', preCommit, { reason: 'C4', verdict: 'STOP' }, (d) => {
+    put(d, '.env', 'TOKEN=x\n');
+    git(d, 'add', '-f', '.env');
+  }),
+  stops('V2', 'a .loctx/ file force-staged', preCommit, { reason: 'F2', verdict: 'STOP' }, (d) => {
+    put(d, '.loctx/note.md', 'local\n');
+    git(d, 'add', '-f', '.loctx/note.md');
+  }),
+  stops(
+    'V3',
+    '.loctx/ removed from .gitignore',
+    preCommit,
+    { reason: 'F2', verdict: 'STOP' },
+    (d) => put(d, '.gitignore', '# nothing ignored\n'),
+  ),
+  stops('V4', 'installed role file edited by hand', drift, { reason: 'F2', verdict: 'STOP' }, (d) =>
+    appendFileSync(join(d, '.agents/harness/roles/implementer.md'), '\nedited\n'),
+  ),
+  stops(
+    'V5',
+    'generated .claude/agents/* edited by hand',
+    drift,
+    { reason: 'C3', verdict: 'STOP' },
+    (d) => appendFileSync(join(d, '.claude/agents/reins-implementer.md'), '\nedited\n'),
+  ),
+  stops(
+    'V6',
+    'SKILL.md name differs from its directory',
+    drift,
+    { reason: 'F2', verdict: 'STOP' },
+    (d) =>
+      put(
+        d,
+        '.agents/skills/foo/SKILL.md',
+        '---\nname: bar\ndescription: A skill whose name is not its directory.\n---\n# foo\n',
+      ),
+  ),
+  stops(
+    'V7',
+    'ticket frontmatter breaks the schema',
+    drift,
+    { reason: 'F2', verdict: 'STOP' },
+    (d) =>
+      put(d, '.loctx/ticket/001-1_x.md', TICKET('001-1').replace('status: todo', 'status: wizard')),
+  ),
+  stops(
+    'V8',
+    'push whose remote commit is not an ancestor',
+    ['check', '--stage', 'pre-push'],
+    { reason: 'A1', verdict: 'HOLD' },
+    (d) => {
+      const base = git(d, 'rev-parse', 'HEAD');
+      const branch = git(d, 'rev-parse', '--abbrev-ref', 'HEAD');
+      git(d, 'commit', '-q', '--allow-empty', '-m', 'local');
+      put(d, '.loctx/local-sha', git(d, 'rev-parse', 'HEAD'));
+      git(d, 'checkout', '-q', '-b', 'remote-side', base);
+      git(d, 'commit', '-q', '--allow-empty', '-m', 'remote');
+      put(d, '.loctx/remote-sha', git(d, 'rev-parse', 'HEAD'));
+      git(d, 'checkout', '-q', branch);
+    },
+    (d) => {
+      const sha = (f: string) => readFileSync(join(d, '.loctx', f), 'utf8').trim();
+      return `refs/heads/main ${sha('local-sha')} refs/heads/main ${sha('remote-sha')}\n`;
+    },
+  ),
+  stops(
+    'V9',
+    'ticket started under a draft intent',
+    ticketStart('001-1'),
+    { reason: 'B3', verdict: 'HOLD' },
+    (d) => {
+      chain(d, { intent: 'draft' });
+      put(d, '.loctx/ticket/001-1_x.md', TICKET('001-1'));
+    },
+  ),
+  stops(
+    'V10',
+    'ticket started with an open ask',
+    ticketStart('001-1'),
+    { reason: 'B1', verdict: 'HOLD' },
+    (d) => {
+      chain(d);
+      put(d, '.loctx/ticket/001-1_x.md', TICKET('001-1', 'asks: ["which output format?"]\n'));
+    },
+  ),
+  stops(
+    'V11',
+    'ticket that the plan does not list',
+    ticketStart('001-3'),
+    { reason: 'C2', verdict: 'STOP' },
+    (d) => {
+      chain(d);
+      put(d, '.loctx/ticket/001-3_x.md', TICKET('001-3'));
+    },
+  ),
+  stops('V12', 'pass without evidence', verdict, { reason: 'D5', verdict: 'STOP' }, (d) =>
+    bus(d, '001-1_01', 'pass', ''),
+  ),
+  stops(
+    'V13',
+    'gate evidence that went through a pipe',
+    verdict,
+    { reason: 'D4', verdict: 'STOP' },
+    (d) => bus(d, '001-1_01', 'pass', '$ pnpm test | tail -5\nok\nexit 0'),
+  ),
+  stops('V14', 'exit 1 reported as pass', verdict, { reason: 'D4', verdict: 'STOP' }, (d) =>
+    bus(d, '001-1_01', 'pass', '$ pnpm test\n1 failed\nexit 1'),
+  ),
+  stops(
+    'V15',
+    'two failed verifications in a row',
+    verdict,
+    { reason: 'D1', verdict: 'ESCALATE' },
+    (d) => {
+      bus(d, '001-1_01', 'fail', '$ pnpm test\nexit 1');
+      bus(d, '001-1_02', 'fail', '$ pnpm test\nexit 1');
+    },
+  ),
+  stops(
+    'V16',
+    'rc closed while a ticket is open',
+    ['check', '--stage', 'rc-close', '--release', '0.2.0'],
+    { reason: 'F2', verdict: 'STOP' },
+    (d) => {
+      chain(d);
+      put(d, '.loctx/ticket/001-1_x.md', TICKET('001-1'));
+    },
+  ),
+  {
+    id: 'V17',
+    violation: 'a gate that is not a single command is not run (C5)',
+    run: (d) => {
+      put(
+        d,
+        '.agents/harness/gates.yaml',
+        'schema: reins/gates@1\ngates:\n  piped:\n    cmd: "echo ran | cat"\norder: [piped]\nmutating_forbidden: true\nevidence: raw\n',
+      );
+      const r = reins(d, ['gate', '--json']);
+      const out = JSON.parse(r.stdout) as {
+        runs: { gate: string; exit: number | null; skipped?: string }[];
+      };
+      expect(r.code).toBe(1);
+      expect(out.runs).toHaveLength(1);
+      expect(out.runs[0]?.exit).toBeNull();
+      expect(out.runs[0]?.skipped).toContain('C5');
+      expect(existsSync(join(d, '.loctx/reports/adhoc_piped.log'))).toBe(false);
+    },
+  },
+  {
+    id: 'V18',
+    violation: 'generated settings.json denies secret reads, force pushes and --no-verify',
+    run: (d) => {
+      const settings = JSON.parse(readFileSync(join(d, '.claude/settings.json'), 'utf8')) as {
+        permissions: { deny: string[] };
+      };
+      expect(settings.permissions.deny).toEqual(
+        expect.arrayContaining([
+          'Read(**/.env)',
+          'Bash(git push --force *)',
+          'Bash(git commit --no-verify *)',
+        ]),
+      );
+    },
+  },
+];
+
+/**
+ * Scenarios that did not stop as the spec expects (spec S-5). They are left out of SCENARIOS — not skipped, not
+ * marked as expected failures — and recorded here, in docs/violations.md and on the 0.1.0 stabilization list.
+ */
+const GAPS: { id: string; expected: string; actual: string }[] = [];
+
+const stopped: string[] = [];
+
+describe('violation scenarios (the real cli/dist/reins.js, one throwaway repository each)', () => {
+  it('control: the untouched template passes pre-commit and drift', () => {
+    for (const args of [preCommit, drift]) {
+      const r = reins(template, [...args, '--json']);
+      expect(JSON.parse(r.stdout), r.stdout).toMatchObject({ verdict: 'CONTINUE', findings: [] });
+      expect(r.code).toBe(0);
+    }
+  });
+
+  it.each(SCENARIOS)('$id $violation', (s) => {
+    s.run(fresh());
+    stopped.push(s.id);
+  });
+
+  it('violations: N/N stopped', () => {
+    const n = SCENARIOS.length;
+    process.stdout.write(`violations: ${stopped.length}/${n} stopped\n`);
+    expect(stopped.length).toBe(n);
+    expect(n + GAPS.length).toBe(TOTAL);
+  });
+});

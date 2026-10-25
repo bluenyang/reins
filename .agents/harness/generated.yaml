@@ -10,4 +10,7 @@ files:
   .claude/agents/reins-planner.md: e523214b86822b0f
   .claude/agents/reins-pm.md: 576d6e3f15ce762f
   .claude/agents/reins-verify-tool.md: 936e59fa850242a8
+  .claude/skills/reins-intent/SKILL.md: 9126cc9f6c06d517
+  .claude/skills/reins-loop/SKILL.md: c4cf84c8532ba46f
+  .claude/skills/reins-setup/SKILL.md: 4f4fedd4bd7d10ee
   .claude/settings.json: 2e3d33ba4393087e

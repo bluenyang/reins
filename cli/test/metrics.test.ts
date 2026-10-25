@@ -145,12 +145,14 @@ describe('appendMetric / readMetrics (S-1, C-1, C-2)', () => {
         '{not json',
         '{"schema":"other","kind":"gate"}',
         '{"schema":"reins/metric@1","ts":"t","kind":"usage","role":"pl","vendor":"v","model":"m","tokens":-1}',
+        '{"schema":"reins/metric@1","ts":"t","kind":"gate","gate":"a","report":"r"}',
+        '{"schema":"reins/metric@1","ts":"t","kind":"gate","gate":"a","exit":"0","report":"r"}',
         '',
       ].join('\n'),
     );
     const r = readMetrics(d);
     expect(r.records).toHaveLength(1);
-    expect(r.broken).toBe(3);
+    expect(r.broken).toBe(5);
   });
 });
 
@@ -215,6 +217,16 @@ describe('recordUsage (S-3, C-3)', () => {
     ];
     for (const o of bad)
       expect(recordUsage({ cwd: d, ...o }).refused, JSON.stringify(o)).toBeTruthy();
+    expect(count()).toBe(before);
+  });
+
+  it('treats inherited names as unknown roles, even with explicit vendor and model', () => {
+    const before = count();
+    for (const role of ['constructor', 'toString', '__proto__', 'hasOwnProperty'])
+      expect(
+        recordUsage({ cwd: d, role, tokens: '5', vendor: 'v', model: 'm' }).refused,
+        role,
+      ).toContain('unknown role');
     expect(count()).toBe(before);
   });
 
@@ -323,6 +335,12 @@ describe('summarize (S-4, C-4)', () => {
     expect(formatMetrics(none)).toBe('no metrics yet\n');
   });
 });
+
+function mkdtempSyncGit(): string {
+  const e = mkdtempSync(join(tmpdir(), 'reins-metrics-empty-'));
+  git(e, 'init', '-q');
+  return e;
+}
 
 /** The built CLI: exit codes and output are the contract, so these tests run the real binary. */
 describe('CLI wiring (S-2, C-1, C-2)', () => {
@@ -436,10 +454,4 @@ describe('CLI wiring (S-2, C-1, C-2)', () => {
     expect(json.intents[0]).toMatchObject({ intent: '001', checks: 3, tickets: 1 });
     expect(run(mkdtempSyncGit(), 'metrics').out).toBe('no metrics yet\n');
   });
-
-  function mkdtempSyncGit(): string {
-    const e = mkdtempSync(join(tmpdir(), 'reins-metrics-empty-'));
-    git(e, 'init', '-q');
-    return e;
-  }
 });

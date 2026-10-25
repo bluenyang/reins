@@ -62,7 +62,7 @@ export function recordUsage(o: UsageOptions): UsageResult {
   const file = dir && join(dir, 'bindings.yaml');
   if (!file || !existsSync(file)) return { refused: 'no bindings.yaml — run reins install' };
   const roles = readYaml<Bindings>(file).roles ?? {};
-  const bound = roles[o.role];
+  const bound = Object.hasOwn(roles, o.role) ? roles[o.role] : undefined;
   if (!bound)
     return { refused: `unknown role "${o.role}" (roles: ${Object.keys(roles).join(', ')})` };
   const vendor = o.vendor ?? bound.vendor;

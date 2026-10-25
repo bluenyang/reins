@@ -122,7 +122,11 @@ function valid(o: unknown): o is Metric {
       );
     }
     case 'gate':
-      return typeof r['gate'] === 'string' && typeof r['report'] === 'string';
+      return (
+        typeof r['gate'] === 'string' &&
+        typeof r['report'] === 'string' &&
+        (r['exit'] === null || typeof r['exit'] === 'number')
+      );
     case 'usage':
       return (
         typeof r['role'] === 'string' &&

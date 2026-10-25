@@ -115,6 +115,8 @@ export function nextForIntent(s: {
   intent: string | null;
   spec: string | null;
   plan: string | null;
+  /** how many open ticket files belong to this intent */
+  open: number;
   /** ids of the ticket files that are still open */
   openIds: string[];
   planned: string[];
@@ -134,6 +136,7 @@ export function nextForIntent(s: {
     return 'pm: close the rc (reins check --stage rc-close --release <version>)';
   if (
     (s.plan === 'reviewed' || s.plan === 'active') &&
+    s.open === 0 &&
     s.planned.some((t) => closed(t) && !recorded(t))
   )
     return 'pl: create tickets';
@@ -176,6 +179,7 @@ function intentsStatus(
         intent: statusOf(i),
         spec: statusOf(spec),
         plan: statusOf(plan),
+        open,
         openIds: tickets.map(ticketId),
         planned,
         history,

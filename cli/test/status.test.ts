@@ -201,6 +201,17 @@ describe('C-3 the next-step table', () => {
     expect(one(d, '001').next).toBe('—');
   });
 
+  it.each(['reviewed', 'active'])(
+    'a %s plan with one open ticket and one uncreated planned ticket is not "create tickets"',
+    async (plan) => {
+      const d = await project();
+      intent(d, '001', 'approved', 'accepted', null);
+      put(d, '.agents/intent/001_t001/plan.md', PLAN(plan, '["001-1", "001-2"]'));
+      put(d, '.loctx/ticket/001-1_a.md', TICKET('001-1', 'doing'));
+      expect(one(d, '001').next).toBe('—');
+    },
+  );
+
   it.each(['reviewed', 'active'])('an empty %s plan does not ask for tickets', async (plan) => {
     const d = await project();
     intent(d, '001', 'approved', 'accepted', null);
@@ -215,7 +226,7 @@ describe('C-3 the next-step table', () => {
   });
 
   it('falls back to "—", or names a broken file, when no row matches', () => {
-    const base = { openIds: ['001-1'], planned: ['001-1'], history: [], broken: [] };
+    const base = { open: 1, openIds: ['001-1'], planned: ['001-1'], history: [], broken: [] };
     const s = { intent: 'approved', spec: 'accepted', plan: 'active', ...base };
     expect(nextForIntent(s)).toBe('—');
     expect(nextForIntent({ ...s, spec: '?', broken: ['x/spec.md'] })).toContain('x/spec.md');

@@ -80,7 +80,15 @@ reviewed by roles. Verification output is pasted as produced; a bare "passed" is
 
 ## Quick start
 
-Requires Node 20 or later. Run it from the root of the repository you want to set up; the repository
+In Claude Code, install the plugin and let it set the repository up:
+
+```
+/plugin marketplace add bluenyang/reins
+/plugin install reins@bluenyang
+/reins:reins-setup
+```
+
+For Codex, Antigravity, Cursor or a plain terminal, use the CLI. It requires Node 20 or later. Run it from the root of the repository you want to set up; the repository
 needs at least one commit (`check` fails on an empty history in 0.1.0):
 
 ```sh

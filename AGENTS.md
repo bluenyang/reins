@@ -29,7 +29,8 @@ of this repository.
 - Node ≥ 20, pnpm, TypeScript (ESM). Lint/format: oxlint, oxfmt. Tests: vitest. Hooks: husky.
 - `pnpm check` — lint, format check, typecheck, tests. Run before reporting done.
 - `pnpm build` — `cli/src` → `cli/dist` (the `reins` bin).
-- `node cli/dist/reins.js check --stage pre-commit|pre-push` — the harness verifier the hooks call.
+- `node cli/dist/reins.js check --stage <stage>` — the harness verifier: `ticket-start --ticket <id>` (T1),
+  `pre-commit` (T2, hook), `verdict --ticket <id>` (T3), `pre-push` (T4, hook), `rc-close --release <v>` (T5).
   Exit codes: 0 continue, 10 hold, 20 stop, 30 escalate.
 - Never read `.env`, `.env.*.local`, `secrets/**`, `*.properties`, `*.key`, `*.pem`. `*.example*` is fine.
 

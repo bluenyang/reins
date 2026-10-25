@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { runCheck, type CheckOptions } from './commands/check.js';
+import { runCheck, STAGES, type Stage } from './commands/check.js';
 import { runInstall, type Tier } from './commands/install.js';
 import { runMigrate } from './commands/migrate.js';
 import { runUpdate } from './commands/update.js';
@@ -202,27 +202,45 @@ for (const n of ['recall', 'status', 'doctor'])
 
 program
   .command('check')
-  .description('harness verifier: --stage pre-commit|pre-push|test|rc-close, or --drift')
-  .option('--stage <stage>')
+  .description(`harness verifier: --stage ${STAGES.join('|')}, or --drift`)
+  .option(
+    '--stage <stage>',
+    'T1 ticket-start · T2 pre-commit · T3 verdict · T4 pre-push · T5 rc-close',
+  )
+  .option('--ticket <id>', 'ticket-start, verdict: the ticket id')
+  .option('--release <version>', 'rc-close: the version the rc closes')
   .option('--drift')
   .option('--json')
-  .action(async (o: { stage?: CheckOptions['stage']; drift?: boolean; json?: boolean }) => {
-    let pushRefs: string[] = [];
-    if (o.stage === 'pre-push' && !process.stdin.isTTY) {
-      const chunks: Buffer[] = [];
-      for await (const c of process.stdin) chunks.push(c as Buffer);
-      pushRefs = Buffer.concat(chunks).toString('utf8').split('\n').filter(Boolean);
-    }
-    const r = runCheck({ stage: o.stage, drift: o.drift, pushRefs });
-    if (o.json) process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
-    else {
-      process.stdout.write(`${r.summary}\n`);
-      for (const f of r.findings)
-        process.stdout.write(
-          `  [${f.reason} ${f.verdict}] ${f.path ? `${f.path}: ` : ''}${f.message}${f.resume ? `\n      → ${f.resume}` : ''}\n`,
-        );
-    }
-    process.exit(EXIT[r.verdict]);
-  });
+  .action(
+    async (o: {
+      stage?: string;
+      ticket?: string;
+      release?: string;
+      drift?: boolean;
+      json?: boolean;
+    }) => {
+      if (o.stage && !(STAGES as readonly string[]).includes(o.stage)) {
+        process.stderr.write(`reins check: unknown stage "${o.stage}" (${STAGES.join(', ')})\n`);
+        process.exit(2);
+      }
+      const stage = o.stage as Stage | undefined;
+      let pushRefs: string[] = [];
+      if (stage === 'pre-push' && !process.stdin.isTTY) {
+        const chunks: Buffer[] = [];
+        for await (const c of process.stdin) chunks.push(c as Buffer);
+        pushRefs = Buffer.concat(chunks).toString('utf8').split('\n').filter(Boolean);
+      }
+      const r = runCheck({ stage, drift: o.drift, pushRefs, ticket: o.ticket, release: o.release });
+      if (o.json) process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
+      else {
+        process.stdout.write(`${r.summary}\n`);
+        for (const f of r.findings)
+          process.stdout.write(
+            `  [${f.reason} ${f.verdict}] ${f.path ? `${f.path}: ` : ''}${f.message}${f.resume ? `\n      → ${f.resume}` : ''}\n`,
+          );
+      }
+      process.exit(EXIT[r.verdict]);
+    },
+  );
 
 program.parseAsync(process.argv);

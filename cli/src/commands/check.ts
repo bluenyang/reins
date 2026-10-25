@@ -7,15 +7,23 @@ import { DEFAULT_ALLOWED, DEFAULT_SECRET_PATTERNS, isSecretPath } from '../lib/s
 import { findSkillFiles, splitFrontmatter, validateSkillFile } from '../lib/skills.js';
 import { harnessVersion, packageHarness } from '../lib/upstream.js';
 import { driftGenerated } from '../lib/vendor-write.js';
+import { rcClose, ticketStart, verdictCheck } from './stages.js';
 import { parse } from 'yaml';
 import { report, type Finding, type StopReport } from '../lib/verdict.js';
 
+export const STAGES = ['ticket-start', 'pre-commit', 'verdict', 'pre-push', 'rc-close'] as const;
+export type Stage = (typeof STAGES)[number];
+
 export interface CheckOptions {
-  stage?: 'pre-commit' | 'pre-push' | 'test' | 'rc-close';
+  stage?: Stage;
   drift?: boolean;
   cwd?: string;
   /** pre-push: the ref lines git passes on stdin (`<local ref> <local sha> <remote ref> <remote sha>`). */
   pushRefs?: string[];
+  /** ticket-start, verdict: the ticket id (`001-1`). */
+  ticket?: string;
+  /** rc-close: the release version the rc closes. */
+  release?: string;
 }
 
 const SKILL_ROOTS = ['skills', '.agents/skills', '.claude/skills'];
@@ -233,15 +241,20 @@ export function runCheck(opts: CheckOptions): StopReport {
   const stage = opts.stage ?? (opts.drift ? 'drift' : 'all');
   if (opts.stage === 'pre-commit') findings.push(...preCommit(root));
   else if (opts.stage === 'pre-push') findings.push(...prePush(root, opts.pushRefs ?? []));
-  else if (opts.stage) {
-    // test / rc-close: not implemented yet — say so instead of pretending
-    findings.push({
-      reason: 'F2',
-      verdict: 'STOP',
-      message: `stage "${opts.stage}" is not implemented yet`,
-      resume: 'arrives with the loop skills (implementation step 6)',
-    });
-  }
+  else if (opts.stage === 'ticket-start' || opts.stage === 'verdict') {
+    if (!opts.ticket)
+      findings.push({
+        reason: 'F2',
+        verdict: 'STOP',
+        message: `stage  needs --ticket <id>`,
+      });
+    else
+      findings.push(
+        ...(opts.stage === 'ticket-start'
+          ? ticketStart(root, opts.ticket)
+          : verdictCheck(root, opts.ticket)),
+      );
+  } else if (opts.stage === 'rc-close') findings.push(...rcClose(root, opts.release));
   if (opts.drift || !opts.stage)
     findings.push(
       ...driftFormat(root),

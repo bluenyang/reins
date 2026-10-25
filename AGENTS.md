@@ -38,9 +38,8 @@ of this repository.
 
 These complement the reins blocks below; where they are more specific, they win.
 
-- Until `reins status` and `reins recall` ship: the current state is
-  `.loctx/context/plan/4_implementation.md` plus the latest file in `.loctx/history/`; search past
-  decisions with `grep -l 'decisions:.*<keyword>' .loctx/history/*`.
+- The current state comes from `reins status`. Until `reins recall` ships, search past decisions with
+  `grep -l 'decisions:.*<keyword>' .loctx/history/*`.
 - Each commit unit passes `pnpm check` on its own.
 - Branches: `type/topic` from `master`, rebase onto `master`, fast-forward merge. Never commit on `master`.
 - Commit messages: `type(scope): title`, one-line summary, bullets, `Co-Authored-By` footer only.

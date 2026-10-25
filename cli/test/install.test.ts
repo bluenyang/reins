@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -90,7 +90,7 @@ describe('reins install graph (S5)', () => {
 
   it('refuses over a 3rd/4th-generation harness and points to migrate', async () => {
     const d = repo();
-    execFileSync('mkdir', ['-p', join(d, '.claude/commands')]);
+    mkdirSync(join(d, '.claude/commands'), { recursive: true });
     const r = await runInstall({
       tier: 'graph',
       mode: 'auto',
@@ -178,7 +178,7 @@ describe('skill entry points (design §6)', () => {
     expect(index.match(/^\| `reins-/gm)).toHaveLength(3);
     expect(driftMatch(d)).toEqual([]);
     // a project's own skill is indexed and copied too
-    execFileSync('mkdir', ['-p', join(d, '.agents/skills/deploy-docs')]);
+    mkdirSync(join(d, '.agents/skills/deploy-docs'), { recursive: true });
     writeFileSync(
       join(d, '.agents/skills/deploy-docs/SKILL.md'),
       '---\nname: deploy-docs\ndescription: Publish the docs site. Use on release.\n---\n# x\n',

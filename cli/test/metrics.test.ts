@@ -232,7 +232,7 @@ describe('recordUsage (S-3, C-3)', () => {
 
   it('refuses without .loctx/', async () => {
     const bare = await project();
-    execFileSync('rm', ['-rf', join(bare, '.loctx')]);
+    rmSync(join(bare, '.loctx'), { recursive: true, force: true });
     expect(recordUsage({ cwd: bare, role: 'pl', tokens: '1' }).refused).toContain('.loctx');
   });
 });
@@ -354,11 +354,13 @@ describe('CLI wiring (S-2, C-1, C-2)', () => {
 
   beforeAll(async () => {
     execFileSync(
-      join(repo, 'node_modules', '.bin', 'tsc'),
-      ['-p', join(repo, 'cli', 'tsconfig.json')],
-      {
-        cwd: repo,
-      },
+      process.execPath,
+      [
+        join(repo, 'node_modules', 'typescript', 'bin', 'tsc'),
+        '-p',
+        join(repo, 'cli', 'tsconfig.json'),
+      ],
+      { cwd: repo },
     );
     d = await project();
     put(

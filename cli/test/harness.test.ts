@@ -1,4 +1,5 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { driftConvention } from '../src/commands/check.js';
@@ -68,6 +69,14 @@ describe('harness sources match the design (docs/design.md)', () => {
   });
 
   it('templates and knowledge seeds pass their own schemas (convention layer)', () => {
-    expect(driftConvention(ROOT)).toEqual([]);
+    // Isolated from the developer's local .loctx/: only committed sources are copied (S-4).
+    const tmp = mkdtempSync(join(tmpdir(), 'reins-conv-'));
+    try {
+      for (const d of ['harness', '.agents/intent', '.agents/knowledge'])
+        if (existsSync(join(ROOT, d))) cpSync(join(ROOT, d), join(tmp, d), { recursive: true });
+      expect(driftConvention(tmp)).toEqual([]);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });

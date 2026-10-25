@@ -233,7 +233,17 @@ export function readEvidence(
 
 /** T3 — at a gate or test verdict: the latest verification of a ticket must be a real pass. */
 export function verdictCheck(root: string, id: string): Finding[] {
-  const verifies = busFor(root, id).filter((b) => b.request?.['kind'] === 'verify');
+  const bus = busFor(root, id);
+  const unreadable = bus.flatMap((b) => b.broken);
+  if (unreadable.length > 0)
+    return unreadable.map<Finding>((u) => ({
+      reason: 'F2',
+      verdict: 'STOP',
+      path: u.path,
+      message: `bus file is not valid YAML: ${u.message}`,
+      resume: 'quote values containing ": " or " #" in double quotes, then re-run the check',
+    }));
+  const verifies = bus.filter((b) => b.request?.['kind'] === 'verify');
   if (verifies.length === 0)
     return [
       {

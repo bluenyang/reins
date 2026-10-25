@@ -62,13 +62,21 @@ export interface BusPair {
   id: string;
   request: Record<string, unknown> | null;
   response: Record<string, unknown> | null;
+  /** Bus files of this exchange that exist but are not valid YAML (S-6). */
+  broken: { path: string; message: string }[];
 }
 
-function loadYaml(p: string): Record<string, unknown> | null {
+function loadYaml(
+  root: string,
+  p: string,
+  broken: BusPair['broken'],
+): Record<string, unknown> | null {
   if (!existsSync(p)) return null;
   try {
     return (parse(readFileSync(p, 'utf8')) as Record<string, unknown> | null) ?? null;
-  } catch {
+  } catch (e) {
+    const message = ((e as Error).message ?? String(e)).split('\n')[0] ?? '';
+    broken.push({ path: relPath(root, p), message });
     return null;
   }
 }
@@ -81,11 +89,15 @@ export function busFor(root: string, ticket: string): BusPair[] {
       .map((e) => /^(.+)\.(request|response)\.yaml$/.exec(e)?.[1])
       .filter((x): x is string => !!x && x.startsWith(`${ticket}_`)),
   );
-  return [...ids].toSorted().map((id) => ({
-    id,
-    request: loadYaml(join(dir, `${id}.request.yaml`)),
-    response: loadYaml(join(dir, `${id}.response.yaml`)),
-  }));
+  return [...ids].toSorted().map((id) => {
+    const broken: BusPair['broken'] = [];
+    return {
+      id,
+      request: loadYaml(root, join(dir, `${id}.request.yaml`), broken),
+      response: loadYaml(root, join(dir, `${id}.response.yaml`), broken),
+      broken,
+    };
+  });
 }
 
 /** Every history page's text, newest last. */

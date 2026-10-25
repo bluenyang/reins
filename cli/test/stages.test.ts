@@ -116,6 +116,19 @@ describe('T3 verdict', () => {
     put(d, `.loctx/bus/${id}.response.yaml`, res(id, verdict, evidence));
   };
 
+  it('reports a bus file that is not valid YAML as F2 with its path (S-6)', () => {
+    put(
+      d,
+      '.loctx/bus/001-9_01.request.yaml',
+      req('001-9_01').replace('why: w', 'why: allowed: a.ts'),
+    );
+    const f = verdictCheck(d, '001-9');
+    expect(f.map((x) => x.reason)).toEqual(['F2']);
+    expect(f[0]?.path).toBe('.loctx/bus/001-9_01.request.yaml');
+    expect(f[0]?.message).toMatch(/not valid YAML: \S+/);
+    expect(f[0]?.message).not.toContain('\n');
+  });
+
   it('stops without any verification, and on a pass with no evidence', () => {
     expect(verdictCheck(d, '001-1').map((x) => x.reason)).toEqual(['D5']);
     bus('001-1_01', 'pass', '');

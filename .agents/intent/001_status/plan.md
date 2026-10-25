@@ -1,7 +1,8 @@
 ---
 intent: "001"
-status: draft
-approvals: []
+status: reviewed
+approvals:
+  - { role: qa-design, at: 2026-10-25, kind: light-review }
 agents:
   implement: [implementer]
   verify: [verify-tool]
@@ -10,7 +11,7 @@ budget: {}
 tickets: ["001-1", "001-2"]
 ---
 ## 바뀌는 파일
-- `cli/src/commands/status.ts` (새), `cli/src/commands/stages.ts` (승인 사슬 export), `cli/src/reins.ts` (status 명령), `cli/test/status.test.ts` (새)
+- `cli/src/commands/status.ts` (새), `cli/src/reins.ts` (status 명령), `cli/test/status.test.ts` (새)
 - `AGENTS.md` 프로젝트 절 (Conventions 첫 항목)
 
 ## 작업 순서
@@ -18,18 +19,24 @@ tickets: ["001-1", "001-2"]
 2. AGENTS.md 임시 규칙을 `reins status`로 교체, 이 레포에서 실행 확인 (S-8) → ticket 001-2 (001-1에 의존)
 
 ## 위험
-- 승인 사슬을 status용으로 바꾸다 T1 동작이 달라질 수 있음 → T1 테스트(stages.test.ts)를 그대로 통과해야 한다.
+- 재사용하는 `ticketStart`를 바꾸면 T1 동작이 달라진다 → 바꾸지 않고 호출만. stages.test.ts 그대로 통과.
+- 깨진 frontmatter·없는 파일에서 예외 → 모든 읽기는 `lib/work.ts`(예외 대신 error 필드) 경유, C-4로 확인.
+- 재사용하는 검사 로직이 파일을 쓰면 S-7 위반 → `runCheck`는 보고서를 돌려줄 뿐 bus에 쓰지 않음; C-7 해시로 확인.
+- 드리프트 시간 → 0.24s 실측, 문제 없음.
 
 ## 증명
 - `reins gate --ticket <id>`의 보고서(`.loctx/reports/`)를 T3 증거로 쓴다.
 - 001-2는 이 레포에서 `reins status` 실제 출력을 history에 남긴다.
 
 ## 테스트 체크리스트
-- [ ] intent 없음
-- [ ] draft intent → user 할 일
-- [ ] 승인 사슬 + todo ticket → ticket-start
-- [ ] `--json`이 텍스트와 같은 데이터
-- [ ] 파일을 쓰지 않음 (실행 전후 git status 동일)
+- [ ] C-1 하네스 없음 / 설치됨 / 드리프트
+- [ ] C-2 superseded 숨김
+- [ ] C-3 S-3 표 각 행
+- [ ] C-4 T1 판정 일치(B1), doing·blocked·orphan·invalid
+- [ ] C-5 bus 개수·마지막 history
+- [ ] C-6 `--json` 대조
+- [ ] C-7 `.loctx/` 포함 트리 해시 불변, 레포 밖 exit 2
+- [ ] C-8 이 레포에서 001 표시
 
 ## 이탈 기록
 —

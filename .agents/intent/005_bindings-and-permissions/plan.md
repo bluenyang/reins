@@ -1,7 +1,8 @@
 ---
 intent: "005"
-status: draft
-approvals: []
+status: reviewed
+approvals:
+  - { role: qa-design, at: 2026-10-26, kind: light-review }
 agents:
   implement: [implementer]
   verify: [verify-tool]

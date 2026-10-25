@@ -20,7 +20,7 @@ import { EXIT } from './lib/verdict.js';
 const program = new Command()
   .name('reins')
   .description('agent harness — install, migrate, update; check keeps agents inside their roles')
-  .version('0.1.0')
+  .version('0.1.0-rc.1')
   .enablePositionalOptions();
 
 const notYet = (name: string) => () => {

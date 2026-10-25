@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readFileSync } from 'node:fs';
 import { Command } from 'commander';
 import { runCheck, STAGES, type Stage } from './commands/check.js';
 import { runInstall, type Tier } from './commands/install.js';
@@ -17,10 +18,17 @@ import {
 import { defaultsAsker, stdinAsker } from './lib/ask.js';
 import { EXIT } from './lib/verdict.js';
 
+// the version npm installed — cli/dist/reins.js sits two levels below package.json
+const VERSION = (
+  JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as {
+    version: string;
+  }
+).version;
+
 const program = new Command()
   .name('reins')
   .description('agent harness — install, migrate, update; check keeps agents inside their roles')
-  .version('0.1.0-rc.1')
+  .version(VERSION)
   .enablePositionalOptions();
 
 const notYet = (name: string) => () => {

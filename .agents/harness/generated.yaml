@@ -5,7 +5,6 @@ files:
   .claude/agents/reins-deploy.md: 75d05dc2fbd003c8
   .claude/agents/reins-docs.md: e14922940968e2d2
   .claude/agents/reins-implementer.md: 18abc94af65c805d
-  .claude/agents/reins-lookup.md: 31dd15947993345a
   .claude/agents/reins-pl.md: e142970711a8b196
   .claude/agents/reins-planner.md: e523214b86822b0f
   .claude/agents/reins-pm.md: 576d6e3f15ce762f

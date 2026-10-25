@@ -40,8 +40,8 @@ roles:
     parallel: 4
     unverified: true
   lookup:
-    vendor: claude
-    model: claude-haiku-5-5
+    vendor: cursor
+    model: cursor-grok-4.5-high-fast
     unverified: true
   pl:
     vendor: claude

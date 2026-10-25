@@ -34,3 +34,19 @@ describe('AGENTS.md managed blocks (design §5)', () => {
     expect(o.skipped.find((s) => s.name === 'notice')?.why).toMatch(/overridden/);
   });
 });
+
+describe('migrate swaps project sections for managed blocks', () => {
+  it('replaces ## Workflow up to the next ## heading and returns the original', async () => {
+    const { swapSections } = await import('../src/lib/blocks.js');
+    const text =
+      '# A\n\n## Project\nmine\n\n## Workflow\n- old rule\n### detail\nx\n\n## Language\nen\n';
+    const r = swapSections(text, UP);
+    expect(r.swapped).toEqual(['workflow']);
+    expect(r.text).toContain('reins:begin workflow');
+    expect(r.text).toContain('## Project\nmine');
+    expect(r.text).toContain('## Language\nen');
+    expect(r.text).not.toContain('old rule');
+    expect(r.removed).toBe('## Workflow\n- old rule\n### detail\nx');
+    expect(swapSections(r.text, UP).swapped).toEqual([]); // idempotent
+  });
+});

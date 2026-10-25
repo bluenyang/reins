@@ -80,3 +80,40 @@ export function applyBlocks(text: string, upstream: Block[]): BlockResult {
   }
   return res;
 }
+
+export interface SectionSwap {
+  text: string;
+  swapped: string[]; // block names
+  removed: string; // the project's original sections, kept by the caller
+}
+
+/**
+ * Migrate's half of the managed-block story (design §7): a project section whose heading an upstream block
+ * owns (`## Workflow`, `## Skills`, `## Language`) is replaced by that block. The section runs from its
+ * heading to the next heading of the same or a higher level. The originals are returned so nothing is lost.
+ */
+export function swapSections(text: string, upstream: Block[]): SectionSwap {
+  let out = text;
+  const swapped: string[] = [];
+  const removed: string[] = [];
+  const present = new Set(parseBlocks(text).map((b) => b.name));
+  for (const b of upstream) {
+    if (present.has(b.name)) continue;
+    const h = headingOf(b);
+    if (!h) continue;
+    const re = new RegExp(`^## ${h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
+    const m = re.exec(out);
+    if (!m) continue;
+    const start = m.index;
+    const rest = out.slice(start + m[0].length);
+    const next = /^#{1,2} /m.exec(rest);
+    const end = next ? start + m[0].length + next.index : out.length;
+    removed.push(out.slice(start, end).trimEnd());
+    out = `${out.slice(0, start)}${b.body}\n\n${out.slice(end).replace(/^\n+/, '')}`.replace(
+      /\n{3,}/g,
+      '\n\n',
+    );
+    swapped.push(b.name);
+  }
+  return { text: out.replace(/\s*$/, '\n'), swapped, removed: removed.join('\n\n') };
+}

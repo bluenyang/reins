@@ -133,10 +133,10 @@ Three skills are the entry points for an agent; they follow the `SKILL.md` stand
 
 | Version | Content |
 |---|---|
-| 0.1 | graph design, self-install and self-migrate of this repository, the verifier, three skills, README |
+| 0.1 | graph design, self-install and self-migrate of this repository, the verifier, three skills, README; 0.1.0 is published to npm |
 | 0.2 | carve the loop and harness tiers out of the graph; generated files for Codex, Gemini and Cursor; `recall`, `doctor`, budget stops; trial migration of older harnesses |
-| 0.3 | Claude Code plugin and npm publication; application to Team Croffle repositories |
-| 1.0 | success criteria S1–S8 measured and met; schema versions frozen |
+| 0.3 | Claude Code plugin; application to Team Croffle repositories |
+| 1.0 | not scheduled: reins stays on 0.x and gains features until the maintainer considers the system settled; stabilising alone does not make it 1.0 |
 
 ## Documents
 

@@ -134,10 +134,10 @@ T1(`ticket-start`), T2(`pre-commit`), T3(`verdict`), T4(`pre-push`), T5(`rc-clos
 
 | 버전 | 내용 |
 |---|---|
-| 0.1 | graph 설계, 이 저장소의 자기 설치·자기 이전, 검증기, 스킬 세 개, README |
+| 0.1 | graph 설계, 이 저장소의 자기 설치·자기 이전, 검증기, 스킬 세 개, README. 0.1.0을 npm에 배포합니다 |
 | 0.2 | graph에서 loop·harness 깎기, Codex·Gemini·Cursor 생성물, `recall`·`doctor`·예산 정지, 이전 세대 하네스 시험 이전 |
-| 0.3 | Claude Code 플러그인과 npm 배포, Team Croffle 저장소에 적용 |
-| 1.0 | 성공 기준 S1–S8을 측정해 통과, 스키마 버전 고정 |
+| 0.3 | Claude Code 플러그인, Team Croffle 저장소에 적용 |
+| 1.0 | 정해진 일정은 없습니다. 0.x에서 기능을 더해 가다가 메인테이너가 체계가 잡혔다고 판단할 때 1.0이 됩니다. 안정화만으로 1.0이 되지는 않습니다 |
 
 ## 문서
 

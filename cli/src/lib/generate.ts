@@ -1,9 +1,8 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
 import { parse, stringify } from 'yaml';
-import { listFiles, type Write } from './fsx.js';
-import { redLines } from './harness.js';
+import type { Write } from './fsx.js';
+import type { RedLine } from './harness.js';
+import { workTreeReader, type Reader } from './reader.js';
 import { splitFrontmatter } from './skills.js';
 
 /**
@@ -28,8 +27,8 @@ interface RoleDoc {
   body: string;
 }
 
-function readRole(path: string): RoleDoc {
-  const { data, body } = splitFrontmatter(readFileSync(path, 'utf8'));
+function readRole(text: string): RoleDoc {
+  const { data, body } = splitFrontmatter(text);
   const d = data ?? {};
   return {
     role: String(d['role']),
@@ -82,8 +81,8 @@ export function claudeAgent(r: RoleDoc, b: Binding, version: string): string {
 }
 
 /** C4 patterns → Claude Code deny rules. A pattern that would also hide an allowed template (`.env.*` vs `.env.example`) is narrowed. */
-export function denyRules(harness: string): string[] {
-  const c4 = redLines(harness).find((r) => r.id === 'C4');
+export function denyRules(lines: RedLine[]): string[] {
+  const c4 = lines.find((r) => r.id === 'C4');
   const globs = new Set<string>();
   for (const p of c4?.patterns ?? []) {
     if (p === '.env.*')
@@ -118,52 +117,52 @@ export interface Generated {
 }
 
 /** Everything the generator owns, computed from the installed harness. Pure. */
-export function generateVendorFiles(root: string): Generated {
-  const harness = join(root, '.agents', 'harness');
-  const bindingsPath = join(harness, 'bindings.yaml');
-  const version = existsSync(join(harness, 'VERSION'))
-    ? readFileSync(join(harness, 'VERSION'), 'utf8').trim()
-    : '?';
+export function generateVendorFiles(root: string, rd: Reader = workTreeReader(root)): Generated {
+  const harness = '.agents/harness';
+  const version = rd.read(`${harness}/VERSION`)?.trim() ?? '?';
   const out: Generated = { writes: [], skipped: [] };
-  if (!existsSync(harness)) return out;
-  const bindings = existsSync(bindingsPath)
-    ? ((parse(readFileSync(bindingsPath, 'utf8')) as { roles?: Record<string, Binding> }).roles ??
-      {})
+  if (rd.list(harness).length === 0) return out;
+  const bindingsText = rd.read(`${harness}/bindings.yaml`);
+  const bindings = bindingsText
+    ? ((parse(bindingsText) as { roles?: Record<string, Binding> }).roles ?? {})
     : {};
-  const rolesDir = join(harness, 'roles');
-  if (existsSync(rolesDir))
-    for (const f of readdirSync(rolesDir)
-      .filter((x) => x.endsWith('.md'))
-      .toSorted()) {
-      const r = readRole(join(rolesDir, f));
-      const b = bindings[r.role];
-      if (!b) continue;
-      if (b.vendor !== 'claude') {
-        out.skipped.push(`${r.role} → ${b.vendor} ${b.model}`);
-        continue;
-      }
-      out.writes.push({
-        path: `.claude/agents/reins-${r.role}.md`,
-        content: claudeAgent(r, b, version),
-        why: `role ${r.role}`,
-      });
+  const rolesDir = `${harness}/roles`;
+  for (const p of rd
+    .list(rolesDir)
+    .filter((x) => /^[^/]+\.md$/.test(x.slice(rolesDir.length + 1)))
+    .toSorted()) {
+    const r = readRole(rd.read(p) ?? '');
+    const b = bindings[r.role];
+    if (!b) continue;
+    if (b.vendor !== 'claude') {
+      out.skipped.push(`${r.role} → ${b.vendor} ${b.model}`);
+      continue;
     }
+    out.writes.push({
+      path: `.claude/agents/reins-${r.role}.md`,
+      content: claudeAgent(r, b, version),
+      why: `role ${r.role}`,
+    });
+  }
   // skills: Codex, Gemini and Cursor read .agents/skills/ directly; Claude Code reads a byte-identical copy
-  const skills = join(root, '.agents', 'skills');
-  if (existsSync(skills))
-    for (const name of readdirSync(skills).toSorted()) {
-      if (!existsSync(join(skills, name, 'SKILL.md'))) continue;
-      for (const f of listFiles(join(skills, name)))
-        out.writes.push({
-          path: `.claude/skills/${name}/${f}`,
-          content: readFileSync(join(skills, name, f), 'utf8'),
-          why: `skill ${name}`,
-        });
-    }
-  if (existsSync(join(harness, 'policy')))
+  const skills = '.agents/skills';
+  const names = [
+    ...new Set(rd.list(skills).map((p) => p.slice(skills.length + 1).split('/')[0] ?? '')),
+  ].toSorted();
+  for (const name of names) {
+    if (rd.read(`${skills}/${name}/SKILL.md`) === undefined) continue;
+    for (const p of rd.list(`${skills}/${name}`).toSorted())
+      out.writes.push({
+        path: `.claude/skills/${p.slice(skills.length + 1)}`,
+        content: rd.read(p) ?? '',
+        why: `skill ${name}`,
+      });
+  }
+  const redText = rd.read(`${harness}/policy/common-red-lines.yaml`);
+  if (rd.list(`${harness}/policy`).length > 0 && redText !== undefined)
     out.writes.push({
       path: '.claude/settings.json',
-      content: `${JSON.stringify({ $schema: 'https://json.schemastore.org/claude-code-settings.json', permissions: { deny: denyRules(harness) } }, null, 2)}\n`,
+      content: `${JSON.stringify({ $schema: 'https://json.schemastore.org/claude-code-settings.json', permissions: { deny: denyRules((parse(redText) as { rules: RedLine[] }).rules) } }, null, 2)}\n`,
       why: 'C4 secrets, A1 force push, C5 hook bypass',
     });
   return out;

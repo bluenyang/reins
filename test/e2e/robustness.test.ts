@@ -48,10 +48,20 @@ describe('robustness of the built cli', () => {
 
   it('C-8: a closed stdout ends quietly with the verdict code', async () => {
     const d = repo();
-    // enough findings that the report is written after the reader has gone
+    const inst = spawnSync(process.execPath, [CLI, 'install', 'graph', '--mode', 'auto'], {
+      cwd: d,
+      encoding: 'utf8',
+    });
+    expect(inst.status, inst.stderr).toBe(0);
+    // enough findings that the report is still being written after the reader has gone
     mkdirSync(join(d, '.loctx', 'ticket'), { recursive: true });
     for (let i = 0; i < 400; i++)
       writeFileSync(join(d, '.loctx', 'ticket', `bad-${i}.md`), '---\nnot: [valid\n---\n');
+    const open = spawnSync(process.execPath, [CLI, 'check', '--drift'], {
+      cwd: d,
+      encoding: 'utf8',
+    });
+    expect(open.status).toBe(20); // the fixture really gives a non-zero verdict
     const spawned = spawn(process.execPath, [CLI, 'check', '--drift'], {
       cwd: d,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -61,7 +71,6 @@ describe('robustness of the built cli', () => {
     spawned.stderr.on('data', (c: Buffer) => (stderr += c.toString()));
     const code = await new Promise<number | null>((res) => spawned.on('close', res));
     expect(stderr).toBe('');
-    expect(stderr).not.toContain('EPIPE');
-    expect([0, 10, 20, 30]).toContain(code);
+    expect(code).toBe(open.status);
   });
 });

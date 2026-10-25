@@ -104,7 +104,7 @@ export function driftGenerated(root: string, rd: Reader = workTreeReader(root)):
   if (rd.read(MANIFEST) === undefined) return [];
   const findings: Finding[] = [];
   const recorded = readManifest(root, rd).files;
-  const now = new Map(generateVendorFiles(root).writes.map((w) => [w.path, sha(w.content)]));
+  const now = new Map(generateVendorFiles(root, rd).writes.map((w) => [w.path, sha(w.content)]));
   for (const [path, hash] of Object.entries(recorded)) {
     const onDisk = rd.read(path);
     if (onDisk === undefined) {

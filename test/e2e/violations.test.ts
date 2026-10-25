@@ -423,3 +423,55 @@ describe('violation scenarios (the real cli/dist/reins.js, one throwaway reposit
     expect(n + GAPS.length).toBe(TOTAL);
   });
 });
+
+const stage = (d: string, ...p: string[]) => git(d, 'add', '--', ...p);
+const run = (d: string) => {
+  const r = reins(d, [...preCommit, '--json']);
+  return { report: JSON.parse(r.stdout) as Report, code: r.code, out: r.stdout };
+};
+
+describe('pre-commit reads the index, not the working tree (S-1)', () => {
+  const INTENT_REL = '.agents/intent/001_demo/intent.md';
+  const SCHEMA_REL = '.agents/harness/schemas/intent.schema.json';
+  const breakSchema = (d: string) => {
+    const j = JSON.parse(readFileSync(join(d, SCHEMA_REL), 'utf8')) as { required: string[] };
+    j.required.push('nonexistent_field');
+    put(d, SCHEMA_REL, JSON.stringify(j));
+  };
+
+  it('an unstaged schema change does not alter validation of staged content', () => {
+    const d = fresh();
+    put(d, INTENT_REL, INTENT('draft'));
+    stage(d, INTENT_REL);
+    breakSchema(d); // working tree only
+    const ok = run(d);
+    expect(ok.report, ok.out).toMatchObject({ verdict: 'CONTINUE', findings: [] });
+    stage(d, SCHEMA_REL); // now the commit would carry the stricter schema
+    const bad = run(d);
+    expect(
+      bad.report.findings.some((f) => f.path === INTENT_REL && f.reason === 'F2'),
+      bad.out,
+    ).toBe(true);
+    expect(bad.code).toBe(EXIT.STOP);
+  });
+
+  it('an unstaged generator-input change does not affect the verdict; a staged one is judged against the indexed outputs', () => {
+    const d = fresh();
+    const B = '.agents/harness/bindings.yaml';
+    const orig = readFileSync(join(d, B), 'utf8');
+    const changed = orig.replace(/model: claude-[\w.-]+/, 'model: claude-changed-1');
+    expect(changed).not.toBe(orig);
+    put(d, '.claude/trigger.txt', 'x\n');
+    stage(d, '.claude/trigger.txt'); // makes pre-commit run the generated-files check
+    put(d, B, changed); // working tree only
+    const ok = run(d);
+    expect(ok.report, ok.out).toMatchObject({ verdict: 'CONTINUE', findings: [] });
+    stage(d, B);
+    const bad = run(d);
+    expect(
+      bad.report.findings.some((f) => f.reason === 'F2' && f.path?.startsWith('.claude/')),
+      bad.out,
+    ).toBe(true);
+    expect(bad.code).toBe(EXIT.STOP);
+  });
+});

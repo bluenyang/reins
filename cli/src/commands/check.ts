@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { currentBranch, isAncestor, repoRoot, stagedFiles } from '../lib/git.js';
-import { harnessDir, secretPolicy } from '../lib/harness.js';
-import { loadSchemas, schemaFor, validateFile } from '../lib/schema.js';
+import { harnessRel, secretPolicy } from '../lib/harness.js';
+import { loadSchemasFrom, schemaFor, validateFile } from '../lib/schema.js';
 import { DEFAULT_ALLOWED, DEFAULT_SECRET_PATTERNS, isSecretPath } from '../lib/secrets.js';
 import { splitFrontmatter, validateSkillFile } from '../lib/skills.js';
 import { harnessVersion, packageHarness, packageSkills, tierSkills } from '../lib/upstream.js';
@@ -44,7 +44,8 @@ function gitignoreHas(root: string, entry: string): boolean {
 /** T2 — before a commit. */
 export function preCommit(root: string): Finding[] {
   const findings: Finding[] = [];
-  const policy = secretPolicy(root);
+  const rd = indexReader(root);
+  const policy = secretPolicy(root, rd);
   const patterns = policy?.patterns ?? DEFAULT_SECRET_PATTERNS;
   const allowed = policy?.allowed ?? DEFAULT_ALLOWED;
   const staged = stagedFiles(root);
@@ -77,7 +78,6 @@ export function preCommit(root: string): Finding[] {
       resume: 'add ".loctx/" (or ".ai/") to .gitignore',
     });
   // S-1: the checks read the content the commit would contain (the index), not the working tree
-  const rd = indexReader(root);
   findings.push(...driftFormat(root, staged, rd), ...driftConvention(root, staged, rd));
   const under = (...dirs: string[]) => staged.some((f) => dirs.some((d) => f.startsWith(d)));
   if (under('harness/', '.agents/harness/', 'skills/', '.agents/skills/'))
@@ -134,10 +134,9 @@ export function driftConvention(
   only?: string[],
   rd: Reader = workTreeReader(root),
 ): Finding[] {
-  const dir = harnessDir(root);
-  if (!dir) return [];
-  const hrel = relPath(root, dir);
-  const schemas = loadSchemas(dir);
+  const hrel = harnessRel(rd);
+  if (!hrel) return [];
+  const schemas = loadSchemasFrom(rd, hrel);
   const findings: Finding[] = [];
   const candidates = [
     ...rd.list(`${hrel}/templates`),

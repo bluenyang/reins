@@ -2,11 +2,32 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { Ajv2020, type ValidateFunction } from 'ajv/dist/2020.js';
 import { parse } from 'yaml';
+import type { Reader } from './reader.js';
 import { splitFrontmatter } from './skills.js';
 
 export interface SchemaIssue {
   path: string;
   message: string;
+}
+
+/** The same, read through a `Reader` from a repository-relative harness directory. */
+export function loadSchemasFrom(rd: Reader, harnessRel: string): Map<string, ValidateFunction> {
+  const dir = `${harnessRel}/schemas`;
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
+  const ids = new Map<string, string>();
+  for (const p of rd
+    .list(dir)
+    .filter((x) => /^[^/]+\.schema\.json$/.test(x.slice(dir.length + 1)))) {
+    const schema = JSON.parse(rd.read(p) ?? '{}') as { $id?: string };
+    ajv.addSchema(schema);
+    if (schema.$id) ids.set(p.slice(dir.length + 1).replace(/\.schema\.json$/, ''), schema.$id);
+  }
+  const out = new Map<string, ValidateFunction>();
+  for (const [name, id] of ids) {
+    const v = ajv.getSchema(id);
+    if (v) out.set(name, v);
+  }
+  return out;
 }
 
 /** Loads every `*.schema.json` in the harness and compiles them by file name (`intent`, `bus-request`, …). */

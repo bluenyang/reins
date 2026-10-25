@@ -1,4 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const root = new URL('../../', import.meta.url);
@@ -32,7 +35,7 @@ describe('claude plugin manifests', () => {
     expect(market.plugins[0].version).toBeUndefined();
     expect(pins.length).toBeGreaterThan(0);
     expect(new Set(pins)).toEqual(new Set([v]));
-    expect(json('package.json').scripts.version).toContain('scripts/sync-version.ts');
+    expect(json('package.json').scripts.version).toContain('cli/dist/scripts/sync-version.js');
   });
   it('userConfig is language and default_mode with their defaults (C-5)', () => {
     expect(Object.keys(plugin.userConfig).sort()).toEqual(['default_mode', 'language']);
@@ -49,5 +52,21 @@ describe('claude plugin manifests', () => {
     for (const k of ['dependencies', 'hooks', 'agents', 'mcpServers']) {
       expect(plugin[k]).toBeUndefined();
     }
+  });
+  it('sync-version rewrites plugin.json and the SKILL.md pin from package.json', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'reins-sync-'));
+    mkdirSync(join(tmp, '.claude-plugin'));
+    mkdirSync(join(tmp, 'skills/reins-setup'), { recursive: true });
+    cpSync(new URL('.claude-plugin/plugin.json', root), join(tmp, '.claude-plugin/plugin.json'));
+    cpSync(new URL('skills/reins-setup/SKILL.md', root), join(tmp, 'skills/reins-setup/SKILL.md'));
+    writeFileSync(join(tmp, 'package.json'), '{"version":"9.8.7"}');
+    const script = new URL('cli/dist/scripts/sync-version.js', root).pathname;
+    execFileSync('node', [script, tmp]);
+    expect(JSON.parse(readFileSync(join(tmp, '.claude-plugin/plugin.json'), 'utf8')).version).toBe(
+      '9.8.7',
+    );
+    const skill = readFileSync(join(tmp, 'skills/reins-setup/SKILL.md'), 'utf8');
+    expect(skill).toContain('@bluenyang/reins@9.8.7');
+    expect(skill).not.toContain(`@bluenyang/reins@${json('package.json').version}`);
   });
 });

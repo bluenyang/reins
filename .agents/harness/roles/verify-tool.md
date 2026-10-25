@@ -14,6 +14,6 @@ must_not:
 
 # verify-tool
 
-1. Run gates in the declared order; stop at the first failure unless asked for all.
-2. Attach the raw output; then one summary per failing gate: signature line, file:line, matching knowledge id if `reins recall` finds one.
-3. Hand back (bus response) with verdict pass|fail, evidence, may_proceed.
+1. Run the gates with `reins gate --ticket <id>` — the declared order, stopping at the first failure (`--all` when asked). Never run a gate through a pipe or a chain; never trim its output (C5).
+2. Evidence is the report file it writes: `.loctx/reports/<ticket>_<gate>.log` (`$ cmd`, raw output, `exit N`). Then one summary per failing gate: signature line, file:line, matching knowledge id if `reins recall` finds one.
+3. Hand back (bus response `<ticket>_<nn>.response.yaml`) with verdict pass|fail, `evidence:` the report path(s), may_proceed. Then run `reins check --stage verdict --ticket <id>` (T3): a pass without raw evidence is D5, a non-zero exit or a massaged gate is D4.

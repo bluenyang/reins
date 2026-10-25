@@ -215,15 +215,20 @@ export function ticketStart(root: string, id: string): Finding[] {
 export function readEvidence(
   root: string,
   evidence: string,
-): { text: string; cmd?: string; exit?: number } {
-  const p = join(root, evidence.trim());
-  const text =
-    evidence.trim() && !evidence.includes('\n') && existsSync(p)
-      ? readFileSync(p, 'utf8')
-      : evidence;
-  const cmd = /^\$ (.+)$/m.exec(text)?.[1]?.trim();
-  const code = /^exit[: =]?\s*(-?\d+)\s*$/im.exec(text)?.[1];
-  return { text, cmd, exit: code === undefined ? undefined : Number(code) };
+): { source: string; text: string; cmd?: string; exit?: number }[] {
+  const tokens = evidence.split(/\s+/).filter(Boolean);
+  const files = tokens.length > 0 && tokens.every((t) => existsSync(join(root, t)));
+  const pieces = files
+    ? tokens.map((t) => ({ source: t, text: readFileSync(join(root, t), 'utf8') }))
+    : [{ source: 'inline', text: evidence }];
+  return pieces.map((p) => {
+    const code = /^exit[: =]?\s*(-?\d+)\s*$/im.exec(p.text)?.[1];
+    return {
+      ...p,
+      cmd: /^\$ (.+)$/m.exec(p.text)?.[1]?.trim(),
+      exit: code === undefined ? undefined : Number(code),
+    };
+  });
 }
 
 /** T3 — at a gate or test verdict: the latest verification of a ticket must be a real pass. */
@@ -284,41 +289,42 @@ export function verdictCheck(root: string, id: string): Finding[] {
       message: 'pass without evidence',
       resume: 'attach the raw gate output (a .loctx/reports/ path or the text itself)',
     });
-  else {
-    const e = readEvidence(root, ev);
-    if (e.exit === undefined)
-      findings.push({
-        reason: 'D4',
-        verdict: 'STOP',
-        path: at,
-        message: 'evidence has no exit code line ("exit N")',
-        resume: 're-run the gate unmodified and keep its exit code',
-      });
-    else if (e.exit !== 0)
-      findings.push({
-        reason: 'D4',
-        verdict: 'STOP',
-        path: at,
-        message: `reported as pass, but the evidence exits ${e.exit}`,
-        resume: 'a non-zero exit is a failure; answer fail',
-      });
-    if (!e.cmd)
-      findings.push({
-        reason: 'D4',
-        verdict: 'STOP',
-        path: at,
-        message: 'evidence does not show the command that ran ("$ <cmd>")',
-        resume: 're-run the gate from gates.yaml and keep the command line',
-      });
-    else if (compound(e.cmd))
-      findings.push({
-        reason: 'D4',
-        verdict: 'STOP',
-        path: at,
-        message: `the gate did not run as a single command: ${e.cmd}`,
-        resume: 'run the gate exactly as gates.yaml declares it (C5)',
-      });
-  }
+  else
+    for (const e of readEvidence(root, ev)) {
+      const at2 = e.source === 'inline' ? at : `${at} → ${e.source}`;
+      if (e.exit === undefined)
+        findings.push({
+          reason: 'D4',
+          verdict: 'STOP',
+          path: at2,
+          message: 'evidence has no exit code line ("exit N")',
+          resume: 're-run the gate unmodified and keep its exit code',
+        });
+      else if (e.exit !== 0)
+        findings.push({
+          reason: 'D4',
+          verdict: 'STOP',
+          path: at2,
+          message: `reported as pass, but the evidence exits ${e.exit}`,
+          resume: 'a non-zero exit is a failure; answer fail',
+        });
+      if (!e.cmd)
+        findings.push({
+          reason: 'D4',
+          verdict: 'STOP',
+          path: at2,
+          message: 'evidence does not show the command that ran ("$ <cmd>")',
+          resume: 're-run the gate from gates.yaml and keep the command line',
+        });
+      else if (compound(e.cmd))
+        findings.push({
+          reason: 'D4',
+          verdict: 'STOP',
+          path: at2,
+          message: `the gate did not run as a single command: ${e.cmd}`,
+          resume: 'run the gate exactly as gates.yaml declares it (C5)',
+        });
+    }
   return findings;
 }
 

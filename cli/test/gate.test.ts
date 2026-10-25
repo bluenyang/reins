@@ -34,7 +34,11 @@ describe('reins gate', () => {
     ]);
     const text = readFileSync(join(d, '.loctx/reports/001-1_ok.log'), 'utf8');
     expect(text).toBe('$ node -e "console.log(1)"\n1\nexit 0\n');
-    expect(readEvidence(d, '.loctx/reports/001-1_bad.log')).toMatchObject({ exit: 3 });
+    expect(
+      readEvidence(d, '.loctx/reports/001-1_ok.log .loctx/reports/001-1_bad.log').map(
+        (e) => e.exit,
+      ),
+    ).toEqual([0, 3]);
   });
 
   it('refuses unknown gate names', () => {

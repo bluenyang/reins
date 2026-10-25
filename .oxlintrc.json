@@ -1,1 +1,8 @@
-{ "$schema": "./node_modules/oxlint/configuration_schema.json", "categories": { "correctness": "error", "suspicious": "warn" }, "ignorePatterns": ["cli/dist/**", "node_modules/**"] }
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "ignorePatterns": ["cli/dist/**", "node_modules/**"]
+}

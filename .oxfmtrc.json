@@ -1,1 +1,10 @@
-{ "printWidth": 100, "singleQuote": true, "semi": true, "trailingComma": "all" }
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxfmt/configuration_schema.json",
+  "useTabs": false,
+  "endOfLine": "lf",
+  "printWidth": 100,
+  "singleQuote": true,
+  "semi": true,
+  "tabWidth": 2,
+  "trailingComma": "all"
+}

@@ -1,0 +1,14 @@
+# discovered by reins install — the loop reads only this file (design §5)
+schema: reins/gates@1
+gates:
+  check:
+    cmd: pnpm check
+    from: package.json#scripts.check
+  build:
+    cmd: pnpm build
+    from: package.json#scripts.build
+order:
+  - check
+  - build
+mutating_forbidden: true
+evidence: raw

@@ -15,7 +15,7 @@
 ├── AGENTS.md                 committed · managed blocks (tool) + project sections
 ├── .agents/                  committed · agent context
 │   ├── intent/<id>_<slug>/{intent,spec,plan}.md
-│   ├── knowledge/  harness/{policy,roles,schemas,bindings,gates.yaml}  SKILLS.md  skills/
+│   ├── knowledge/  harness/{policy,roles,schemas,templates, bindings.yaml, gates.yaml, install.yaml}  SKILLS.md  skills/
 ├── .claude/ .codex/ .gemini/ .cursor/   committed · generated
 ├── docs/  (ROADMAP.md, planning and design documents, shared benchmarks and research)   test/  (unit · integration · e2e)
 └── .loctx/                   gitignored (plus its own .gitignore) · ROADMAP.local.md ticket/ reports/ pr/ release/ context/ bus/ test/ history/
@@ -112,6 +112,7 @@ Search `reins recall`: grep on the three axes `decisions · topics · symptoms` 
 
 ## 9. CLI and plugin (D13·D14)
 `npx @bluenyang/reins` — `install <tier> [--mode manual|auto]` · `migrate <tier>` · `update` · `configure bindings|budget|gates|language` · `check [--stage] [--drift]` · `recall` · `status` · `doctor`. All take `--dry-run` and `--json`. TypeScript, Node ≥ 20, no Python (R65). **The CLI never calls a model** — agent work belongs to skills (`reins-setup` and friends).
+Install refuses over a 3rd/4th-generation harness and **points to `migrate`**. Over 1st/2nd generation it installs but leaves the old `.ai/` untouched and points to migrate. The version pin and settings live in `.agents/harness/install.yaml` (tier · version · mode · language).
 Install questions (manual): vendors · binding adjustments · gate confirmation · secret patterns · hooks **proposal only** · public repository? · document language · budget (optional). Auto detects, defaults and reports.
 The repository = plugin + npm package: `.claude-plugin/plugin.json` (`dependencies: []`, userConfig `language` · `default_mode`) · `skills/` (thin entry points) · `agents/` (generated) · `harness/` (the source of sources, plus templates, knowledge-seeds, VERSION) · `cli/` · `codex/ gemini/ cursor/` (unverified in round one) · `hooks/` · `docs/ test/ .agents/ .loctx/`. No `bin/` at the plugin root. Optional dependencies (humanize-korean, diagram-design) are detected and recommended only.
 

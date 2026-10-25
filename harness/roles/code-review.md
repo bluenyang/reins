@@ -1,6 +1,7 @@
 ---
 role: code-review
 default_binding: "gpt-6.1-sol"
+fallback_binding: "claude-sonnet-5-5"
 summary: "Reviews the diff against plan and spec; proposes fixes; never edits."
 may:
   - "read the diff, plan.md, spec.md, knowledge/"

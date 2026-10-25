@@ -1,0 +1,13 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "reins/intent@1", "type": "object",
+  "required": ["id", "slug", "version", "status", "origin", "approvals"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[0-9]{3}$" },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "version": { "type": "string" },
+    "status": { "enum": ["draft", "approved", "superseded"] },
+    "origin": { "enum": ["user", "agent", "incident"] },
+    "approvals": { "$ref": "#/$defs/approvals" },
+    "supersedes": { "type": ["string", "null"] }
+  },
+  "$defs": { "approvals": { "type": "array", "items": { "type": "object", "required": ["role", "at"],
+    "properties": { "role": { "type": "string" }, "at": { "type": "string" }, "kind": { "type": "string" } } } } } }

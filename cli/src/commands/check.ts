@@ -5,6 +5,8 @@ import { harnessDir, secretPolicy } from '../lib/harness.js';
 import { loadSchemas, schemaFor, validateFile } from '../lib/schema.js';
 import { DEFAULT_ALLOWED, DEFAULT_SECRET_PATTERNS, isSecretPath } from '../lib/secrets.js';
 import { findSkillFiles, splitFrontmatter, validateSkillFile } from '../lib/skills.js';
+import { harnessVersion, packageHarness } from '../lib/upstream.js';
+import { parse } from 'yaml';
 import { report, type Finding, type StopReport } from '../lib/verdict.js';
 
 export interface CheckOptions {
@@ -64,6 +66,8 @@ export function preCommit(root: string): Finding[] {
       resume: 'add ".loctx/" (or ".ai/") to .gitignore',
     });
   findings.push(...driftFormat(root, staged), ...driftConvention(root, staged));
+  if (staged.some((f) => f.startsWith('harness/') || f.startsWith('.agents/harness/')))
+    findings.push(...driftMatch(root));
   return findings;
 }
 
@@ -176,6 +180,50 @@ export function driftConvention(root: string, only?: string[]): Finding[] {
   return findings;
 }
 
+/** Files in an installed harness that belong to the project, not upstream. */
+const PROJECT_OWNED = new Set(['bindings.yaml', 'gates.yaml', 'install.yaml']);
+
+/** Drift, match layer — the installed `.agents/harness/` against the packaged upstream at the pinned version (design §6). */
+export function driftMatch(root: string): Finding[] {
+  const installed = join(root, '.agents', 'harness');
+  const pinPath = join(installed, 'install.yaml');
+  if (!existsSync(pinPath)) return [];
+  let up: string;
+  try {
+    up = packageHarness();
+  } catch {
+    return [];
+  }
+  const pin = (parse(readFileSync(pinPath, 'utf8')) as { version?: string }).version;
+  const upVersion = harnessVersion(up);
+  if (pin !== upVersion)
+    return [
+      {
+        reason: 'F2',
+        verdict: 'WARN',
+        path: '.agents/harness/install.yaml',
+        message: `installed harness is v${pin}, upstream is v${upVersion}`,
+        resume: 'run `reins update`',
+      },
+    ];
+  const findings: Finding[] = [];
+  for (const abs of walk(installed)) {
+    const rel = relative(installed, abs);
+    if (PROJECT_OWNED.has(rel)) continue;
+    const src = join(up, rel);
+    if (!existsSync(src)) continue;
+    if (readFileSync(src, 'utf8') !== readFileSync(abs, 'utf8'))
+      findings.push({
+        reason: 'F2',
+        verdict: 'STOP',
+        path: `.agents/harness/${rel}`,
+        message: `differs from upstream v${upVersion} (harness files are not edited in place)`,
+        resume: 'run `reins update` to restore it; change behaviour upstream or with an override',
+      });
+  }
+  return findings;
+}
+
 export function runCheck(opts: CheckOptions): StopReport {
   const root = repoRoot(opts.cwd ?? process.cwd());
   const findings: Finding[] = [];
@@ -188,10 +236,11 @@ export function runCheck(opts: CheckOptions): StopReport {
       reason: 'F2',
       verdict: 'STOP',
       message: `stage "${opts.stage}" is not implemented yet`,
-      resume: 'implemented in work item 4-2 (harness sources) and later',
+      resume: 'arrives with the loop skills (implementation step 6)',
     });
   }
-  if (opts.drift || !opts.stage) findings.push(...driftFormat(root), ...driftConvention(root));
+  if (opts.drift || !opts.stage)
+    findings.push(...driftFormat(root), ...driftConvention(root), ...driftMatch(root));
   if (!currentBranch(root))
     findings.push({ reason: 'F2', verdict: 'STOP', message: 'not a git repository' });
   return report(stage, findings);

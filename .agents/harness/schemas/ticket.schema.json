@@ -1,0 +1,15 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "reins/ticket@1", "type": "object",
+  "required": ["id", "intent", "plan_step", "title", "status", "release", "role"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[0-9]{3}-[0-9]+$" },
+    "intent": { "type": "string", "pattern": "^[0-9]{3}$" },
+    "plan_step": { "type": "integer", "minimum": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["todo", "doing", "blocked", "done"] },
+    "depends": { "type": "array", "items": { "type": "string" } },
+    "release": { "enum": ["planned", "stabilization"] },
+    "role": { "type": "string" },
+    "budget": { "type": "object", "properties": { "tokens": { "type": "integer", "minimum": 0 } } },
+    "asks": { "type": "array", "items": { "type": "string" } },
+    "branch": { "type": "string" }
+  } }

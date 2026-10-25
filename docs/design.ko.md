@@ -19,7 +19,7 @@
 ├── AGENTS.md                 커밋 · 관리 블록(툴) + 프로젝트 절
 ├── .agents/                  커밋 · 에이전트 컨텍스트
 │   ├── intent/<id>_<slug>/{intent,spec,plan}.md
-│   ├── knowledge/  harness/{policy,roles,schemas,bindings,gates.yaml}  SKILLS.md  skills/
+│   ├── knowledge/  harness/{policy,roles,schemas,templates, bindings.yaml, gates.yaml, install.yaml}  SKILLS.md  skills/
 ├── .claude/ .codex/ .gemini/ .cursor/   커밋 · 생성물
 ├── docs/  (ROADMAP.md, 기획서·설계서, 공유할 benchmark·조사)   test/  (단위·통합·e2e)
 └── .loctx/                   gitignore (+ 내부 .gitignore) · ROADMAP.local.md ticket/ reports/ pr/ release/ context/ bus/ test/ history/
@@ -116,6 +116,7 @@ T1 ticket 시작 전(B1·의존·예산·바인딩·**`asks:`↔`decisions:` 대
 
 ## 9. CLI와 플러그인 (D13·D14)
 `npx @bluenyang/reins` — `install <tier> [--mode manual|auto]` · `migrate <tier>` · `update` · `configure bindings|budget|gates|language` · `check [--stage] [--drift]` · `recall` · `status` · `doctor`. 전부 `--dry-run`·`--json`. TS, Node ≥ 20, Python 없음(R65). **CLI는 모델을 부르지 않는다** — 에이전트 일은 스킬(`reins-setup` 등)이.
+install은 3·4세대 하네스 위에서는 **거부하고 `migrate`로 안내**한다. 1·2세대면 설치하되 옛 `.ai/`는 건드리지 않고 migrate를 안내한다. 버전 핀과 설정은 `.agents/harness/install.yaml`(tier·version·mode·language).
 install 질문(manual): 벤더 · 바인딩 조정 · 게이트 확인 · 비밀 패턴 · 훅 **제안만** · 공개 레포? · 문서 언어 · 예산(선택). auto는 감지·기본값·리포트.
 레포 = 플러그인 + npm: `.claude-plugin/plugin.json`(`dependencies: []`, userConfig `language`·`default_mode`) · `skills/`(얇은 입구) · `agents/`(생성) · `harness/`(원본의 원본 + templates + knowledge-seeds + VERSION) · `cli/` · `codex/ gemini/ cursor/`(1차 unverified) · `hooks/` · `docs/ test/ .agents/ .loctx/`. 플러그인 루트 `bin/` 없음. 선택 의존(humanize-korean·diagram-design)은 감지해 권장만.
 

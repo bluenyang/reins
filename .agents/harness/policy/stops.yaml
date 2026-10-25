@@ -1,0 +1,29 @@
+schema: reins/policy/stops@1
+# Stop conditions (design §3). grade: HOLD needs the user · STOP resumable · ESCALATE follows the chain · WARN reports only (E1).
+# kind: intent = a person's call, never automated · knowledge = learned away over time.
+# Counters (D1, D2) reset when the unit passes.
+stops:
+  - { id: A1, group: irreversible, kind: intent, grade: HOLD, detect: verifier, text: "force push to a shared branch, deleting or moving a published tag, rewriting main", resume: "the user runs it explicitly, every time" }
+  - { id: A2, group: irreversible, kind: intent, grade: HOLD, detect: verifier, text: "stable (non-rc) release", resume: "the user's explicit instruction, every time" }
+  - { id: A3, group: irreversible, kind: intent, grade: HOLD, detect: verifier, text: "irreversible data change; touching running servers or clusters", resume: "the user's explicit instruction" }
+  - { id: A4, group: irreversible, kind: intent, grade: HOLD, detect: verifier, text: "anything leaving the machine outside the pre-release loop's defined steps", resume: "the user's instruction at that moment" }
+  - { id: B1, group: decision, kind: intent, grade: HOLD, detect: verifier, text: "a ticket with open asks:", resume: "record the answer in the ticket" }
+  - { id: B2, group: decision, kind: intent, grade: HOLD, detect: verifier, text: "a design invariant changes without a recorded decision", resume: "add the decision to knowledge/" }
+  - { id: B3, group: decision, kind: intent, grade: HOLD, detect: role, text: "a change conflicts with intent or spec (scope)", resume: "amend the intent or open a new one" }
+  - { id: B4, group: decision, kind: intent, grade: HOLD, detect: role, text: "the roadmap is silent or contradicts itself", resume: "fix the roadmap" }
+  - { id: B5, group: decision, kind: intent, grade: STOP, detect: role, text: "an external API or environment contradicts a design assumption and the scope changes", resume: "update spec.md, then HOLD for the user" }
+  - { id: C1, group: premise, kind: knowledge, grade: STOP, detect: role, text: "the rationale for the work no longer holds", resume: "fix plan.md and the ticket first, then continue" }
+  - { id: C2, group: premise, kind: knowledge, grade: STOP, detect: verifier, text: "the diff departs from plan.md and the plan was not updated (R45)", resume: "update plan.md in the same commit" }
+  - { id: D1, group: failure, kind: knowledge, grade: ESCALATE, detect: verifier, text: "two failed test rounds in the same unit (ticket before rc.1, rc after)", resume: "root cause by the next role in the chain" }
+  - { id: D2, group: failure, kind: knowledge, grade: ESCALATE, detect: verifier, text: "a red check twice with no fix in history or knowledge", resume: "root cause by the next role in the chain" }
+  - { id: D3, group: failure, kind: knowledge, grade: STOP, detect: verifier, text: "flaky: passes alone, fails in the full run", resume: "isolate the scenario, mark flaky in the report, continue, report to the user" }
+  - { id: D4, group: failure, kind: knowledge, grade: STOP, detect: verifier, text: "a suspected false pass: no exit code, empty output, piped gate", resume: "re-run the gate unmodified" }
+  - { id: D5, group: failure, kind: knowledge, grade: STOP, detect: verifier, text: "a pass row without toolchain evidence (R46)", resume: "attach the raw output" }
+  - { id: E1, group: cost, kind: knowledge, grade: WARN, detect: verifier, text: "80% of the narrowest budget in scope — warning only, continue", resume: "none" }
+  - { id: E2, group: cost, kind: knowledge, grade: STOP, detect: verifier, text: "100% of a ticket/scope budget", resume: "pm re-sets the budget, or HOLD" }
+  - { id: E3, group: cost, kind: knowledge, grade: HOLD, detect: verifier, text: "100% of an rc or session budget", resume: "the user" }
+  - { id: F1, group: violation, kind: knowledge, grade: STOP, detect: verifier, text: "a role attempts an action on its must_not list or a common red line", resume: "reassign the role or ask the user" }
+  - { id: F2, group: violation, kind: knowledge, grade: STOP, detect: drift-check, text: "drift between harness sources and generated files, or a convention violation", resume: "reins update / reins configure, then re-run the check" }
+  - { id: F3, group: violation, kind: knowledge, grade: STOP, detect: role, text: "a rejected proposal re-raised (C8)", resume: "drop it; record in knowledge/" }
+  - { id: G1, group: interrupt, kind: intent, grade: STOP, detect: runtime, text: "the user interrupts: chat, Ctrl+C, or session end (R48)", resume: "record ticket, stage, last commit, open bus files, next command; the same command resumes" }
+  - { id: G2, group: interrupt, kind: intent, grade: HOLD, detect: pm, text: "the user vetoes a spec summary (R64)", resume: "revise spec.md" }

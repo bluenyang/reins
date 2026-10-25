@@ -1,0 +1,16 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "reins/knowledge@1", "type": "object",
+  "required": ["id", "kind", "status", "topics", "decisions", "applies_to", "source"],
+  "properties": {
+    "id": { "type": "string" },
+    "kind": { "enum": ["decision", "failure"] },
+    "status": { "enum": ["active", "superseded"] },
+    "supersedes": { "type": ["string", "null"] },
+    "topics": { "type": "array", "items": { "type": "string" } },
+    "decisions": { "type": "array", "items": { "type": "string" } },
+    "symptoms": { "type": "array", "items": { "type": "string" } },
+    "applies_to": { "oneOf": [{ "const": "all" }, { "type": "array", "items": { "type": "string" } }] },
+    "source": { "type": "string" },
+    "approved": { "type": "object", "properties": { "by": { "type": "string" }, "at": { "type": "string" } } },
+    "symptom": { "type": "string" }, "cause": { "type": "string" }, "fix": { "type": "string" },
+    "check": { "type": "string" }, "verified": { "type": "integer", "minimum": 0 }
+  } }

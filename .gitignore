@@ -13,3 +13,6 @@ __pycache__/
 # node
 node_modules/
 cli/dist/
+
+# reins local workspace
+.loctx/

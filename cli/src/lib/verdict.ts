@@ -3,10 +3,10 @@ export type Verdict = 'CONTINUE' | 'HOLD' | 'STOP' | 'ESCALATE';
 
 export const EXIT: Record<Verdict, number> = { CONTINUE: 0, HOLD: 10, STOP: 20, ESCALATE: 30 };
 
-/** One finding: a stop-condition id from design §3 plus what to do about it. */
+/** One finding: a stop-condition id from design §3 plus what to do about it. WARN reports without stopping (E1). */
 export interface Finding {
   reason: string; // A1..G2, C1..C10, F2 …
-  verdict: Exclude<Verdict, 'CONTINUE'>;
+  verdict: Exclude<Verdict, 'CONTINUE'> | 'WARN';
   message: string;
   path?: string;
   resume?: string; // how to get past it
@@ -22,13 +22,16 @@ export interface StopReport {
 
 const RANK: Record<Verdict, number> = { CONTINUE: 0, STOP: 1, ESCALATE: 2, HOLD: 3 };
 
-/** The report's verdict is the most demanding of its findings; HOLD outranks all. */
+/** The report's verdict is the most demanding of its findings; HOLD outranks all; WARN never stops. */
 export function report(stage: string, findings: Finding[]): StopReport {
   let verdict: Verdict = 'CONTINUE';
-  for (const f of findings) if (RANK[f.verdict] > RANK[verdict]) verdict = f.verdict;
+  for (const f of findings)
+    if (f.verdict !== 'WARN' && RANK[f.verdict] > RANK[verdict]) verdict = f.verdict;
+  const blocking = findings.filter((f) => f.verdict !== 'WARN');
+  const warns = findings.length - blocking.length;
   const summary =
-    findings.length === 0
-      ? `${stage}: ok`
-      : `${stage}: ${verdict} — ${findings.map((f) => f.reason).join(', ')}`;
+    blocking.length === 0
+      ? `${stage}: ok${warns ? ` (${warns} warning${warns > 1 ? 's' : ''})` : ''}`
+      : `${stage}: ${verdict} — ${blocking.map((f) => f.reason).join(', ')}`;
   return { schema: 'reins/bus/stop-report@1', stage, verdict, findings, summary };
 }

@@ -1,0 +1,14 @@
+schema: reins/bus/request@1
+id: 000-1_01
+from: pl
+to: implementer
+ticket: 000-1
+intent: "000"
+kind: implement
+changes: []
+why: ""
+tried: []
+not_tried: []
+deadline: null
+revert: ""
+errors: ""

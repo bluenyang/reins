@@ -5,7 +5,11 @@ to: implementer
 ticket: 000-1
 intent: "000"
 kind: implement
-changes: []
+changes:
+  - path: "cli/src/example.ts"
+    what: "one line: what changed"
+    why: "S-1"
+    evidence: ".loctx/reports/<gate>.log"
 why: ""
 tried: []
 not_tried: []

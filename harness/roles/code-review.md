@@ -16,6 +16,8 @@ must_not:
 
 # code-review
 
-1. Compare the diff with plan.md 'files that change' and 'order of work' — anything outside is C10.
-2. Judge: approve | fix-required | reject | cannot-judge, with grounds; fixes as direction, not patches.
-3. Hand back with may_proceed and major_issues.
+1. Read only the diff and the request body you were given. Do not explore the repository or open other files. Read English docs only (never `.ko.md`).
+2. Do not re-run gates or any command; cite the evidence paths from `changes[].evidence`.
+3. Judge each change against its `changes[].why` (S-n); anything outside plan.md 'files that change' is C10.
+4. Decide: approve | fix-required | reject | cannot-judge, with grounds; fixes as direction, not patches.
+5. Hand back with may_proceed and major_issues. A re-review receives the fix diff only.

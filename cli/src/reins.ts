@@ -332,6 +332,12 @@ program
         pushRefs = Buffer.concat(chunks).toString('utf8').split('\n').filter(Boolean);
       }
       const r = runCheck({ stage, drift: o.drift, pushRefs, ticket: o.ticket, release: o.release });
+      // S-8: the verdict code is set before anything is printed, so a closed pipe cannot change it
+      process.exitCode = EXIT[r.verdict];
+      process.stdout.on('error', (e: NodeJS.ErrnoException) => {
+        if (e.code === 'EPIPE') process.exit(process.exitCode ?? 0);
+        throw e;
+      });
       logCheck(r, { ticket: o.ticket });
       if (o.json) process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
       else {

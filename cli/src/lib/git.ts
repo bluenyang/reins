@@ -13,8 +13,17 @@ export function stagedFiles(cwd: string): string[] {
   return out ? out.split('\n') : [];
 }
 
+/** The checked-out branch; on a repository without commits `rev-parse` fails, so ask for the symbolic ref instead. */
 export function currentBranch(cwd: string): string {
-  return git(['rev-parse', '--abbrev-ref', 'HEAD'], cwd);
+  try {
+    return git(['rev-parse', '--abbrev-ref', 'HEAD'], cwd);
+  } catch {
+    try {
+      return git(['symbolic-ref', '--short', 'HEAD'], cwd);
+    } catch {
+      return '';
+    }
+  }
 }
 
 export function isAncestor(ancestor: string, descendant: string, cwd: string): boolean {

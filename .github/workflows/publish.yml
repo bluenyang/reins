@@ -1,0 +1,141 @@
+# Publish @bluenyang/reins to npm (trusted publishing — no token; npm trusts this file by name).
+#
+# Trigger: Actions → "publish" → Run workflow
+#   - release_type: patch | minor | major | rc  (rc: X.Y.Z-rc.N+1, or next patch -rc.1)
+#   - version: exact version without a leading v (overrides release_type)
+#   - dry_run: run every check and `npm publish --dry-run`; no commit, tag or upload
+#
+# Order: resolve version → gate (check, build, drift) → npm publish → commit package.json, tag, push.
+# reins is released on npm only: no GitHub Release, no draft. Update CHANGELOG.md before running.
+
+name: publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: Version bump (ignored when `version` is set)
+        required: true
+        type: choice
+        options: [patch, minor, major, rc]
+        default: patch
+      version:
+        description: Exact version without leading v (e.g. 0.1.1). Empty = bump from package.json
+        required: false
+        type: string
+        default: ''
+      dry_run:
+        description: Check and pack only — nothing is published or pushed
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # version commit and tag
+  id-token: write # npm trusted publishing (OIDC) and provenance
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4 # version from package.json#packageManager
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      # trusted publishing needs npm 11.5.1 or later
+      - run: npm install -g npm@latest
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          CURRENT=$(node -p "require('./package.json').version")
+          CORE=${CURRENT%%-*}
+          IFS=. read -r MAJ MIN PAT <<< "$CORE"
+          if [[ -n "$INPUT_VERSION" ]]; then
+            NEXT=${INPUT_VERSION#v}
+          else
+            case "$RELEASE_TYPE" in
+              major) NEXT="$((MAJ + 1)).0.0" ;;
+              minor) NEXT="$MAJ.$((MIN + 1)).0" ;;
+              patch) NEXT="$MAJ.$MIN.$((PAT + 1))" ;;
+              rc)
+                if [[ "$CURRENT" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-rc\.([0-9]+)$ ]]; then
+                  NEXT="${BASH_REMATCH[1]}-rc.$((BASH_REMATCH[2] + 1))"
+                else
+                  NEXT="$MAJ.$MIN.$((PAT + 1))-rc.1"
+                fi ;;
+            esac
+          fi
+          if [[ ! "$NEXT" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::not a version: $NEXT"; exit 1
+          fi
+          if npm view "@bluenyang/reins@$NEXT" version 2>/dev/null | grep -q .; then
+            echo "::error::@bluenyang/reins@$NEXT is already on npm (a version number is never reused)"; exit 1
+          fi
+          if git ls-remote --tags origin "refs/tags/v$NEXT" | grep -q .; then
+            echo "::error::tag v$NEXT already exists"; exit 1
+          fi
+          # prerelease → its id as the dist-tag (0.2.0-rc.1 → rc); otherwise latest
+          TAG=latest
+          if [[ "$NEXT" == *-* ]]; then PRE=${NEXT#*-}; TAG=${PRE%%.*}; fi
+          echo "$CURRENT → $NEXT (dist-tag $TAG)"
+          { echo "version=$NEXT"; echo "dist_tag=$TAG"; } >> "$GITHUB_OUTPUT"
+
+      - name: Set package version
+        env:
+          NEXT: ${{ steps.version.outputs.version }}
+        run: npm version "$NEXT" --no-git-tag-version --allow-same-version
+
+      - run: pnpm install --frozen-lockfile
+      # the same gate as CI and the hooks
+      - run: pnpm check
+      - run: pnpm build
+      - run: node cli/dist/reins.js check --drift
+      - name: The CLI reports the version being published
+        env:
+          NEXT: ${{ steps.version.outputs.version }}
+        run: test "$(node cli/dist/reins.js --version)" = "$NEXT"
+
+      - name: npm publish
+        env:
+          DIST_TAG: ${{ steps.version.outputs.dist_tag }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [[ "$DRY_RUN" == "true" ]]; then
+            npm publish --access public --tag "$DIST_TAG" --dry-run
+          else
+            npm publish --access public --tag "$DIST_TAG"
+          fi
+
+      - name: Commit version, tag, push
+        if: ${{ !inputs.dry_run }}
+        env:
+          NEXT: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git commit -m "release: v$NEXT" # the hooks run here too (C5)
+          git tag "v$NEXT"
+          for attempt in 1 2 3; do
+            git push origin "HEAD:${GITHUB_REF_NAME}" && break
+            [[ $attempt -eq 3 ]] && { echo "::error::push failed — npm has v$NEXT; push the version commit by hand"; exit 1; }
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+          done
+          git push origin "v$NEXT"

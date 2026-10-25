@@ -39,4 +39,4 @@ tickets: ["001-1", "001-2"]
 - [ ] C-8 이 레포에서 001 표시
 
 ## 이탈 기록
-—
+- 2026-10-25 (001-1, code-review 001-1_02): S-4 "CONTINUE면 implementer: start"를 "ticket의 role: start"로 해석한다. role이 docs인 ticket에 "implementer"라고 쓰면 틀린 안내가 되기 때문. 이 레포 ticket은 모두 implementer라 화면은 같다. — pl

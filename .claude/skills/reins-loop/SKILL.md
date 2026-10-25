@@ -31,6 +31,12 @@ Exit codes 0/10/20/30. Use `npx @bluenyang/reins` (inside the reins repository: 
 8. **Close.** `status: done`; one history page or line in `.loctx/history/` naming the ticket id, its commits,
    and a `decisions:` line; then delete the ticket file and its bus files.
 
+**Metrics.** After each role run, report what it cost: `reins metrics record --role <r> --tokens <n> --ticket <id>`.
+Tokens come from the vendor — Claude subagent: the Agent result's token count · `codex exec`: the "tokens used"
+line · `agy`, `cursor-agent` with `--output-format json`: the usage field when present. No count from the
+vendor → record nothing, never guess. `reins check` and `reins gate` log themselves to
+`.loctx/reports/metrics.jsonl`; `reins metrics` summarises it.
+
 ## Release
 9. When every planned ticket is done: **T5** `reins check --stage rc-close --release <version>`. Report to
    the user. Push, PR and release happen only on the user's instruction, in the deploy role (T4 runs in the

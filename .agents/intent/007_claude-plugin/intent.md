@@ -2,9 +2,10 @@
 id: "007"
 slug: claude-plugin
 version: 0.1.2
-status: draft
+status: approved
 origin: user
-approvals: []
+approvals:
+  - { role: user, at: 2026-10-26 }
 supersedes: null
 ---
 ## 문제

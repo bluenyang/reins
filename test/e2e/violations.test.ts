@@ -128,7 +128,7 @@ function stops(
   id: string,
   violation: string,
   args: string[],
-  expected: { reason: string; verdict: Verdict },
+  expected: { reason: string; verdict: Verdict; path?: string; message?: string },
   setup: (d: string) => void,
   stdin?: (d: string) => string,
 ): Scenario {
@@ -139,10 +139,15 @@ function stops(
       setup(d);
       const r = reins(d, [...args, '--json'], stdin?.(d));
       const report = JSON.parse(r.stdout) as Report;
-      expect(
-        report.findings.map((f) => `${f.reason} ${f.verdict}`),
-        r.stdout,
-      ).toContain(`${expected.reason} ${expected.verdict}`);
+      // the finding that names this very violation, not just any finding of the same reason
+      const own = report.findings.filter(
+        (f) =>
+          f.reason === expected.reason &&
+          f.verdict === expected.verdict &&
+          (expected.path === undefined || f.path === expected.path) &&
+          (expected.message === undefined || f.message.includes(expected.message)),
+      );
+      expect(own.length, r.stdout).toBeGreaterThan(0);
       expect(report.verdict).toBe(expected.verdict);
       expect(r.code).toBe(EXIT[expected.verdict]);
     },
@@ -155,36 +160,61 @@ const ticketStart = (t: string) => ['check', '--stage', 'ticket-start', '--ticke
 const verdict = ['check', '--stage', 'verdict', '--ticket', '001-1'];
 
 const SCENARIOS: Scenario[] = [
-  stops('V1', '.env staged', preCommit, { reason: 'C4', verdict: 'STOP' }, (d) => {
+  stops('V1', '.env staged', preCommit, { reason: 'C4', verdict: 'STOP', path: '.env' }, (d) => {
     put(d, '.env', 'TOKEN=x\n');
     git(d, 'add', '-f', '.env');
   }),
-  stops('V2', 'a .loctx/ file force-staged', preCommit, { reason: 'F2', verdict: 'STOP' }, (d) => {
-    put(d, '.loctx/note.md', 'local\n');
-    git(d, 'add', '-f', '.loctx/note.md');
-  }),
+  stops(
+    'V2',
+    'a .loctx/ file force-staged',
+    preCommit,
+    { reason: 'F2', verdict: 'STOP', path: '.loctx/note.md', message: 'local-only' },
+    (d) => {
+      put(d, '.loctx/note.md', 'local\n');
+      git(d, 'add', '-f', '.loctx/note.md');
+    },
+  ),
   stops(
     'V3',
     '.loctx/ removed from .gitignore',
     preCommit,
-    { reason: 'F2', verdict: 'STOP' },
+    { reason: 'F2', verdict: 'STOP', message: 'not in .gitignore' },
     (d) => put(d, '.gitignore', '# nothing ignored\n'),
   ),
-  stops('V4', 'installed role file edited by hand', drift, { reason: 'F2', verdict: 'STOP' }, (d) =>
-    appendFileSync(join(d, '.agents/harness/roles/implementer.md'), '\nedited\n'),
+  stops(
+    'V4',
+    'installed role file edited by hand',
+    drift,
+    {
+      reason: 'F2',
+      verdict: 'STOP',
+      path: '.agents/harness/roles/implementer.md',
+      message: 'differs from upstream',
+    },
+    (d) => appendFileSync(join(d, '.agents/harness/roles/implementer.md'), '\nedited\n'),
   ),
   stops(
     'V5',
     'generated .claude/agents/* edited by hand',
     drift,
-    { reason: 'C3', verdict: 'STOP' },
+    {
+      reason: 'C3',
+      verdict: 'STOP',
+      path: '.claude/agents/reins-implementer.md',
+      message: 'edited by hand',
+    },
     (d) => appendFileSync(join(d, '.claude/agents/reins-implementer.md'), '\nedited\n'),
   ),
   stops(
     'V6',
     'SKILL.md name differs from its directory',
     drift,
-    { reason: 'F2', verdict: 'STOP' },
+    {
+      reason: 'F2',
+      verdict: 'STOP',
+      path: '.agents/skills/foo/SKILL.md',
+      message: 'must equal its directory',
+    },
     (d) =>
       put(
         d,
@@ -196,7 +226,7 @@ const SCENARIOS: Scenario[] = [
     'V7',
     'ticket frontmatter breaks the schema',
     drift,
-    { reason: 'F2', verdict: 'STOP' },
+    { reason: 'F2', verdict: 'STOP', path: '.loctx/ticket/001-1_x.md', message: 'ticket:' },
     (d) =>
       put(d, '.loctx/ticket/001-1_x.md', TICKET('001-1').replace('status: todo', 'status: wizard')),
   ),
@@ -204,7 +234,7 @@ const SCENARIOS: Scenario[] = [
     'V8',
     'push whose remote commit is not an ancestor',
     ['check', '--stage', 'pre-push'],
-    { reason: 'A1', verdict: 'HOLD' },
+    { reason: 'A1', verdict: 'HOLD', path: 'refs/heads/main', message: 'not an ancestor' },
     (d) => {
       const base = git(d, 'rev-parse', 'HEAD');
       const branch = git(d, 'rev-parse', '--abbrev-ref', 'HEAD');
@@ -224,7 +254,7 @@ const SCENARIOS: Scenario[] = [
     'V9',
     'ticket started under a draft intent',
     ticketStart('001-1'),
-    { reason: 'B3', verdict: 'HOLD' },
+    { reason: 'B3', verdict: 'HOLD', message: 'intent 001 is draft' },
     (d) => {
       chain(d, { intent: 'draft' });
       put(d, '.loctx/ticket/001-1_x.md', TICKET('001-1'));
@@ -234,7 +264,7 @@ const SCENARIOS: Scenario[] = [
     'V10',
     'ticket started with an open ask',
     ticketStart('001-1'),
-    { reason: 'B1', verdict: 'HOLD' },
+    { reason: 'B1', verdict: 'HOLD', message: 'open ask "which output format?"' },
     (d) => {
       chain(d);
       put(d, '.loctx/ticket/001-1_x.md', TICKET('001-1', 'asks: ["which output format?"]\n'));
@@ -244,30 +274,38 @@ const SCENARIOS: Scenario[] = [
     'V11',
     'ticket that the plan does not list',
     ticketStart('001-3'),
-    { reason: 'C2', verdict: 'STOP' },
+    { reason: 'C2', verdict: 'STOP', message: 'ticket 001-3 is not in the plan' },
     (d) => {
       chain(d);
       put(d, '.loctx/ticket/001-3_x.md', TICKET('001-3'));
     },
   ),
-  stops('V12', 'pass without evidence', verdict, { reason: 'D5', verdict: 'STOP' }, (d) =>
-    bus(d, '001-1_01', 'pass', ''),
+  stops(
+    'V12',
+    'pass without evidence',
+    verdict,
+    { reason: 'D5', verdict: 'STOP', message: 'pass without evidence' },
+    (d) => bus(d, '001-1_01', 'pass', ''),
   ),
   stops(
     'V13',
     'gate evidence that went through a pipe',
     verdict,
-    { reason: 'D4', verdict: 'STOP' },
+    { reason: 'D4', verdict: 'STOP', message: 'did not run as a single command' },
     (d) => bus(d, '001-1_01', 'pass', '$ pnpm test | tail -5\nok\nexit 0'),
   ),
-  stops('V14', 'exit 1 reported as pass', verdict, { reason: 'D4', verdict: 'STOP' }, (d) =>
-    bus(d, '001-1_01', 'pass', '$ pnpm test\n1 failed\nexit 1'),
+  stops(
+    'V14',
+    'exit 1 reported as pass',
+    verdict,
+    { reason: 'D4', verdict: 'STOP', message: 'exits 1' },
+    (d) => bus(d, '001-1_01', 'pass', '$ pnpm test\n1 failed\nexit 1'),
   ),
   stops(
     'V15',
     'two failed verifications in a row',
     verdict,
-    { reason: 'D1', verdict: 'ESCALATE' },
+    { reason: 'D1', verdict: 'ESCALATE', message: '2 failed verification rounds' },
     (d) => {
       bus(d, '001-1_01', 'fail', '$ pnpm test\nexit 1');
       bus(d, '001-1_02', 'fail', '$ pnpm test\nexit 1');
@@ -277,9 +315,14 @@ const SCENARIOS: Scenario[] = [
     'V16',
     'rc closed while a ticket is open',
     ['check', '--stage', 'rc-close', '--release', '0.2.0'],
-    { reason: 'F2', verdict: 'STOP' },
+    {
+      reason: 'F2',
+      verdict: 'STOP',
+      path: '.loctx/ticket/001-1_x.md',
+      message: 'ticket 001-1 is still open',
+    },
     (d) => {
-      chain(d);
+      chain(d, { plan: PLAN('["001-1"]') });
       put(d, '.loctx/ticket/001-1_x.md', TICKET('001-1'));
     },
   ),
@@ -307,6 +350,10 @@ const SCENARIOS: Scenario[] = [
     id: 'V18',
     violation: 'generated settings.json denies secret reads, force pushes and --no-verify',
     run: (d) => {
+      // generate it here, through the built CLI, rather than reading what the template happens to hold
+      rmSync(join(d, '.claude'), { recursive: true, force: true });
+      const r = reins(d, ['install', 'graph', '--mode', 'auto']);
+      expect(r.code, r.stderr).toBe(0);
       const settings = JSON.parse(readFileSync(join(d, '.claude/settings.json'), 'utf8')) as {
         permissions: { deny: string[] };
       };

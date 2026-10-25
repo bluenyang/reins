@@ -6,8 +6,13 @@ description: Install reins in this repository, or move an existing harness onto 
 # reins-setup
 
 You act as the **pm** role (`.agents/harness/roles/pm.md` once installed). The CLI does the work; you collect
-the answers only the user can give and report what happened. Run the CLI as `npx @bluenyang/reins …`
-(inside the reins repository itself: `node cli/dist/reins.js …`).
+the answers only the user can give and report what happened. Run the CLI as `npx @bluenyang/reins@0.1.1 …`
+(the version is pinned to this skill's release; inside the reins repository itself: `node cli/dist/reins.js …`).
+
+Defaults from the plugin settings: language `${user_config.language}`, install mode `${user_config.default_mode}`.
+If either still starts with `${` (unsubstituted — this copy lives in a project, not the plugin), use the built-in
+default of step 2 instead. Use these only as the defaults you propose; change `--mode` to `auto` only after the
+user confirms it.
 
 1. **Look first.** `reins install graph --dry-run --json` → read `generation` and `refused`.
    - `refused` (3rd/4th-generation harness) → `reins migrate <tier> --dry-run` and show the moves.

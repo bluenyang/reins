@@ -1,0 +1,25 @@
+{
+  "name": "reins",
+  "version": "0.1.1",
+  "description": "Installs, migrates and updates the reins agent harness; exposes /reins:reins-setup.",
+  "author": { "name": "BlueNyang" },
+  "homepage": "https://github.com/bluenyang/reins#readme",
+  "repository": "https://github.com/bluenyang/reins",
+  "license": "MIT",
+  "keywords": ["agent-harness", "harness", "loop", "roles", "handoff"],
+  "userConfig": {
+    "language": {
+      "type": "string",
+      "title": "Document language",
+      "description": "Language of the documents you read (intent, .loctx, .ko twins), as a language code.",
+      "default": "ko"
+    },
+    "default_mode": {
+      "type": "string",
+      "title": "Default install mode",
+      "description": "manual asks before applying; auto detects and applies defaults.",
+      "default": "manual",
+      "options": ["manual", "auto"]
+    }
+  }
+}

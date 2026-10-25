@@ -1,0 +1,12 @@
+{
+  "name": "bluenyang",
+  "owner": { "name": "BlueNyang" },
+  "plugins": [
+    {
+      "name": "reins",
+      "source": "./",
+      "description": "Installs, migrates and updates the reins agent harness.",
+      "skills": ["./skills/reins-setup"]
+    }
+  ]
+}

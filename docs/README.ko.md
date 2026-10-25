@@ -14,15 +14,16 @@ BlueNyang과 Team Croffle의 저장소 열두 곳이 같은 하네스 계보를 
 
 ## 상태
 
-버전 0.1.0은 프리릴리스이며 계획의 1차(round one)입니다. 아직 npm에 올라가 있지 않고 Claude Code
-플러그인 매니페스트도 없습니다. 그래서 지금은 `npx @bluenyang/reins`가 동작하지 않으니 소스에서
-빌드해야 합니다([소스에서 시작하기](#소스에서-시작하기) 참고). 생성되는 벤더 파일은 Claude Code만
-검증했습니다.
+0.1.0이 npm에 있습니다: `npx @bluenyang/reins <command>`. 계획의 1차(round one)로, graph 단계이며
+생성되는 벤더 파일은 Claude Code만 검증했습니다. loop와 harness 단계는 0.2에서 graph로부터 깎아
+냅니다. 알려진 문제는 [CHANGELOG.md](../CHANGELOG.md)에 있고, 그 수정은 0.1.1로 나갑니다. 0.1.2에서는
+Claude Code 플러그인을 추가합니다.
 
-reins는 자기 루프로 자기 자신을 개발합니다. intent 001(`reins status`)은 intent → spec → plan →
-ticket 순서를 거쳤고 T1~T5 검사를 통과했으며 코드 리뷰는 Codex가 맡았습니다. 이때 다른 벤더에 묶인
-역할은 각 벤더 CLI(`codex exec`, `agy -p`)로 돌았습니다. `reins-loop` 스킬에 따라 주 에이전트가
-호출한 것이며 CLI가 벤더를 스스로 부르는 기능은 아직 없습니다.
+reins는 자기 루프로 자기 자신을 개발합니다. intent 001(`reins status`), 002(`reins metrics`),
+003(위반 시나리오)이 각각 intent → spec → plan → ticket 순서를 거쳤고, T1~T5 검사를 통과했으며 코드
+리뷰는 Codex가 맡았습니다. 다른 벤더에 묶인 역할은 각 벤더 CLI(`codex exec`, `agy -p`)로
+돌았습니다. `reins-loop` 스킬에 따라 주 에이전트가 호출한 것이며 CLI가 벤더를 스스로 부르는 기능은
+아직 없습니다.
 
 ## 사다리
 
@@ -77,30 +78,27 @@ qa-run, deploy, docs, advisor. 역할 파일마다 해서는 안 되는 일이 �
 | `.claude/` | 합니다 | `.agents/`에서 생성한 파일, 직접 고치지 않습니다 |
 | `.loctx/` | 안 합니다 (gitignore) | ticket, 보고서, 인수인계 `bus/`, `history/`, 로컬 로드맵 |
 
-## 소스에서 시작하기
+## 시작하기
 
-Node 20 이상과 pnpm이 필요합니다.
-
-```sh
-git clone https://github.com/bluenyang/reins.git
-cd reins
-pnpm install
-pnpm build
-```
-
-CLI는 설치하려는 저장소의 루트에서 실행합니다. 저장소에 커밋이 하나 이상 있어야 합니다(0.1.0의
-`check`는 커밋이 없는 저장소에서 실패합니다).
+Node 20 이상이 필요합니다. 설치하려는 저장소의 루트에서 실행하며, 저장소에 커밋이 하나 이상 있어야
+합니다(0.1.0의 `check`는 커밋이 없는 저장소에서 실패합니다).
 
 ```sh
-node /path/to/reins/cli/dist/reins.js install graph --dry-run   # 쓸 파일을 미리 보여 줍니다
-node /path/to/reins/cli/dist/reins.js install graph --mode auto # 파일을 놓고 CLI를 감지해 기본값을 적용합니다
-node /path/to/reins/cli/dist/reins.js check --drift             # 원본과 생성물이 맞으면 "drift: ok"를 출력합니다
-node /path/to/reins/cli/dist/reins.js status                    # intent, ticket, bus, 마지막 history
+npx @bluenyang/reins install graph --dry-run   # 쓸 파일을 미리 보여 줍니다
+npx @bluenyang/reins install graph --mode auto # 파일을 놓고 CLI를 감지해 기본값을 적용합니다
+npx @bluenyang/reins check --drift             # 원본과 생성물이 맞으면 "drift: ok"를 출력합니다
+npx @bluenyang/reins status                    # intent, ticket, bus, 마지막 history
 ```
 
 3·4세대 하네스가 있는 저장소에는 `install`이 거부하고 `migrate`를 안내합니다. 훅은 설치 안내문에서
-제안만 하고 `--hooks`를 줄 때만 추가합니다. 배포되면 같은 명령을 `npx @bluenyang/reins <command>`로
-실행하게 할 계획입니다.
+제안만 하고 `--hooks`를 줄 때만 추가합니다.
+
+설치한 뒤에는 에이전트로 일합니다. Claude Code에서는 `/reins-setup`을 한 번 실행하고, 새 요청마다
+`/reins-intent`를 씁니다. Codex, Antigravity, Cursor는 같은 스킬을 `.agents/skills/`에서 읽습니다.
+CLI는 스킬이 알아서 부릅니다.
+
+reins 자체를 개발하려면 `git clone https://github.com/bluenyang/reins.git` 후 `pnpm install`,
+`pnpm build`를 하고 `node cli/dist/reins.js <command>`로 실행합니다([CONTRIBUTING](CONTRIBUTING.ko.md) 참고).
 
 ## 명령
 
@@ -135,9 +133,9 @@ T1(`ticket-start`), T2(`pre-commit`), T3(`verdict`), T4(`pre-push`), T5(`rc-clos
 
 | 버전 | 내용 |
 |---|---|
-| 0.1 | graph 설계, 이 저장소의 자기 설치·자기 이전, 검증기, 스킬 세 개, README. 0.1.0을 npm에 배포합니다 |
+| 0.1 | graph 설계, 이 저장소의 자기 설치·자기 이전, 검증기, 스킬 세 개, metrics, 위반 시나리오. 0.1.0 배포됨, 0.1.1 안정화(루프가 찾은 문제 수정), 0.1.2 Claude Code 플러그인(마켓플레이스 설치) |
 | 0.2 | graph에서 loop·harness 깎기, Codex·Gemini·Cursor 생성물, `recall`·`doctor`·예산 정지, 이전 세대 하네스 시험 이전 |
-| 0.3 | Claude Code 플러그인, Team Croffle 저장소에 적용 |
+| 0.3 | Team Croffle 저장소에 적용 |
 | 1.0 | 정해진 일정은 없습니다. 0.x에서 기능을 더해 가다가 메인테이너가 체계가 잡혔다고 판단할 때 1.0이 됩니다. 안정화만으로 1.0이 되지는 않습니다 |
 
 ## 문서

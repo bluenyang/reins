@@ -14,14 +14,16 @@ loop that works only with Claude. The full list (P1–P6) is in [docs/proposal.m
 
 ## Status
 
-Version 0.1.0, pre-release, round one of the plan. It is not on npm yet and has no Claude Code
-plugin manifest, so `npx @bluenyang/reins` does not work today; build it from source (see
-[Quick start](#quick-start-from-source)). Generated vendor files are verified for Claude Code only.
+Version 0.1.0 is on npm: `npx @bluenyang/reins <command>`. It is round one of the plan — the graph
+tier, with generated vendor files verified for Claude Code only; the loop and harness tiers are
+carved out of it in 0.2. Known issues are listed in [CHANGELOG.md](CHANGELOG.md); their fixes ship
+as 0.1.1, and 0.1.2 adds a Claude Code plugin.
 
-reins develops itself through its own loop. Intent 001 (`reins status`) went intent → spec → plan →
-tickets; the checks at T1 to T5 passed, and Codex did the code review. Roles bound to other vendors
-ran through their CLIs (`codex exec`, `agy -p`) in that run: the lead agent called them following
-the `reins-loop` skill. The CLI does not dispatch to vendors by itself yet.
+reins develops itself through its own loop: intents 001 (`reins status`), 002 (`reins metrics`) and
+003 (violation scenarios) each went intent → spec → plan → tickets, with the checks at T1 to T5
+passing and Codex doing the code review. Roles bound to other vendors ran through their CLIs
+(`codex exec`, `agy -p`): the lead agent called them following the `reins-loop` skill. The CLI does
+not dispatch to vendors by itself yet.
 
 ## The ladder
 
@@ -76,30 +78,27 @@ reviewed by roles. Verification output is pasted as produced; a bare "passed" is
 | `.claude/` | yes | generated from `.agents/`; do not edit |
 | `.loctx/` | no (gitignored) | tickets, reports, handoff `bus/`, `history/`, local roadmap |
 
-## Quick start from source
+## Quick start
 
-Requires Node 20 or later and pnpm.
-
-```sh
-git clone https://github.com/bluenyang/reins.git
-cd reins
-pnpm install
-pnpm build
-```
-
-Run the CLI from the root of the repository you want to set up. The repository needs at least one
-commit (`check` fails on an empty history in 0.1.0):
+Requires Node 20 or later. Run it from the root of the repository you want to set up; the repository
+needs at least one commit (`check` fails on an empty history in 0.1.0):
 
 ```sh
-node /path/to/reins/cli/dist/reins.js install graph --dry-run   # show what would be written
-node /path/to/reins/cli/dist/reins.js install graph --mode auto # place files, detect CLIs, take defaults
-node /path/to/reins/cli/dist/reins.js check --drift             # prints "drift: ok" when sources and output match
-node /path/to/reins/cli/dist/reins.js status                    # intents, tickets, bus, last history entry
+npx @bluenyang/reins install graph --dry-run   # show what would be written
+npx @bluenyang/reins install graph --mode auto # place files, detect CLIs, take defaults
+npx @bluenyang/reins check --drift             # prints "drift: ok" when sources and output match
+npx @bluenyang/reins status                    # intents, tickets, bus, last history entry
 ```
 
 `install` refuses over a 3rd or 4th generation harness and points to `migrate`. Hooks are proposed
-in the install notes and added only with `--hooks`. Once published, the same commands are meant to
-run as `npx @bluenyang/reins <command>`.
+in the install notes and added only with `--hooks`.
+
+After the install, work goes through the agent: in Claude Code run `/reins-setup` once, then
+`/reins-intent` for each new request; Codex, Antigravity and Cursor read the same skills from
+`.agents/skills/`. The skills call the CLI themselves.
+
+To work on reins itself: `git clone https://github.com/bluenyang/reins.git`, then `pnpm install`,
+`pnpm build`, and run `node cli/dist/reins.js <command>` (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ## Commands
 
@@ -134,9 +133,9 @@ Three skills are the entry points for an agent; they follow the `SKILL.md` stand
 
 | Version | Content |
 |---|---|
-| 0.1 | graph design, self-install and self-migrate of this repository, the verifier, three skills, README; 0.1.0 is published to npm |
+| 0.1 | graph design, self-install and self-migrate of this repository, the verifier, three skills, metrics, violation scenarios. 0.1.0 published; 0.1.1 stabilisation (fixes the loop found); 0.1.2 Claude Code plugin (marketplace install) |
 | 0.2 | carve the loop and harness tiers out of the graph; generated files for Codex, Gemini and Cursor; `recall`, `doctor`, budget stops; trial migration of older harnesses |
-| 0.3 | Claude Code plugin; application to Team Croffle repositories |
+| 0.3 | application to Team Croffle repositories |
 | 1.0 | not scheduled: reins stays on 0.x and gains features until the maintainer considers the system settled; stabilising alone does not make it 1.0 |
 
 ## Documents

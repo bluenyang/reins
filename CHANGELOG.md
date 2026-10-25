@@ -10,10 +10,15 @@ This file is about the package. The harness that `reins update` re-applies to in
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md); an entry there tagged `[skill]`
 needs the `/reins-update` skill.
 
-## [Unreleased] — 0.1.0, round one
+## [Unreleased]
 
-Not published yet. Round one: the graph design, self-install and self-migrate of this repository,
-and the verifier.
+0.1.1 — stabilisation: fixes for the known issues of 0.1.0 found by the loop. 0.1.2 adds a Claude Code
+plugin.
+
+## [0.1.0] — 2026-10-26
+
+Round one: the graph design, self-install and self-migrate of this repository, and the verifier.
+Published to npm while the rc was still under verification; fixes go to 0.1.1.
 
 ### Added
 - `reins check`, the harness verifier. Stages `ticket-start` (T1), `pre-commit` (T2), `verdict` (T3),
@@ -57,3 +62,4 @@ and the verifier.
 - `recall`, `doctor` and `configure budget|gates|language` are not implemented.
 
 [Unreleased]: https://github.com/bluenyang/reins/commits/master
+[0.1.0]: https://www.npmjs.com/package/@bluenyang/reins/v/0.1.0

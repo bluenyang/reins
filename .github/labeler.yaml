@@ -1,0 +1,63 @@
+# Used by actions/labeler (see .github/workflows/labeler.yml).
+
+cli:
+  - changed-files:
+      - any-glob-to-any-file:
+          - cli/src/**
+
+harness:
+  - changed-files:
+      - any-glob-to-any-file:
+          - harness/**
+
+skills:
+  - changed-files:
+      - any-glob-to-any-file:
+          - skills/**
+
+intent:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .agents/intent/**
+
+generated:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .agents/harness/**
+          - .agents/skills/**
+          - .agents/SKILLS.md
+          - .claude/**
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - cli/test/**
+          - test/**
+          - vitest.config.ts
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - docs/**
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - package.json
+          - pnpm-lock.yaml
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+          - .husky/**
+
+feature:
+  - head-branch: ['^feat']
+
+bug:
+  - head-branch: ['^fix', '^bug']
+
+refactor:
+  - head-branch: ['^refactor']

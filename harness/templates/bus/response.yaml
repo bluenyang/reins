@@ -1,0 +1,9 @@
+schema: reins/bus/response@1
+request: 000-1_01
+from: implementer
+verdict: pass
+grounds: ""
+fixes: []
+may_proceed: true
+major_issues: []
+evidence: ""

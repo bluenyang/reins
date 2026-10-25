@@ -1,8 +1,10 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { basename, join, relative } from 'node:path';
 import { currentBranch, isAncestor, repoRoot, stagedFiles } from '../lib/git.js';
-import { isSecretPath } from '../lib/secrets.js';
-import { findSkillFiles, validateSkillFile } from '../lib/skills.js';
+import { harnessDir, secretPolicy } from '../lib/harness.js';
+import { loadSchemas, schemaFor, validateFile } from '../lib/schema.js';
+import { DEFAULT_ALLOWED, DEFAULT_SECRET_PATTERNS, isSecretPath } from '../lib/secrets.js';
+import { findSkillFiles, splitFrontmatter, validateSkillFile } from '../lib/skills.js';
 import { report, type Finding, type StopReport } from '../lib/verdict.js';
 
 export interface CheckOptions {
@@ -29,8 +31,12 @@ function gitignoreHas(root: string, entry: string): boolean {
 /** T2 — before a commit. */
 export function preCommit(root: string): Finding[] {
   const findings: Finding[] = [];
-  for (const f of stagedFiles(root)) {
-    const hit = isSecretPath(f);
+  const policy = secretPolicy(root);
+  const patterns = policy?.patterns ?? DEFAULT_SECRET_PATTERNS;
+  const allowed = policy?.allowed ?? DEFAULT_ALLOWED;
+  const staged = stagedFiles(root);
+  for (const f of staged) {
+    const hit = isSecretPath(f, patterns, allowed);
     if (hit)
       findings.push({
         reason: 'C4',
@@ -57,7 +63,7 @@ export function preCommit(root: string): Finding[] {
       message: 'local workspace exists but is not in .gitignore',
       resume: 'add ".loctx/" (or ".ai/") to .gitignore',
     });
-  findings.push(...driftFormat(root, stagedFiles(root)));
+  findings.push(...driftFormat(root, staged), ...driftConvention(root, staged));
   return findings;
 }
 
@@ -96,6 +102,80 @@ export function driftFormat(root: string, only?: string[]): Finding[] {
   );
 }
 
+/** Files the convention layer looks at: harness sources plus the installed project's agent files. */
+function walk(dir: string, out: string[] = []): string[] {
+  if (!existsSync(dir)) return out;
+  for (const e of readdirSync(dir)) {
+    const p = join(dir, e);
+    if (statSync(p).isDirectory()) walk(p, out);
+    else out.push(p);
+  }
+  return out;
+}
+
+/** Drift, convention layer — frontmatter schemas and role files (design §6). */
+export function driftConvention(root: string, only?: string[]): Finding[] {
+  const dir = harnessDir(root);
+  if (!dir) return [];
+  const schemas = loadSchemas(dir);
+  const findings: Finding[] = [];
+  const candidates = [
+    ...walk(join(dir, 'templates')),
+    ...walk(join(dir, 'knowledge-seeds')),
+    ...walk(join(root, '.agents', 'intent')),
+    ...walk(join(root, '.agents', 'knowledge')),
+    ...walk(join(root, '.loctx', 'ticket')),
+    ...walk(join(root, '.loctx', 'bus')),
+  ];
+  for (const abs of candidates) {
+    const rel = relative(root, abs);
+    if (only && !only.includes(rel)) continue;
+    const m = schemaFor(rel);
+    if (!m) continue;
+    const v = schemas.get(m.schema);
+    if (!v) continue;
+    for (const i of validateFile(v, abs, m.whole))
+      findings.push({
+        reason: 'F2',
+        verdict: 'STOP',
+        path: rel,
+        message: `${m.schema}: ${i.message}`,
+        resume: `fix the frontmatter to match ${m.schema}.schema.json`,
+      });
+  }
+  // role files: role == file name, must_not present
+  const roles = join(dir, 'roles');
+  if (existsSync(roles))
+    for (const f of readdirSync(roles).filter((x) => x.endsWith('.md'))) {
+      const rel = relative(root, join(roles, f));
+      if (only && !only.includes(rel)) continue;
+      const { data, error } = splitFrontmatter(readFileSync(join(roles, f), 'utf8'));
+      const name = basename(f, '.md');
+      if (error)
+        findings.push({
+          reason: 'F2',
+          verdict: 'STOP',
+          path: rel,
+          message: `frontmatter is not valid YAML: ${error}`,
+        });
+      else if (!data || data['role'] !== name)
+        findings.push({
+          reason: 'F2',
+          verdict: 'STOP',
+          path: rel,
+          message: `role file must declare role: ${name}`,
+        });
+      else if (!Array.isArray(data['must_not']) || data['must_not'].length === 0)
+        findings.push({
+          reason: 'F2',
+          verdict: 'STOP',
+          path: rel,
+          message: 'must_not is the enforced source and cannot be empty',
+        });
+    }
+  return findings;
+}
+
 export function runCheck(opts: CheckOptions): StopReport {
   const root = repoRoot(opts.cwd ?? process.cwd());
   const findings: Finding[] = [];
@@ -111,7 +191,7 @@ export function runCheck(opts: CheckOptions): StopReport {
       resume: 'implemented in work item 4-2 (harness sources) and later',
     });
   }
-  if (opts.drift || !opts.stage) findings.push(...driftFormat(root));
+  if (opts.drift || !opts.stage) findings.push(...driftFormat(root), ...driftConvention(root));
   if (!currentBranch(root))
     findings.push({ reason: 'F2', verdict: 'STOP', message: 'not a git repository' });
   return report(stage, findings);

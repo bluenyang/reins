@@ -48,14 +48,14 @@ Role file `harness/roles/<r>.md`: frontmatter `must_not:` (the enforced source) 
 **HOLD** needs the user's answer · **STOP** fixable without a person, resumable · **ESCALATE** the failure chain (pl→pm→advisor→user, R18) · **ABORT** revert — a role's action, not a verifier verdict.
 Every stop records ① where ② why (`reason: <ID>`) ③ how to resume (R48). Re-running the same command continues from that point.
 
-### Twenty-three conditions in seven groups (full table in the draft, D3)
+### Twenty-four conditions in seven groups (full table in the draft, D3)
 | Group | IDs | kind |
 |---|---|---|
 | A irreversible | A1 force push · tag deletion · main rewrite / A2 stable release / A3 data · production / A4 leaving the machine outside the pre-release loop | intent |
 | B decision | B1 open `asks:` / B2 invariant change without a decision / B3 conflict with intent or spec / B4 roadmap silent or contradictory / B5 external assumption broken, scope changes | intent |
 | C premise | C1 rationale collapsed (fix plan and ticket first) / C2 diff departs from plan with no update (R45) | knowledge |
 | D failure | D1 two rounds in the same unit (ticket before rc.1, rc after) / D2 red check twice / D3 flaky → isolate, continue, report / D4 suspected false pass / D5 pass without evidence | knowledge |
-| E cost | E1 80% warning / E2 scope budget 100% STOP / E3 rc or session 100% HOLD — warning only when no value is set | knowledge |
+| E cost | E1 80% warning (not a stop) / E2 scope budget 100% STOP / E3 rc or session 100% HOLD — warning only when no value is set | knowledge |
 | F violation | F1 red-line attempt / F2 drift / F3 rejected proposal re-raised | knowledge |
 | G interrupt | G1 chat · Ctrl+C · session end → record resume info / G2 user vetoes the spec summary | intent |
 `kind` is the distinction kept from the spike: **intent** (a person's call, never automated) / **knowledge** (learned away over time). Metric: knowledge stops per item. Counters (D1·D2) reset on a pass.

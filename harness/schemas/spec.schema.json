@@ -1,0 +1,8 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "reins/spec@1", "type": "object",
+  "required": ["intent", "status", "approvals"],
+  "properties": {
+    "intent": { "type": "string", "pattern": "^[0-9]{3}$" },
+    "status": { "enum": ["draft", "reviewed", "accepted", "rejected"] },
+    "approvals": { "$ref": "intent@1#/$defs/approvals" },
+    "summary_for_user": { "type": "string", "maxLength": 600 }
+  } }

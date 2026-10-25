@@ -1,0 +1,25 @@
+schema: reins/policy/red-lines@1
+# Common prohibitions for every role (design §2). The verifier enforces these; roles add their own must_not.
+rules:
+  - id: C1
+    text: Implementing "to pass" — hard-coding, or making only some paths look right. Fix the cause.
+  - id: C2
+    text: Editing AGENTS.md managed blocks, harness/policy/ or harness/roles/ (pm and `reins update` only).
+  - id: C3
+    text: Editing one's own permission file or any generated vendor file.
+  - id: C4
+    text: Reading secret files.
+    patterns: ['.env', '.env.*', 'secrets/**', '*.key', '*.pem', '*.p12', '*.pfx', '*.properties', 'id_rsa', 'id_rsa.*', 'id_ed25519', 'id_ed25519.*']
+    allowed: ['.env.example', '*.example', '*.example.*', '*.sample']
+  - id: C5
+    text: Bypassing hooks (--no-verify) or massaging gate output (pipes that hide the exit code).
+  - id: C6
+    text: push, PR, merge, release, tag — deploy role only, inside the pre-release loop.
+  - id: C7
+    text: Reversing a recorded decision (knowledge/) without the user.
+  - id: C8
+    text: Re-raising a proposal the user rejected.
+  - id: C9
+    text: Touching running servers, clusters or network devices.
+  - id: C10
+    text: Changing files or behaviour outside the intent and plan — open a ticket instead.

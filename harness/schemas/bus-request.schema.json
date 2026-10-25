@@ -1,0 +1,17 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "reins/bus/request@1", "type": "object",
+  "required": ["schema", "id", "from", "to", "ticket", "intent", "kind", "changes", "why", "revert"],
+  "properties": {
+    "schema": { "const": "reins/bus/request@1" },
+    "id": { "type": "string" }, "from": { "type": "string" }, "to": { "type": "string" },
+    "ticket": { "type": "string" }, "intent": { "type": "string" },
+    "kind": { "enum": ["review", "verify", "implement", "question", "stop-report"] },
+    "changes": { "type": "array", "items": { "type": "object", "required": ["path", "what"] } },
+    "why": { "type": "string" },
+    "tried": { "type": "array", "items": { "type": "string" } },
+    "not_tried": { "type": "array", "items": { "type": "string" } },
+    "deadline": { "type": ["string", "null"] },
+    "revert": { "type": "string" },
+    "errors": { "type": "string" },
+    "budget_left": { "type": "object" },
+    "notes": { "type": "string" }
+  }, "additionalProperties": false }

@@ -1,0 +1,10 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "reins/plan@1", "type": "object",
+  "required": ["intent", "status", "agents"],
+  "properties": {
+    "intent": { "type": "string", "pattern": "^[0-9]{3}$" },
+    "status": { "enum": ["draft", "reviewed", "active", "done"] },
+    "approvals": { "$ref": "intent@1#/$defs/approvals" },
+    "agents": { "type": "object", "additionalProperties": { "type": "array", "items": { "type": "string" } } },
+    "budget": { "type": "object", "properties": { "tokens": { "type": "integer", "minimum": 0 } } },
+    "tickets": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]{3}-[0-9]+$" } }
+  } }

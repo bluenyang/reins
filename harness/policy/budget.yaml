@@ -1,0 +1,13 @@
+schema: reins/policy/budget@1
+# Token budgets (design §3). The narrowest scope in effect wins; a scope with no value only warns.
+unit: tokens
+scopes:            # shipped scopes; a project may add its own
+  - { name: project, set_by: install, stored_in: this file }
+  - { name: version, set_by: pm, stored_in: intent/<id>/plan.md }
+  - { name: rc, set_by: user|pm, stored_in: .loctx/history }
+  - { name: ticket, set_by: pl, stored_in: ticket frontmatter }
+  - { name: session, set_by: user, stored_in: .loctx/context }
+  - { name: role, set_by: user, stored_in: harness/bindings }
+precedence: [ticket, rc, version, project]   # role caps apply in addition
+warn_at: 0.8
+defaults: {}       # empty until measured on first use (R49)

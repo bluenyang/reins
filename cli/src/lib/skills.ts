@@ -14,19 +14,31 @@ const RESERVED = ['anthropic', 'claude'];
 export function splitFrontmatter(text: string): {
   data: Record<string, unknown> | null;
   body: string;
+  error?: string;
 } {
   const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(text);
   if (!m) return { data: null, body: text };
-  const data = parse(m[1] ?? '') as Record<string, unknown> | null;
-  return { data: data ?? {}, body: m[2] ?? '' };
+  try {
+    const data = parse(m[1] ?? '') as Record<string, unknown> | null;
+    return { data: data ?? {}, body: m[2] ?? '' };
+  } catch (e) {
+    // a broken frontmatter is a finding, never a crash of the verifier
+    return { data: null, body: m[2] ?? '', error: (e as Error).message.split('\n')[0] };
+  }
 }
 
 export function validateSkillFile(path: string): SkillIssue[] {
   const issues: SkillIssue[] = [];
   const dir = basename(join(path, '..'));
   const text = readFileSync(path, 'utf8');
-  const { data, body } = splitFrontmatter(text);
-  if (!data) return [{ path, message: 'missing YAML frontmatter' }];
+  const { data, body, error } = splitFrontmatter(text);
+  if (!data)
+    return [
+      {
+        path,
+        message: error ? `frontmatter is not valid YAML: ${error}` : 'missing YAML frontmatter',
+      },
+    ];
   const name = data['name'];
   const desc = data['description'];
   if (typeof name !== 'string' || name.length === 0 || name.length > 64 || !NAME_RE.test(name))

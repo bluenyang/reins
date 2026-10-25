@@ -1,0 +1,14 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "reins/bus/response@1", "type": "object",
+  "required": ["schema", "request", "from", "verdict", "grounds", "may_proceed"],
+  "properties": {
+    "schema": { "const": "reins/bus/response@1" },
+    "request": { "type": "string" }, "from": { "type": "string" },
+    "verdict": { "enum": ["approve", "fix-required", "reject", "cannot-judge", "pass", "fail"] },
+    "grounds": { "type": "string" },
+    "fixes": { "type": "array", "items": { "type": "object", "required": ["path", "what"] } },
+    "may_proceed": { "type": "boolean" },
+    "major_issues": { "type": "array", "items": { "type": "string" } },
+    "evidence": { "type": "string" },
+    "suggested_next": { "type": "string" },
+    "notes": { "type": "string" }
+  }, "additionalProperties": false }

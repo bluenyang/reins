@@ -1,6 +1,6 @@
 import { matchesAny } from './glob.js';
 
-/** Default secret-file patterns (design C4). A project adds its own in gates.yaml `secrets:`. */
+/** Fallback secret-file patterns (red line C4) when no harness policy is present. */
 export const DEFAULT_SECRET_PATTERNS: readonly string[] = [
   '.env',
   '.env.*',
@@ -16,13 +16,19 @@ export const DEFAULT_SECRET_PATTERNS: readonly string[] = [
   'id_ed25519.*',
 ];
 
-/** Files that look like secrets but are templates, and are fine to commit. */
-const ALLOWED: readonly string[] = ['.env.example', '*.example', '*.example.*', '*.sample'];
+/** Templates that look like secrets but are fine to commit. */
+export const DEFAULT_ALLOWED: readonly string[] = [
+  '.env.example',
+  '*.example',
+  '*.example.*',
+  '*.sample',
+];
 
 export function isSecretPath(
   path: string,
   patterns: readonly string[] = DEFAULT_SECRET_PATTERNS,
+  allowed: readonly string[] = DEFAULT_ALLOWED,
 ): string | null {
-  if (matchesAny(path, ALLOWED)) return null;
+  if (matchesAny(path, allowed)) return null;
   return matchesAny(path, patterns);
 }

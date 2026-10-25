@@ -10,22 +10,24 @@ migratable from the harnesses those repositories already use.
 
 ### Current phase
 
-The project runs **survey → planning → design → implementation**, in that order.
+The project ran **survey → planning → design → implementation**, in that order. Survey, planning and
+design are done (`docs/proposal.md`, `docs/design.md`); the current phase is **implementation, round
+one** (design §11): the verifier first, then the harness sources, then self-install and self-migrate
+of this repository.
 
-- Current phase: **survey** — inventory the harnesses already in use (public and local
-  repositories, their `.ai/` workspaces) before deciding anything. See `.ai/README.md`.
-- `spike/` is a prototype built before the survey. It is **reference only**: do not treat its
-  structure or recorded decisions as the design, do not extend it, and do not cite it as a reason
-  for a planning or design decision. The design phase decides what, if anything, it keeps.
-- Do not write design documents or implementation code until the phase that owns them.
+- The design document is the reference. If an implementation needs to differ, change
+  `docs/design.ko.md` (and the English edition) **in the same commit** before the code.
+- Scripts are TypeScript. No Python in this repository (R65).
+- Stop conditions, roles and file formats come from `docs/design.md`; do not invent parallel ones.
 
-### Rules for the survey
+### Stack and commands
 
-- Describe what exists; do not propose the target structure while surveying. Proposals go to a
-  "notes for planning" section, not into the findings.
-- Never read `.env`, `.env.*.local`, `secrets/**`, `*.properties`. Company repositories only with
-  the user's explicit go-ahead per repository.
-- Do not modify surveyed repositories. Read only.
+- Node ≥ 20, pnpm, TypeScript (ESM). Lint/format: oxlint, oxfmt. Tests: vitest. Hooks: husky.
+- `pnpm check` — lint, format check, typecheck, tests. Run before reporting done.
+- `pnpm build` — `cli/src` → `cli/dist` (the `reins` bin).
+- `node cli/dist/reins.js check --stage pre-commit|pre-push` — the harness verifier the hooks call.
+  Exit codes: 0 continue, 10 hold, 20 stop, 30 escalate.
+- Never read `.env`, `.env.*.local`, `secrets/**`, `*.properties`, `*.key`, `*.pem`. `*.example*` is fine.
 
 ## Workflow
 

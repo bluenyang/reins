@@ -1,0 +1,44 @@
+{
+  "name": "@bluenyang/reins",
+  "version": "0.1.0",
+  "description": "Installs, migrates and updates an agent harness (harness → loop → graph) that keeps coding agents inside their permitted roles.",
+  "license": "MIT",
+  "repository": "github:bluenyang/reins",
+  "type": "module",
+  "bin": {
+    "reins": "cli/dist/reins.js"
+  },
+  "files": [
+    "cli/dist",
+    "harness",
+    "skills",
+    "README.md",
+    "README.ko.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.15.0",
+  "scripts": {
+    "build": "tsc -p cli/tsconfig.json",
+    "typecheck": "tsc -p cli/tsconfig.json --noEmit",
+    "lint": "oxlint cli/src cli/test",
+    "fmt": "oxfmt --write cli/src cli/test",
+    "fmt:check": "oxfmt --check cli/src cli/test",
+    "test": "vitest run",
+    "check": "pnpm lint && pnpm fmt:check && pnpm typecheck && pnpm test",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "commander": "^15.0.0",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "husky": "^9.1.7",
+    "oxfmt": "^0.74.0",
+    "oxlint": "^1.89.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

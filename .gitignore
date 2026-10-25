@@ -9,3 +9,7 @@ __pycache__/
 .stfolder/
 .stversions/
 .stignore
+
+# node
+node_modules/
+cli/dist/

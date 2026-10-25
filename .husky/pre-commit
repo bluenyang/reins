@@ -1,0 +1,4 @@
+# reins:begin hooks
+[ -f cli/dist/reins.js ] || pnpm -s build
+node cli/dist/reins.js check --stage pre-commit
+# reins:end hooks

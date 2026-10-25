@@ -12,8 +12,8 @@ stops:
   - { id: B3, group: decision, kind: intent, grade: HOLD, detect: role, text: "a change conflicts with intent or spec (scope)", resume: "amend the intent or open a new one" }
   - { id: B4, group: decision, kind: intent, grade: HOLD, detect: role, text: "the roadmap is silent or contradicts itself", resume: "fix the roadmap" }
   - { id: B5, group: decision, kind: intent, grade: STOP, detect: role, text: "an external API or environment contradicts a design assumption and the scope changes", resume: "update spec.md, then HOLD for the user" }
-  - { id: C1, group: premise, kind: knowledge, grade: STOP, detect: role, text: "the rationale for the work no longer holds", resume: "fix plan.md and the ticket first, then continue" }
-  - { id: C2, group: premise, kind: knowledge, grade: STOP, detect: verifier, text: "the diff departs from plan.md and the plan was not updated (R45)", resume: "update plan.md in the same commit" }
+  - { id: P1, group: premise, kind: knowledge, grade: STOP, detect: role, text: "the rationale for the work no longer holds", resume: "fix plan.md and the ticket first, then continue" }
+  - { id: P2, group: premise, kind: knowledge, grade: STOP, detect: verifier, text: "the diff departs from plan.md and the plan was not updated (R45)", resume: "update plan.md in the same commit" }
   - { id: D1, group: failure, kind: knowledge, grade: ESCALATE, detect: verifier, text: "two failed test rounds in the same unit (ticket before rc.1, rc after)", resume: "root cause by the next role in the chain" }
   - { id: D2, group: failure, kind: knowledge, grade: ESCALATE, detect: verifier, text: "a red check twice with no fix in history or knowledge", resume: "root cause by the next role in the chain" }
   - { id: D3, group: failure, kind: knowledge, grade: STOP, detect: verifier, text: "flaky: passes alone, fails in the full run", resume: "isolate the scenario, mark flaky in the report, continue, report to the user" }

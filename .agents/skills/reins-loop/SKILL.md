@@ -22,7 +22,7 @@ Exit codes 0/10/20/30. Use `npx @bluenyang/reins` (inside the reins repository: 
    names recorded decisions that may already answer them.
 5. Branch `type/<NNN>-<slug>` from the default branch. implementer (`reins-implementer` subagent):
    ticket → plan section → `reins recall` → implement, **one commit per finished unit** (the hook runs **T2**).
-   A diff outside the plan updates plan.md's departure log in the same commit (C2), or opens a new ticket (C10).
+   A diff outside the plan updates plan.md's departure log in the same commit (P2), or opens a new ticket (C10).
 6. **Verify.** Write `.loctx/bus/<id>_<nn>.request.yaml` (`kind: verify`); verify-tool runs
    `reins gate --ticket <id>` and answers in `<id>_<nn>.response.yaml` with the report paths as `evidence:`.
    **T3** `reins check --stage verdict --ticket <id>`. Fail → back to 5 (a second failure escalates, D1).

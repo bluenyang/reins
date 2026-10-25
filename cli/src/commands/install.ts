@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { stringify } from 'yaml';
+import { parse, stringify } from 'yaml';
 import type { Asker } from '../lib/ask.js';
 import { applyBlocks, parseBlocks } from '../lib/blocks.js';
 import {
@@ -172,11 +172,18 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   for (const f of tierFiles(listFiles(up), o.tier))
     add(`.agents/harness/${f}`, readFileSync(join(up, f), 'utf8'), 'upstream harness');
 
-  // 2. questions (manual) / detection (auto)
+  // 2. questions (manual) / detection (auto) — only for what does not exist yet.
+  // bindings.yaml and gates.yaml belong to the project once written; `reins configure` changes them.
+  const hasBindings = existsSync(join(root, '.agents/harness/bindings.yaml'));
+  const hasGates = existsSync(join(root, '.agents/harness/gates.yaml'));
+  const pinPath = join(root, '.agents/harness/install.yaml');
+  const pinned = existsSync(pinPath)
+    ? (parse(readFileSync(pinPath, 'utf8')) as { language?: string } | null)
+    : null;
   const vs = (o.detectVendors ?? vendors)();
   const detected = vs.filter((v) => v.detected).map((v) => v.name);
   const avail = new Set<Vendor['name']>(['claude']); // claude is the floor (R22)
-  if (o.tier === 'graph') {
+  if (o.tier === 'graph' && !hasBindings) {
     const ans = await o.asker.ask(
       `vendors you can use (claude,openai,google,cursor) — detected: ${detected.join(',') || 'none'}`,
       ['claude', ...detected.filter((d) => d !== 'claude')].join(','),
@@ -184,28 +191,32 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     for (const v of ans.split(',').map((s) => s.trim()))
       if (['claude', 'openai', 'google', 'cursor'].includes(v)) avail.add(v as Vendor['name']);
   }
-  const language = await o.asker.ask('language of documents the user reads (ko, en, …)', 'ko');
-  const proposal = discoverGates(root);
-  const gateList = proposal.gates.map((g) => `${g.name}=${g.cmd}`).join(', ') || 'none found';
-  const okGates = await o.asker.ask(`gates found: ${gateList} — use them? (y/n)`, 'y');
-  if (!/^y/i.test(okGates))
-    notes.push(
-      'gates not confirmed — edit .agents/harness/gates.yaml, then `reins check --dry-run`',
+  const language =
+    pinned?.language ??
+    (await o.asker.ask('language of documents the user reads (ko, en, …)', 'ko'));
+  if (!hasGates) {
+    const proposal = discoverGates(root);
+    const gateList = proposal.gates.map((g) => `${g.name}=${g.cmd}`).join(', ') || 'none found';
+    const okGates = await o.asker.ask(`gates found: ${gateList} — use them? (y/n)`, 'y');
+    if (!/^y/i.test(okGates))
+      notes.push(
+        'gates not confirmed — edit .agents/harness/gates.yaml, then `reins check --dry-run`',
+      );
+    for (const x of proposal.excluded) notes.push(`excluded from gates: ${x.name} (${x.why})`);
+    add(
+      '.agents/harness/gates.yaml',
+      buildGates(root, /^y/i.test(okGates) ? proposal.gates : []),
+      'declared gates',
     );
-  for (const x of proposal.excluded) notes.push(`excluded from gates: ${x.name} (${x.why})`);
+  }
 
   // 3. generated configuration
-  if (o.tier === 'graph')
+  if (o.tier === 'graph' && !hasBindings)
     add(
       '.agents/harness/bindings.yaml',
       buildBindings(up, avail, vs, o.mode),
       'role ↔ model bindings',
     );
-  add(
-    '.agents/harness/gates.yaml',
-    buildGates(root, /^y/i.test(okGates) ? proposal.gates : []),
-    'declared gates',
-  );
   add(
     '.agents/harness/install.yaml',
     `# version pin and install settings (R25) — read by reins update\n${stringify({ schema: 'reins/install@1', tier: o.tier, version, mode: o.mode, language })}`,

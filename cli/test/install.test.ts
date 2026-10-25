@@ -131,3 +131,30 @@ describe('reins install graph (S5)', () => {
     ]);
   });
 });
+
+describe('re-running install keeps what the project owns', () => {
+  it('does not reset customised bindings or gates', async () => {
+    const d = repo();
+    const opts = {
+      tier: 'graph' as const,
+      mode: 'auto' as const,
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: onlyClaude,
+    };
+    await runInstall(opts);
+    const b = join(d, '.agents/harness/bindings.yaml');
+    const g = join(d, '.agents/harness/gates.yaml');
+    writeFileSync(
+      b,
+      readFileSync(b, 'utf8').replace('model: claude-opus-5-5', 'model: claude-fable-5-1'),
+    );
+    writeFileSync(g, readFileSync(g, 'utf8').replace('cmd: pnpm check', 'cmd: pnpm check:all'));
+    const again = await runInstall(opts);
+    expect(readFileSync(b, 'utf8')).toContain('model: claude-fable-5-1');
+    expect(readFileSync(g, 'utf8')).toContain('cmd: pnpm check:all');
+    expect(
+      again.applied?.changed.filter((p) => p.includes('bindings') || p.includes('gates')),
+    ).toEqual([]);
+  });
+});

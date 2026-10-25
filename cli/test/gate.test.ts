@@ -41,6 +41,21 @@ describe('reins gate', () => {
     ).toEqual([0, 3]);
   });
 
+  it('flags an absolute evidence path outside the repository, existing or not', () => {
+    const d = project('gates: {}\n');
+    const gone = join(tmpdir(), 'reins-no-such-dir', 'e.log');
+    expect(readEvidence(d, gone).map((e) => [e.source, e.outside])).toEqual([[gone, true]]);
+  });
+
+  it('judges parent traversal by whole path components', () => {
+    const d = project('gates: {}\n');
+    mkdirSync(join(d, '..reports'), { recursive: true });
+    writeFileSync(join(d, '..reports', 'e.log'), '$ x\nok\nexit 0\n');
+    const [e] = readEvidence(d, join(d, '..reports', 'e.log'));
+    expect(e?.outside).toBeUndefined();
+    expect(e?.exit).toBe(0);
+  });
+
   it('refuses unknown gate names', () => {
     const d = project('gates:\n  check: { cmd: "node -v" }\n');
     expect(runGates({ cwd: d, names: ['nope'] }).refused).toContain('unknown gate: nope');

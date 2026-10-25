@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { isAbsolute, join, relative } from 'node:path';
+import { isAbsolute, join, relative, sep } from 'node:path';
 import { harnessDir, readYaml } from '../lib/harness.js';
 import { loadSchemas, validateFile } from '../lib/schema.js';
 import type { Finding } from '../lib/verdict.js';
@@ -227,20 +227,20 @@ export function readEvidence(
   // an absolute path inside the repository reads like a relative one; outside it is refused
   const inside = (t: string) => {
     const rel = relative(root, t);
-    return !rel.startsWith('..') && !isAbsolute(rel);
+    return rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
   };
+  const outside = tokens.filter((t) => isAbsolute(t) && !inside(t));
   const resolve = (t: string) => (isAbsolute(t) ? t : join(root, t));
   const files = tokens.length > 0 && tokens.every((t) => existsSync(resolve(t)));
-  const pieces: { source: string; text: string; outside?: boolean }[] = files
-    ? tokens.map((t) =>
-        isAbsolute(t) && !inside(t)
-          ? { source: t, text: '', outside: true }
-          : {
-              source: isAbsolute(t) ? relative(root, t) : t,
-              text: readFileSync(resolve(t), 'utf8'),
-            },
-      )
-    : [{ source: 'inline', text: evidence }];
+  const pieces: { source: string; text: string; outside?: boolean }[] =
+    outside.length > 0
+      ? outside.map((t) => ({ source: t, text: '', outside: true }))
+      : files
+        ? tokens.map((t) => ({
+            source: isAbsolute(t) ? relative(root, t) : t,
+            text: readFileSync(resolve(t), 'utf8'),
+          }))
+        : [{ source: 'inline', text: evidence }];
   return pieces.map((p) => {
     const empty =
       !p.outside &&

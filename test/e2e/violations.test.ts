@@ -528,6 +528,10 @@ const SCENARIOS: Scenario[] = [
       expect(mp.code).toBe(EXIT.STOP);
       put(d, 'AGENTS.md', `${gone}\n<!-- reins:override workflow -->\n`);
       expect(miss(reins(d, [...drift, '--json'])).length).toBe(0);
+      // the project replaced the block with its own section of the same heading: left alone
+      put(d, 'AGENTS.md', `${gone}\n## Workflow\n\nOur own workflow.\n`);
+      const own2 = reins(d, [...drift, '--json']);
+      expect(miss(own2).length, own2.stdout).toBe(0);
     },
   },
   stops(

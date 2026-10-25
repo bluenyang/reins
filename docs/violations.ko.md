@@ -14,7 +14,7 @@
 | id | what | caught by | where | scenario |
 |---|---|---|---|---|
 | C1 (금지선) | "통과용" 구현 — 하드코딩, 일부 경로만 맞아 보이게 함 | role | 검토 역할의 판단. `implementer.md`의 `must_not`, 그리고 생성된 모든 Claude 에이전트에 들어가는 공통 금지선 지시 | — |
-| C2 (금지선) | `AGENTS.md` 관리 블록, `harness/policy/`, `harness/roles/` 편집 | verifier | `check --stage pre-commit`(`.agents/harness/` 아래 파일이 스테이징됐을 때)와 `check --drift`의 match 층, F2로 보고. 관리 블록: 블록마다 패키지된 것과 정규화해 비교하고 `reins:override` 이름은 건너뜀. pre-commit에서는 `AGENTS.md`가 스테이징됐을 때, F2 | V4, V24 |
+| C2 (금지선) | `AGENTS.md` 관리 블록, `harness/policy/`, `harness/roles/` 편집 | verifier | `check --stage pre-commit`(`.agents/harness/` 아래 파일이 스테이징됐을 때)와 `check --drift`의 match 층, F2로 보고. 관리 블록: 블록마다 패키지된 것과 정규화해 비교하고 `reins:override` 이름은 건너뜀. pre-commit에서는 `AGENTS.md`가 스테이징됐을 때, F2. 손으로 고치거나 지운 관리 블록은 F2이고, 프로젝트가 같은 제목의 자기 섹션으로 바꾼 블록은 건드리지 않음 | V4, V24 |
 | C3 (금지선) | 자기 권한 파일이나 생성된 벤더 파일 편집 | verifier | `check --stage pre-commit`(`.claude/`·`.agents/harness/`가 스테이징됐을 때)와 `check --drift`, `generated.yaml` 해시 | V5 |
 | C4 (금지선) | 비밀 파일 읽기 | settings deny, verifier | 나열된 패턴에 대한 `.claude/settings.json`의 `Read`/`Edit` 규칙(`.env.*`는 고정 목록으로 좁혀지므로 `.env.custom` 같은 이름에는 규칙이 없음). `check --stage pre-commit`은 스테이징된 비밀 경로를 거부할 뿐 읽기는 보지 않음 | V1, V18 |
 | C5 (금지선) | 훅 우회, 게이트 출력 가공 | verifier, settings deny | `reins gate`가 단일 명령이 아닌 게이트를 거부. `check --stage verdict`가 파이프를 거친 증거를 거부. `.claude/settings.json`이 `git commit --no-verify`·`git push --no-verify`를 막음. `-n` 같은 줄임 형태: none (gap) | V13, V17, V18 |
@@ -52,7 +52,7 @@
 
 ## 행별 설명
 
-- **C2 (금지선)**: match 층은 `.agents/harness/`를 패키지된 upstream과 비교해 F2로 보고합니다. 고정된 버전이 패키지 버전과 다르면 경고만 합니다. `driftBlocks`가 `AGENTS.md`의 관리 블록을 고정된 버전의 패키지 블록과 비교해(CRLF, 줄 끝 공백, 앞뒤 빈 줄은 무시) 다르면 F2 `managed block "<name>" was edited by hand`로 보고합니다. `reins:override <name>`이 있으면 건너뜁니다. 프로젝트 루트의 `harness/` 원본도 검사하지 않습니다.
+- **C2 (금지선)**: match 층은 `.agents/harness/`를 패키지된 upstream과 비교해 F2로 보고합니다. 고정된 버전이 패키지 버전과 다르면 경고만 합니다. `driftBlocks`가 `AGENTS.md`의 관리 블록을 고정된 버전의 패키지 블록과 비교해(CRLF, 줄 끝 공백, 앞뒤 빈 줄은 무시) 다르면 F2 `managed block "<name>" was edited by hand`로 보고하고, 블록이 지워졌으면 `is missing`으로 보고합니다(블록 밖에 같은 `## <제목>` 섹션이 있으면 대체한 것으로 보고 건드리지 않습니다). `reins:override <name>`이 있으면 건너뜁니다. 프로젝트 루트의 `harness/` 원본도 검사하지 않습니다.
 - **C3**: 정지 보고서에 `reason: C3`이 담깁니다. 생성된 `.claude/settings.json`의 deny 규칙은 `.claude/settings.json` 자체의 편집을 막지 않습니다.
 - **C4**: `settings deny`는 Claude Code 안에서만 읽기를 막습니다. 다른 벤더에는 deny 규칙이 없고, 검증기는 스테이징된 경로를 볼 뿐 읽기는 보지 않습니다. `denyRules`는 `.env.*` 패턴을 고정 목록(`.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.staging`, `.env.test`)으로 바꾸므로, `.env.custom` 같은 이름은 deny 규칙 없이 읽고 편집할 수 있습니다. 스테이징 검사는 이런 이름도 거부합니다. V18은 세 문자열(`Read(**/.env)`, `Bash(git push --force *)`, `Bash(git commit --no-verify *)`)만 단언하고 패턴 전체 목록은 단언하지 않습니다.
 - **C5**: deny 규칙은 `git commit --no-verify *`와 `git push --no-verify *`만 정확히 대응합니다. `-n` 같은 줄임 형태는 막지 않습니다.

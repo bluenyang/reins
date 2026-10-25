@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { overrides, parseBlocks } from '../lib/blocks.js';
+import { hasOwnSection, overrides, parseBlocks } from '../lib/blocks.js';
 import { currentBranch, isAncestor, repoRoot, stagedFiles } from '../lib/git.js';
 import { harnessRel, secretPolicy } from '../lib/harness.js';
 import { loadSchemasFrom, schemaFor, validateFile } from '../lib/schema.js';
@@ -299,8 +299,8 @@ export function driftBlocks(root: string, rd: Reader = workTreeReader(root)): Fi
   const over = overrides(text);
   const findings: Finding[] = [];
   const have = parseBlocks(text);
-  for (const name of upBlocks.keys())
-    if (!over.has(name) && !have.some((b) => b.name === name))
+  for (const [name, up] of upBlocks)
+    if (!over.has(name) && !have.some((b) => b.name === name) && !hasOwnSection(text, up))
       findings.push({
         reason: 'F2',
         verdict: 'STOP',

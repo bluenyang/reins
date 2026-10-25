@@ -33,6 +33,12 @@ function outside(text: string): string {
   return text.replace(BLOCK_RE, '');
 }
 
+/** The project already has this block's `## <heading>` outside any managed block (applyBlocks leaves such a block out). */
+export function hasOwnSection(text: string, block: Block): boolean {
+  const h = headingOf(block);
+  return h !== null && new RegExp(`^## ${h}\\s*$`, 'm').test(outside(text));
+}
+
 export interface BlockResult {
   text: string;
   inserted: string[];
@@ -63,7 +69,7 @@ export function applyBlocks(text: string, upstream: Block[]): BlockResult {
       continue;
     }
     const h = headingOf(b);
-    if (h && new RegExp(`^## ${h}\\s*$`, 'm').test(outside(res.text))) {
+    if (hasOwnSection(res.text, b)) {
       res.skipped.push({
         name: b.name,
         why: `the project already has a "## ${h}" section — \`reins migrate\` replaces it`,

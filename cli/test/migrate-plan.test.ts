@@ -56,6 +56,7 @@ describe('migrate plan (design §7)', () => {
     );
     expect(t).toMatch(/release: "stabilization"/);
     expect(t).toMatch(/status: "doing"/);
+    expect(t).toMatch(/id: "000-3"/);
     expect(t).toMatch(/## 목적\nx/);
     expect(convertWorkToTicket('---\nrelease: 1.2.0-rc.1\n---\n', 'a.md')).toMatch(
       /release: "planned"/,

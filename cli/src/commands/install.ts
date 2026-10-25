@@ -28,6 +28,8 @@ export interface InstallOptions {
   /** tests: replace vendor detection */
   detectVendors?: () => Vendor[];
   now?: Date;
+  /** migrate installs over an old harness it is about to move away */
+  overExisting?: boolean;
 }
 
 export interface InstallResult {
@@ -122,6 +124,10 @@ export function buildGates(root: string, gates: ReturnType<typeof discoverGates>
   return `# discovered by reins install — the loop reads only this file (design §5)\n${stringify(doc)}`;
 }
 
+/** The stub install leaves; migrate may replace it with the project's real raw roadmap. */
+export const ROADMAP_STUB =
+  '# ROADMAP (local)\n\n— 산발적 아이디어를 여기에. 확정되면 docs/ROADMAP.md\n';
+
 const LOCTX_README = `# .loctx — 이 머신·이 개발자만 (gitignore)
 
 | 경로 | 무엇 |
@@ -143,7 +149,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   const root = repoRoot(o.cwd ?? process.cwd());
   const gen = generation(root);
   const notes: string[] = [];
-  if (gen === 'gen3' || gen === 'gen4')
+  if ((gen === 'gen3' || gen === 'gen4') && !o.overExisting)
     return {
       root,
       generation: gen,
@@ -219,11 +225,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     }
     add('.loctx/.gitignore', '*\n', 'double ignore (kestrel pattern)');
     add('.loctx/README.md', LOCTX_README, 'local workspace layout');
-    addIfMissing(
-      '.loctx/ROADMAP.local.md',
-      '# ROADMAP (local)\n\n— 산발적 아이디어를 여기에. 확정되면 docs/ROADMAP.md\n',
-      'raw roadmap',
-    );
+    addIfMissing('.loctx/ROADMAP.local.md', ROADMAP_STUB, 'raw roadmap');
   }
   addIfMissing('.agents/skills/.gitkeep', '', 'skills (Agent Skills standard path)');
   addIfMissing('.agents/SKILLS.md', '# Skills\n\n| skill | does |\n|---|---|\n', 'skill index');
@@ -273,7 +275,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   }
 
   // 7. legacy workspace — migrate owns it
-  if (existsSync(join(root, '.ai')))
+  if (existsSync(join(root, '.ai')) && !o.overExisting)
     notes.push(
       'legacy workspace .ai/ found — left untouched; run `reins migrate ' +
         o.tier +

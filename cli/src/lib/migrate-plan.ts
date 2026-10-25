@@ -246,7 +246,8 @@ export function convertWorkToTicket(text: string, fileName: string): string {
   const fm = data ?? {};
   const rel = String(fm['release'] ?? '');
   const ticket: Record<string, unknown> = {
-    id: String(fm['id'] ?? basename(fileName, '.md')),
+    // intent 000 = not yet tied to an intent; the PL links it when the work is planned again
+    id: `000-${Number.parseInt(String(fm['id'] ?? ''), 10) || 1}`,
     intent: '000',
     plan_step: Number(fm['id'] ?? 1) || 1,
     title: String(fm['title'] ?? basename(fileName, '.md')),

@@ -2,6 +2,7 @@
 import { Command } from 'commander';
 import { runCheck, type CheckOptions } from './commands/check.js';
 import { runInstall, type Tier } from './commands/install.js';
+import { runMigrate } from './commands/migrate.js';
 import { defaultsAsker, stdinAsker } from './lib/ask.js';
 import { EXIT } from './lib/verdict.js';
 
@@ -64,7 +65,55 @@ program
     },
   );
 
-for (const n of ['migrate', 'update', 'configure', 'recall', 'status', 'doctor'])
+program
+  .command('migrate')
+  .description('move an existing harness or .ai/ workspace onto the reins layout')
+  .argument('<tier>', 'harness | loop | graph')
+  .option('--mode <mode>', 'manual | auto', 'manual')
+  .option('--dry-run', 'show the moves without touching anything')
+  .option('--json')
+  .action(
+    async (tier: string, o: { mode: 'manual' | 'auto'; dryRun?: boolean; json?: boolean }) => {
+      if (!['harness', 'loop', 'graph'].includes(tier)) {
+        process.stderr.write(
+          `reins migrate: tier must be harness, loop or graph (got "${tier}")\n`,
+        );
+        process.exit(2);
+      }
+      const asker = o.mode === 'auto' || o.dryRun ? defaultsAsker : await stdinAsker();
+      const r = await runMigrate({ tier: tier as Tier, mode: o.mode, dryRun: o.dryRun, asker });
+      asker.close();
+      if (o.json) {
+        process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
+        process.exit(r.refused ? 2 : 0);
+      }
+      if (r.refused) {
+        process.stderr.write(`reins migrate: ${r.refused}\n`);
+        process.exit(2);
+      }
+      const by = (k: string) => r.moves.filter((m) => m.result === k).length;
+      process.stdout.write(
+        `reins migrate ${tier} — from ${r.generation}${o.dryRun ? ' (dry run)' : ''}\n`,
+      );
+      process.stdout.write(
+        o.dryRun
+          ? `would move ${r.moves.length} files\n`
+          : `moved ${by('moved')} · tickets ${by('converted')} · identical ${by('same')} · kept both ${by('kept-both')}\n`,
+      );
+      if (o.dryRun)
+        for (const m of r.moves)
+          process.stdout.write(
+            `  ${m.action === 'move' ? ' ' : m.action[0]} ${m.from} → ${m.to}\n`,
+          );
+      process.stdout.write(
+        `AGENTS.md: swapped ${r.agents.swapped.join(', ') || 'none'}; inserted ${r.agents.inserted.join(', ') || 'none'}\n`,
+      );
+      for (const n of r.report) process.stdout.write(`• ${n}\n`);
+      if (r.history) process.stdout.write(`recorded: ${r.history}\n`);
+    },
+  );
+
+for (const n of ['update', 'configure', 'recall', 'status', 'doctor'])
   program.command(n).allowUnknownOption().allowExcessArguments().action(notYet(n));
 
 program

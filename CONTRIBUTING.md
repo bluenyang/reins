@@ -61,8 +61,9 @@ always an explicit decision (A2).
 
 The maintainer releases from GitHub Actions → **publish** (`.github/workflows/publish.yml`): update
 `CHANGELOG.md` first, then run it with a release type or an exact version (`dry_run` checks and packs
-only). It runs the full gate, publishes to npm through trusted publishing (no token), and commits and
-tags the version. reins has no GitHub Releases.
+only). It runs the full gate, **stages** the version on npm through trusted publishing (no token), and
+commits and tags it. The version is live only after the maintainer approves it with 2FA (npmjs.com →
+Staged Packages, or `npm stage approve <stage-id>`). reins has no GitHub Releases.
 
 ## License
 

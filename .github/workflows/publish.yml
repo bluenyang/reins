@@ -5,7 +5,9 @@
 #   - version: exact version without a leading v (overrides release_type)
 #   - dry_run: run every check and `npm publish --dry-run`; no commit, tag or upload
 #
-# Order: resolve version → gate (check, build, drift) → npm publish → commit package.json, tag, push.
+# Order: resolve version → gate (check, build, drift) → npm stage publish → commit package.json, tag, push.
+# Staged publishing: the version waits in npm's staging area until the maintainer approves it with 2FA
+# (npmjs.com → Staged Packages, or `npm stage approve <stage-id>`). Nothing is live before that.
 # reins is released on npm only: no GitHub Release, no draft. Update CHANGELOG.md before running.
 
 name: publish
@@ -52,7 +54,7 @@ jobs:
           node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
-      # trusted publishing needs npm 11.5.1 or later
+      # staged publishing needs npm 11.15.0 or later (trusted publishing 11.5.1)
       - run: npm install -g npm@latest
 
       - name: Resolve version
@@ -111,7 +113,7 @@ jobs:
           NEXT: ${{ steps.version.outputs.version }}
         run: test "$(node cli/dist/reins.js --version)" = "$NEXT"
 
-      - name: npm publish
+      - name: npm stage publish (approval needed before it is live)
         env:
           DIST_TAG: ${{ steps.version.outputs.dist_tag }}
           DRY_RUN: ${{ inputs.dry_run }}
@@ -119,7 +121,13 @@ jobs:
           if [[ "$DRY_RUN" == "true" ]]; then
             npm publish --access public --tag "$DIST_TAG" --dry-run
           else
-            npm publish --access public --tag "$DIST_TAG"
+            npm stage publish --access public --tag "$DIST_TAG"
+            {
+              echo "### @bluenyang/reins v${{ steps.version.outputs.version }} is staged, not live"
+              echo "Approve it with 2FA: npmjs.com → Staged Packages, or \`npm stage approve <stage-id>\`."
+              echo
+              echo '```'; npm stage list @bluenyang/reins || true; echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Commit version, tag, push
@@ -131,7 +139,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json
-          git commit -m "release: v$NEXT" # the hooks run here too (C5)
+          git commit -m "release: v$NEXT (staged on npm, live after approval)" # the hooks run here too (C5)
           git tag "v$NEXT"
           for attempt in 1 2 3; do
             git push origin "HEAD:${GITHUB_REF_NAME}" && break

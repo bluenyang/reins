@@ -62,8 +62,9 @@ pnpm build       # cli/src → cli/dist
 
 메인테이너가 GitHub Actions의 **publish**(`.github/workflows/publish.yml`)로 릴리스합니다. 먼저
 `CHANGELOG.md`를 고친 뒤 릴리스 종류나 정확한 버전을 넣어 실행합니다(`dry_run`은 검사와 패키징만
-합니다). 전체 게이트를 돌리고, 토큰 없이 trusted publishing으로 npm에 올린 뒤, 버전을 커밋하고 태그를
-붙입니다. GitHub Releases는 쓰지 않습니다.
+합니다). 전체 게이트를 돌리고, 토큰 없이 trusted publishing으로 npm에 **staged**로 올린 뒤, 버전을 커밋하고
+태그를 붙입니다. 메인테이너가 2FA로 승인해야(npmjs.com → Staged Packages, 또는
+`npm stage approve <stage-id>`) 실제로 배포됩니다. GitHub Releases는 쓰지 않습니다.
 
 ## 라이선스
 

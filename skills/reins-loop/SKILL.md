@@ -27,8 +27,9 @@ Exit codes 0/10/20/30. Use `npx @bluenyang/reins` (inside the reins repository: 
    `reins gate --ticket <id>` and answers in `<id>_<nn>.response.yaml` with the report paths as `evidence:`.
    **T3** `reins check --stage verdict --ticket <id>`. Fail → back to 5 (a second failure escalates, D1).
 7. **Review.** code-review gets the diff against plan and spec (`kind: review`) and proposes fixes only;
-   Prompt = the role's `must_not` + the request body + `git diff <range> -- <changes paths>` + "do not run commands, do not
-   re-run checks"; after a fix, re-review gets the fix commit's diff only. CLI recipes: `references/vendor-cli.md`.
+   Prompt = the role's `must_not` + its procedure (body of code-review.md) + the request + the COMPLETE `git diff <range>` (all files; only
+   installed copies under `.agents/` and `.claude/` may be excluded by path) + "do not run commands, do not re-run checks";
+   after a fix, re-review gets the fix commit's diff only. CLI recipes: `references/vendor-cli.md`.
    pl decides fix or proceed. Nobody judges their own work.
 8. **Close.** `status: done`; one history page or line in `.loctx/history/` naming the ticket id, its commits,
    and a `decisions:` line; then delete the ticket file and its bus files.

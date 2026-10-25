@@ -9,8 +9,9 @@ changes:
   - path: "cli/src/example.ts"
     what: "one line: what changed"
     why: "S-1"
+    requirement: "S-1: requirement text quoted from the spec, one line"
     evidence: ".loctx/reports/<gate>.log"
-why: ""
+why: "allowed files: <the plan's file list for the ticket, comma separated>"
 tried: []
 not_tried: []
 deadline: null

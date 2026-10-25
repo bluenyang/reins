@@ -175,6 +175,39 @@ describe('C-3 the next-step table', () => {
     expect(one(d, '001').next).toContain('pm: close the rc (reins check --stage rc-close');
   });
 
+  it('plan done with every planned ticket recorded → close the rc, whatever the plan status', async () => {
+    const d = await project();
+    intent(d, '001', 'approved', 'accepted', null);
+    put(d, '.loctx/history/2026-10-25-0100_a.md', '001-1 done\n');
+    for (const plan of ['reviewed', 'active', 'done']) {
+      put(d, '.agents/intent/001_t001/plan.md', PLAN(plan));
+      expect(one(d, '001').next).toContain('pm: close the rc');
+    }
+  });
+
+  it('plan done with an unrecorded planned ticket does not ask for tickets', async () => {
+    const d = await project();
+    intent(d, '001', 'approved', 'accepted', null);
+    put(d, '.agents/intent/001_t001/plan.md', PLAN('done'));
+    expect(one(d, '001').next).toBe('—');
+  });
+
+  it('an open planned ticket is neither "create tickets" nor "close the rc"', async () => {
+    const d = await project();
+    intent(d, '001', 'approved', 'accepted', null);
+    put(d, '.agents/intent/001_t001/plan.md', PLAN('active'));
+    put(d, '.loctx/ticket/001-1_a.md', TICKET('001-1', 'doing'));
+    put(d, '.loctx/history/2026-10-25-0100_a.md', '001-1 mentioned\n');
+    expect(one(d, '001').next).toBe('—');
+  });
+
+  it.each(['reviewed', 'active'])('an empty %s plan does not ask for tickets', async (plan) => {
+    const d = await project();
+    intent(d, '001', 'approved', 'accepted', null);
+    put(d, '.agents/intent/001_t001/plan.md', PLAN(plan, '[]'));
+    expect(one(d, '001').next).toBe('—');
+  });
+
   it('the first matching row wins (a draft intent beats an accepted spec)', async () => {
     const d = await project();
     intent(d, '001', 'draft', 'accepted', 'reviewed');
@@ -182,7 +215,7 @@ describe('C-3 the next-step table', () => {
   });
 
   it('falls back to "—", or names a broken file, when no row matches', () => {
-    const base = { open: 1, planned: ['001-1'], history: [], broken: [] };
+    const base = { openIds: ['001-1'], planned: ['001-1'], history: [], broken: [] };
     const s = { intent: 'approved', spec: 'accepted', plan: 'active', ...base };
     expect(nextForIntent(s)).toBe('—');
     expect(nextForIntent({ ...s, spec: '?', broken: ['x/spec.md'] })).toContain('x/spec.md');
@@ -241,6 +274,56 @@ describe('C-4 tickets', () => {
     expect(report('ticket-start', ticketStart(p, '001-1')).verdict).toBe('CONTINUE');
     expect(t.t1?.verdict).toBe('CONTINUE');
     expect(t.next).toBe('implementer: start');
+  });
+
+  it('a CONTINUE todo ticket starts with the role the ticket names', async () => {
+    const p = await project();
+    intent(p, '001', 'approved', 'accepted', null);
+    put(p, '.agents/intent/001_t001/plan.md', PLAN('reviewed'));
+    put(
+      p,
+      '.agents/intent/001_t001/intent.md',
+      INTENT('approved', '001', 't001').replace(
+        'approvals: []',
+        'approvals: [{role: user, at: x}]',
+      ),
+    );
+    git(p, 'add', '.agents/intent');
+    git(p, 'commit', '-q', '-m', 'y', '-m', 'Approved-by: user');
+    put(p, '.loctx/ticket/001-1_a.md', TICKET('001-1').replace('role: implementer', 'role: docs'));
+    expect(report('ticket-start', ticketStart(p, '001-1')).verdict).toBe('CONTINUE');
+    expect(collectStatus(p).tickets[0]!.next).toBe('docs: start');
+  });
+
+  it('malformed asks make that ticket invalid; the others still render and the exit is 0', () => {
+    put(d, '.loctx/ticket/001-7_asks.md', TICKET('001-7', 'blocked', 'asks: [{toString: null}]\n'));
+    put(d, '.loctx/ticket/001-8_asks.md', TICKET('001-8', 'blocked', 'asks: "just a string"\n'));
+    put(d, '.loctx/ticket/001-9_ok.md', TICKET('001-9', 'doing'));
+    const s = collectStatus(d);
+    for (const id of ['001-7', '001-8']) {
+      const t = s.tickets.find((x) => x.id === id)!;
+      expect(t.invalid).toBe(true);
+      expect(t.next).toBe('invalid (F2)');
+    }
+    expect(s.tickets.find((x) => x.id === '001-9')!.next).toBe(
+      'reins check --stage verdict --ticket 001-9',
+    );
+    const text = formatStatus(s);
+    expect(text).toContain('001-7 —');
+    expect(text).toContain('001-9 — doing');
+    expect(runStatus({ cwd: d }).code).toBe(0);
+  });
+
+  it('a malformed tickets: list in a plan does not throw', async () => {
+    const p = await project();
+    intent(p, '001', 'approved', 'accepted', null);
+    put(
+      p,
+      '.agents/intent/001_t001/plan.md',
+      PLAN('reviewed', '[{toString: null}, null, "001-1"]'),
+    );
+    expect(() => collectStatus(p)).not.toThrow();
+    expect(one(p, '001').tickets.planned).toBe(1);
   });
 
   it('doing → the verdict check for that ticket', () => {

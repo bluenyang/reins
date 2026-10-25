@@ -62,7 +62,11 @@ export interface StatusData {
 }
 
 const str = (v: unknown) => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '');
-const list = (v: unknown) => (Array.isArray(v) ? v.map(String) : []);
+/** Strings and numbers of an array; anything else (objects, null) is dropped, so a malformed value cannot throw. */
+const list = (v: unknown) =>
+  Array.isArray(v)
+    ? v.filter((x) => typeof x === 'string' || typeof x === 'number').map(String)
+    : [];
 const distinct = (xs: string[]) => [...new Set(xs)];
 const mentions = (text: string, id: string) =>
   new RegExp(`(?<![\\w-])${id.replace(/[-]/g, '\\-')}(?![\\w-])`).test(text);
@@ -111,7 +115,8 @@ export function nextForIntent(s: {
   intent: string | null;
   spec: string | null;
   plan: string | null;
-  open: number;
+  /** ids of the ticket files that are still open */
+  openIds: string[];
   planned: string[];
   history: string[];
   broken: string[];
@@ -123,11 +128,15 @@ export function nextForIntent(s: {
   if (s.spec === 'rejected') return 'planner: revise spec.md';
   if (s.spec === 'accepted' && s.plan === null) return 'pl: write plan.md';
   if (s.plan === 'draft') return 'qa-design: review the plan';
-  if ((s.plan === 'reviewed' || s.plan === 'active') && s.open === 0) {
-    const unrecorded = s.planned.filter((t) => !s.history.some((h) => mentions(h, t)));
-    if (s.planned.length === 0 || unrecorded.length > 0) return 'pl: create tickets';
+  const recorded = (t: string) => s.history.some((h) => mentions(h, t));
+  const closed = (t: string) => !s.openIds.includes(t);
+  if (s.plan !== null && s.planned.length > 0 && s.planned.every((t) => closed(t) && recorded(t)))
     return 'pm: close the rc (reins check --stage rc-close --release <version>)';
-  }
+  if (
+    (s.plan === 'reviewed' || s.plan === 'active') &&
+    s.planned.some((t) => closed(t) && !recorded(t))
+  )
+    return 'pl: create tickets';
   if (s.broken.length > 0) return `invalid frontmatter (F2): ${s.broken.join(', ')}`;
   return '—';
 }
@@ -152,7 +161,8 @@ function intentsStatus(
     const spec = intentFile(root, id, 'spec');
     const plan = intentFile(root, id, 'plan');
     const planned = list(plan?.data['tickets']);
-    const open = tickets.filter((t) => str(t.data['intent']) === id).length;
+    const mine = tickets.filter((t) => str(t.data['intent']) === id);
+    const open = mine.length;
     const dir = intentDir(root, id);
     intents.push({
       id,
@@ -166,7 +176,7 @@ function intentsStatus(
         intent: statusOf(i),
         spec: statusOf(spec),
         plan: statusOf(plan),
-        open,
+        openIds: tickets.map(ticketId),
         planned,
         history,
         broken: [i, spec, plan].filter((f): f is WorkFile => !!f?.error).map((f) => f.path),
@@ -176,14 +186,46 @@ function intentsStatus(
   return { intents, superseded };
 }
 
+const fileIdOf = (t: WorkFile) => /^([^_.]+)/.exec(basename(t.path))?.[1] ?? basename(t.path);
+const ticketId = (t: WorkFile) => str(t.data['id']) || fileIdOf(t);
+
+/** A ticket that cannot be read; shown as invalid so one bad file never hides the others. */
+function invalidTicket(t: WorkFile): TicketStatus {
+  return {
+    id: ticketId(t),
+    path: t.path,
+    status: null,
+    role: null,
+    intent: null,
+    orphan: false,
+    invalid: true,
+    asks: [],
+    t1: null,
+    next: 'invalid (F2)',
+  };
+}
+
 function ticketStatus(root: string, t: WorkFile): TicketStatus {
-  const fileId = /^([^_.]+)/.exec(basename(t.path))?.[1] ?? basename(t.path);
-  const id = str(t.data['id']) || fileId;
+  try {
+    return readTicket(root, t);
+  } catch {
+    return invalidTicket(t);
+  }
+}
+
+function readTicket(root: string, t: WorkFile): TicketStatus {
+  const fileId = fileIdOf(t);
+  const id = ticketId(t);
   const status = str(t.data['status']) || null;
   const intent = str(t.data['intent']) || null;
   const role = str(t.data['role']) || null;
-  const asks = list(t.data['asks']);
-  const invalid = !!t.error || status === null || !TICKET_STATUSES.includes(status);
+  const rawAsks = t.data['asks'];
+  const asksOk =
+    rawAsks === undefined ||
+    rawAsks === null ||
+    (Array.isArray(rawAsks) && rawAsks.every((a) => typeof a === 'string'));
+  const asks = asksOk ? list(rawAsks) : [];
+  const invalid = !!t.error || !asksOk || status === null || !TICKET_STATUSES.includes(status);
   const orphan = !intent || !intentDir(root, intent);
   const base = { id, path: t.path, status, role, intent, orphan, invalid, asks, t1: null };
   if (invalid) return { ...base, next: 'invalid (F2)' };

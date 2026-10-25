@@ -10,7 +10,11 @@ This file is about the package. The harness that `reins update` re-applies to in
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md); an entry there tagged `[skill]`
 needs the `/reins-update` skill.
 
-## [Unreleased] — 0.1.1
+## [Unreleased]
+
+0.1.2 — a Claude Code plugin (intent 007).
+
+## [0.1.1] — 2026-10-26
 
 Stabilisation: the known issues of 0.1.0 that the loop found (intents 004–006). Harness 0.1.1.
 
@@ -31,7 +35,6 @@ Stabilisation: the known issues of 0.1.0 that the loop found (intents 004–006)
 ### Known issues
 - `.env.*` read denial stays a fixed list (Claude Code permission globs have no negation); an exact check via a hook comes in 0.2.
 
-0.1.2 adds a Claude Code plugin.
 
 ## [0.1.0] — 2026-10-26
 
@@ -80,4 +83,5 @@ Published to npm while the rc was still under verification; fixes go to 0.1.1.
 - `recall`, `doctor` and `configure budget|gates|language` are not implemented.
 
 [Unreleased]: https://github.com/bluenyang/reins/commits/master
+[0.1.1]: https://www.npmjs.com/package/@bluenyang/reins/v/0.1.1
 [0.1.0]: https://www.npmjs.com/package/@bluenyang/reins/v/0.1.0

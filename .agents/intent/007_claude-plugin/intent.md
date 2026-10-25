@@ -1,5 +1,5 @@
 ---
-id: "004"
+id: "007"
 slug: claude-plugin
 version: 0.1.2
 status: draft

@@ -1,7 +1,9 @@
 ---
 intent: "003"
-status: draft
-approvals: []
+status: reviewed
+approvals:
+  - { role: qa-design, at: 2026-10-25, kind: first-review }
+  - { role: pm, at: 2026-10-25 }
 summary_for_user: |
   일부러 규칙을 어기는 시나리오 18개를 임시 저장소에서 만들고, 빌드된 `reins` CLI를 실제로 돌려 기대한 사유 id·판정·종료 코드로 멈추는지 확인한다. 결과는 "18/18 stopped" 한 줄.
   C1~C10, A1~G2 각각을 누가 잡는지(검증기·생성 권한·역할 판단·아직 없음) 표를 `docs/violations.md`(+ .ko)에 남긴다.

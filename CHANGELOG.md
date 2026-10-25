@@ -10,10 +10,28 @@ This file is about the package. The harness that `reins update` re-applies to in
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md); an entry there tagged `[skill]`
 needs the `/reins-update` skill.
 
-## [Unreleased]
+## [Unreleased] — 0.1.1
 
-0.1.1 — stabilisation: fixes for the known issues of 0.1.0 found by the loop. 0.1.2 adds a Claude Code
-plugin.
+Stabilisation: the known issues of 0.1.0 that the loop found (intents 004–006). Harness 0.1.1.
+
+### Fixed
+- pre-commit checks what is staged (the index), including schemas, paired installed files and generator inputs — not the working tree.
+- T3 validates the last bus exchange against its schemas, reports unparsable bus files as F2, reads absolute evidence paths inside the repository (outside: D5), and warns (D4) on empty gate output.
+- Hand-edited or deleted AGENTS.md managed blocks are F2 (`reins:override` and a project section of the same heading are respected); pushing a tag deletion is A1 HOLD.
+- `check` no longer crashes in a repository without commits; output cut by `| head` exits quietly with the verdict code.
+- One vendor inference for install and configure (`cursor-` models included); model ids checked against `agy models` and `cursor-agent models` (listing only, never blocking).
+- qa-design and qa-run default to model ids agy offers; generated settings deny `git commit -n`.
+- Tests never read the developer's `.loctx/` or spawn a real vendor CLI.
+
+### Changed
+- Premise stop conditions C1/C2 are now P1/P2 (red lines C1–C10 unchanged); old metrics records still read.
+- Code review sees only the change: the review request carries each change's intent, requirement and evidence; `skills/reins-loop/references/vendor-cli.md` has the vendor CLI recipes.
+- Violation scenarios: 25/25 stopped.
+
+### Known issues
+- `.env.*` read denial stays a fixed list (Claude Code permission globs have no negation); an exact check via a hook comes in 0.2.
+
+0.1.2 adds a Claude Code plugin.
 
 ## [0.1.0] — 2026-10-26
 

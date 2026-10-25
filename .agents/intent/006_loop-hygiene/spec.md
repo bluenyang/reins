@@ -1,9 +1,10 @@
 ---
 intent: "006"
-status: reviewed
+status: accepted
 approvals:
   - { role: qa-design, at: 2026-10-26, kind: first-review }
   - { role: pm, at: 2026-10-26 }
+  - { role: user, at: 2026-10-26, kind: summary }
 summary_for_user: |
   정지 조건의 전제 그룹 C1·C2를 P1·P2로 바꾸고 하네스를 0.1.1로 올린다. 레드라인 C1~C10은 그대로 둔다.
   metrics는 옛 기록의 C1·C2를 P1·P2로 읽는다. 지난 커밋과 history는 고치지 않는다.

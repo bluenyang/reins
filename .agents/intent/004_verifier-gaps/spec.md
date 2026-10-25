@@ -1,9 +1,10 @@
 ---
 intent: "004"
-status: reviewed
+status: accepted
 approvals:
   - { role: qa-design, at: 2026-10-26, kind: first-review }
   - { role: pm, at: 2026-10-26 }
+  - { role: user, at: 2026-10-26, kind: summary }
 summary_for_user: |
   pre-commit은 작업 트리 대신 인덱스(커밋될 내용)를 검사하고, T3는 버스 파일 스키마와 저장소 안의 절대 경로 evidence를 확인한다.
   게이트 출력이 비면 D4 WARN, AGENTS.md 관리 블록을 손으로 고치면 F2 STOP(`reins:override`는 예외), 태그를 지우는 push는 A1 HOLD가 된다.

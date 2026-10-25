@@ -1,9 +1,10 @@
 ---
 intent: "005"
-status: reviewed
+status: accepted
 approvals:
   - { role: qa-design, at: 2026-10-26, kind: first-review }
   - { role: pm, at: 2026-10-26 }
+  - { role: user, at: 2026-10-26, kind: summary }
 summary_for_user: |
   qa-design·qa-run 기본 바인딩을 실제 agy ID(gemini-4-argon-high, gemini-3.8-flash-medium)로 바꾼다.
   벤더 추론은 detect.ts의 함수 하나로 모으고, install·configure 때 agy·cursor-agent의 `models` 목록으로만 ID를 확인한다(모델 호출 없음, 실패해도 막지 않음).

@@ -18,4 +18,5 @@ must_not:
 1. From an accepted spec: write plan.md (files that change, order of work, risks, proof, test checklist). Each order-of-work item becomes one ticket.
 2. For each ticket: hand to an implementer (bus kind: implement) with the plan section and knowledge hits. A ticket's checklist items are the expected commit units.
 3. On a verify-tool failure summary: decide fix (new ticket or same ticket) or escalate per the chain.
-4. When all planned tickets are done → rc.1 is ready; stabilization tickets afterwards only.
+4. For a review request (bus kind: review) fill `changes[]: {path, what, why: <S-n>, evidence: <report path>}` per change; the reviewer gets nothing else but that request and the diff.
+5. When all planned tickets are done → rc.1 is ready; stabilization tickets afterwards only.

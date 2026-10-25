@@ -5,11 +5,12 @@ files:
   .claude/agents/reins-deploy.md: 75d05dc2fbd003c8
   .claude/agents/reins-docs.md: e14922940968e2d2
   .claude/agents/reins-implementer.md: 18abc94af65c805d
-  .claude/agents/reins-pl.md: e142970711a8b196
+  .claude/agents/reins-pl.md: 7891ad107df000fb
   .claude/agents/reins-planner.md: e523214b86822b0f
   .claude/agents/reins-pm.md: 576d6e3f15ce762f
   .claude/agents/reins-verify-tool.md: 936e59fa850242a8
   .claude/skills/reins-intent/SKILL.md: 9126cc9f6c06d517
-  .claude/skills/reins-loop/SKILL.md: e33ea2b96e6f034f
+  .claude/skills/reins-loop/SKILL.md: 984a1d9ab8b8dbe1
+  .claude/skills/reins-loop/references/vendor-cli.md: a28b0a20acc3fec5
   .claude/skills/reins-setup/SKILL.md: 4f4fedd4bd7d10ee
   .claude/settings.json: 2e3d33ba4393087e

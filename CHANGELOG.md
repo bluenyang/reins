@@ -14,6 +14,14 @@ needs the `/reins-update` skill.
 
 0.1.2 — a Claude Code plugin (intent 007).
 
+### Added
+- The repository is a Claude Code plugin and marketplace: `/plugin marketplace add bluenyang/reins`, `/plugin install reins@bluenyang`, then `/reins:reins-setup`.
+- `sync-version` keeps `.claude-plugin/plugin.json` and the `reins-setup` SKILL.md pin equal to the package version (run by the `version` script).
+- CI runs `claude plugin validate .`.
+
+### Changed
+- The publish workflow builds first, sets the version through `npm version`, runs `reins update`, asserts every version pin, and commits the version files and updated installs together with the tag.
+
 ## [0.1.1] — 2026-10-26
 
 Stabilisation: the known issues of 0.1.0 that the loop found (intents 004–006). Harness 0.1.1.

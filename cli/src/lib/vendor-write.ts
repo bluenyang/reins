@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from '
 import { dirname, join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { MANIFEST, generateVendorFiles, sha, type Generated } from './generate.js';
+import { workTreeReader, type Reader } from './reader.js';
 import type { Finding } from './verdict.js';
 
 /** `.agents/harness/generated.yaml` — which vendor files reins wrote, and what they looked like. */
@@ -10,10 +11,10 @@ interface Manifest {
   files: Record<string, string>;
 }
 
-export function readManifest(root: string): Manifest {
-  const p = join(root, MANIFEST);
-  if (!existsSync(p)) return { schema: 'reins/generated@1', files: {} };
-  const m = parse(readFileSync(p, 'utf8')) as Partial<Manifest> | null;
+export function readManifest(root: string, rd: Reader = workTreeReader(root)): Manifest {
+  const text = rd.read(MANIFEST);
+  if (text === undefined) return { schema: 'reins/generated@1', files: {} };
+  const m = parse(text) as Partial<Manifest> | null;
   return { schema: 'reins/generated@1', files: m?.files ?? {} };
 }
 
@@ -99,14 +100,14 @@ export function writeGenerated(root: string, gen: Generated, dryRun: boolean): G
 }
 
 /** Drift, match layer for generated files: on disk = what reins wrote = what it would write now. */
-export function driftGenerated(root: string): Finding[] {
-  if (!existsSync(join(root, MANIFEST))) return [];
+export function driftGenerated(root: string, rd: Reader = workTreeReader(root)): Finding[] {
+  if (rd.read(MANIFEST) === undefined) return [];
   const findings: Finding[] = [];
-  const recorded = readManifest(root).files;
+  const recorded = readManifest(root, rd).files;
   const now = new Map(generateVendorFiles(root).writes.map((w) => [w.path, sha(w.content)]));
   for (const [path, hash] of Object.entries(recorded)) {
-    const abs = join(root, path);
-    if (!existsSync(abs)) {
+    const onDisk = rd.read(path);
+    if (onDisk === undefined) {
       findings.push({
         reason: 'F2',
         verdict: 'STOP',
@@ -116,7 +117,7 @@ export function driftGenerated(root: string): Finding[] {
       });
       continue;
     }
-    if (sha(readFileSync(abs, 'utf8')) !== hash)
+    if (sha(onDisk) !== hash)
       findings.push({
         reason: 'C3',
         verdict: 'STOP',

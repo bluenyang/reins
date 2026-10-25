@@ -15,14 +15,14 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 /**
- * Violation scenarios V1–V18 (intent 003): each one breaks a rule on purpose in a throwaway git repository
+ * Violation scenarios V1–V19 (intent 003): each one breaks a rule on purpose in a throwaway git repository
  * and runs the built `cli/dist/reins.js` as a child process. The test reads the stop report (`--json`) and the
  * exit code — it never calls the verifier as a function. `test/e2e/build.ts` (vitest globalSetup) builds first.
  */
 
 const ROOT = join(fileURLToPath(import.meta.url), '..', '..', '..');
 const CLI = join(ROOT, 'cli', 'dist', 'reins.js');
-const TOTAL = 18; // rows of the scenario table in the spec
+const TOTAL = 19; // rows of the scenario table in the spec
 
 const EXIT = { CONTINUE: 0, HOLD: 10, STOP: 20, ESCALATE: 30 } as const;
 type Verdict = keyof typeof EXIT;
@@ -364,6 +364,32 @@ const SCENARIOS: Scenario[] = [
           'Bash(git commit --no-verify *)',
         ]),
       );
+    },
+  },
+  {
+    id: 'V19',
+    violation: 'a role file is broken in the index only; the working tree is restored',
+    run: (d) => {
+      const rel = '.agents/harness/roles/implementer.md';
+      const orig = readFileSync(join(d, rel), 'utf8');
+      put(d, rel, orig.replace('role: implementer', 'role: someone-else'));
+      git(d, 'add', rel);
+      put(d, rel, orig); // the working tree is fine, the commit would not be
+      const r = reins(d, [...preCommit, '--json']);
+      const report = JSON.parse(r.stdout) as Report;
+      expect(
+        report.findings.some((f) => f.reason === 'F2' && f.verdict === 'STOP' && f.path === rel),
+        r.stdout,
+      ).toBe(true);
+      expect(report.verdict).toBe('STOP');
+      expect(r.code).toBe(EXIT.STOP);
+      // the converse: only the working tree is broken, nothing staged for it -> passes
+      git(d, 'reset', '-q', '--', rel);
+      git(d, 'checkout', '-q', '--', rel);
+      put(d, rel, orig.replace('role: implementer', 'role: someone-else'));
+      const ok = reins(d, [...preCommit, '--json']);
+      expect(JSON.parse(ok.stdout), ok.stdout).toMatchObject({ verdict: 'CONTINUE', findings: [] });
+      expect(ok.code).toBe(0);
     },
   },
 ];

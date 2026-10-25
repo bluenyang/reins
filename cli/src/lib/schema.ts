@@ -36,8 +36,13 @@ function errors(v: ValidateFunction, path: string): SchemaIssue[] {
 }
 
 /** Validates a Markdown file's YAML frontmatter, or a whole YAML file when `whole` is set. */
-export function validateFile(v: ValidateFunction, path: string, whole = false): SchemaIssue[] {
-  const text = readFileSync(path, 'utf8');
+export function validateFile(
+  v: ValidateFunction,
+  path: string,
+  whole = false,
+  content?: string,
+): SchemaIssue[] {
+  const text = content ?? readFileSync(path, 'utf8');
   let data: unknown;
   let error: string | undefined;
   if (whole) {

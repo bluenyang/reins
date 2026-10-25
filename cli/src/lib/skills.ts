@@ -27,10 +27,10 @@ export function splitFrontmatter(text: string): {
   }
 }
 
-export function validateSkillFile(path: string): SkillIssue[] {
+export function validateSkillFile(path: string, content?: string): SkillIssue[] {
   const issues: SkillIssue[] = [];
   const dir = basename(join(path, '..'));
-  const text = readFileSync(path, 'utf8');
+  const text = content ?? readFileSync(path, 'utf8');
   const { data, body, error } = splitFrontmatter(text);
   if (!data)
     return [

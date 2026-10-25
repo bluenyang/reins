@@ -1,13 +1,14 @@
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { currentBranch, isAncestor, repoRoot, stagedFiles } from '../lib/git.js';
 import { harnessDir, secretPolicy } from '../lib/harness.js';
 import { loadSchemas, schemaFor, validateFile } from '../lib/schema.js';
 import { DEFAULT_ALLOWED, DEFAULT_SECRET_PATTERNS, isSecretPath } from '../lib/secrets.js';
-import { findSkillFiles, splitFrontmatter, validateSkillFile } from '../lib/skills.js';
+import { splitFrontmatter, validateSkillFile } from '../lib/skills.js';
 import { harnessVersion, packageHarness, packageSkills, tierSkills } from '../lib/upstream.js';
 import { listFiles, relPath } from '../lib/fsx.js';
 import { driftGenerated } from '../lib/vendor-write.js';
+import { indexReader, workTreeReader, type Reader } from '../lib/reader.js';
 import { rcClose, ticketStart, verdictCheck } from './stages.js';
 import { parse } from 'yaml';
 import { report, type Finding, type StopReport } from '../lib/verdict.js';
@@ -75,12 +76,14 @@ export function preCommit(root: string): Finding[] {
       message: 'local workspace exists but is not in .gitignore',
       resume: 'add ".loctx/" (or ".ai/") to .gitignore',
     });
-  findings.push(...driftFormat(root, staged), ...driftConvention(root, staged));
+  // S-1: the checks read the content the commit would contain (the index), not the working tree
+  const rd = indexReader(root);
+  findings.push(...driftFormat(root, staged, rd), ...driftConvention(root, staged, rd));
   const under = (...dirs: string[]) => staged.some((f) => dirs.some((d) => f.startsWith(d)));
   if (under('harness/', '.agents/harness/', 'skills/', '.agents/skills/'))
-    findings.push(...driftMatch(root));
+    findings.push(...driftMatch(root, rd));
   if (under('.claude/', '.agents/harness/', '.agents/skills/'))
-    findings.push(...driftGenerated(root));
+    findings.push(...driftGenerated(root, rd));
   return findings;
 }
 
@@ -105,11 +108,17 @@ export function prePush(root: string, refs: string[]): Finding[] {
 }
 
 /** Drift, format layer — Agent Skills spec on SKILL.md files. */
-export function driftFormat(root: string, only?: string[]): Finding[] {
-  const files = findSkillFiles(SKILL_ROOTS.map((r) => join(root, r)));
-  const chosen = only ? files.filter((f) => only.includes(relPath(root, f))) : files;
+export function driftFormat(
+  root: string,
+  only?: string[],
+  rd: Reader = workTreeReader(root),
+): Finding[] {
+  const files = SKILL_ROOTS.flatMap((r) =>
+    rd.list(r).filter((p) => /^[^/]+\/SKILL\.md$/.test(p.slice(r.length + 1))),
+  );
+  const chosen = only ? files.filter((f) => only.includes(f)) : files;
   return chosen.flatMap((f) =>
-    validateSkillFile(f).map<Finding>((i) => ({
+    validateSkillFile(join(root, f), rd.read(f)).map<Finding>((i) => ({
       reason: 'F2',
       verdict: 'STOP',
       path: relPath(root, i.path),
@@ -119,39 +128,34 @@ export function driftFormat(root: string, only?: string[]): Finding[] {
   );
 }
 
-/** Files the convention layer looks at: harness sources plus the installed project's agent files. */
-function walk(dir: string, out: string[] = []): string[] {
-  if (!existsSync(dir)) return out;
-  for (const e of readdirSync(dir)) {
-    const p = join(dir, e);
-    if (statSync(p).isDirectory()) walk(p, out);
-    else out.push(p);
-  }
-  return out;
-}
-
 /** Drift, convention layer — frontmatter schemas and role files (design §6). */
-export function driftConvention(root: string, only?: string[]): Finding[] {
+export function driftConvention(
+  root: string,
+  only?: string[],
+  rd: Reader = workTreeReader(root),
+): Finding[] {
   const dir = harnessDir(root);
   if (!dir) return [];
+  const hrel = relPath(root, dir);
   const schemas = loadSchemas(dir);
   const findings: Finding[] = [];
   const candidates = [
-    ...walk(join(dir, 'templates')),
-    ...walk(join(dir, 'knowledge-seeds')),
-    ...walk(join(root, '.agents', 'intent')),
-    ...walk(join(root, '.agents', 'knowledge')),
-    ...walk(join(root, '.loctx', 'ticket')),
-    ...walk(join(root, '.loctx', 'bus')),
+    ...rd.list(`${hrel}/templates`),
+    ...rd.list(`${hrel}/knowledge-seeds`),
+    ...rd.list('.agents/intent'),
+    ...rd.list('.agents/knowledge'),
+    ...rd.list('.loctx/ticket'),
+    ...rd.list('.loctx/bus'),
   ];
-  for (const abs of candidates) {
-    const rel = relPath(root, abs);
+  for (const rel of candidates) {
     if (only && !only.includes(rel)) continue;
+    const text = rd.read(rel);
+    if (text === undefined) continue;
     const m = schemaFor(rel);
     if (!m) continue;
     const v = schemas.get(m.schema);
     if (!v) continue;
-    for (const i of validateFile(v, abs, m.whole))
+    for (const i of validateFile(v, join(root, rel), m.whole, text))
       findings.push({
         reason: 'F2',
         verdict: 'STOP',
@@ -161,35 +165,33 @@ export function driftConvention(root: string, only?: string[]): Finding[] {
       });
   }
   // role files: role == file name, must_not present
-  const roles = join(dir, 'roles');
-  if (existsSync(roles))
-    for (const f of readdirSync(roles).filter((x) => x.endsWith('.md'))) {
-      const rel = relPath(root, join(roles, f));
-      if (only && !only.includes(rel)) continue;
-      const { data, error } = splitFrontmatter(readFileSync(join(roles, f), 'utf8'));
-      const name = basename(f, '.md');
-      if (error)
-        findings.push({
-          reason: 'F2',
-          verdict: 'STOP',
-          path: rel,
-          message: `frontmatter is not valid YAML: ${error}`,
-        });
-      else if (!data || data['role'] !== name)
-        findings.push({
-          reason: 'F2',
-          verdict: 'STOP',
-          path: rel,
-          message: `role file must declare role: ${name}`,
-        });
-      else if (!Array.isArray(data['must_not']) || data['must_not'].length === 0)
-        findings.push({
-          reason: 'F2',
-          verdict: 'STOP',
-          path: rel,
-          message: 'must_not is the enforced source and cannot be empty',
-        });
-    }
+  const roles = `${hrel}/roles`;
+  for (const rel of rd.list(roles).filter((x) => /^[^/]+\.md$/.test(x.slice(roles.length + 1)))) {
+    if (only && !only.includes(rel)) continue;
+    const { data, error } = splitFrontmatter(rd.read(rel) ?? '');
+    const name = basename(rel, '.md');
+    if (error)
+      findings.push({
+        reason: 'F2',
+        verdict: 'STOP',
+        path: rel,
+        message: `frontmatter is not valid YAML: ${error}`,
+      });
+    else if (!data || data['role'] !== name)
+      findings.push({
+        reason: 'F2',
+        verdict: 'STOP',
+        path: rel,
+        message: `role file must declare role: ${name}`,
+      });
+    else if (!Array.isArray(data['must_not']) || data['must_not'].length === 0)
+      findings.push({
+        reason: 'F2',
+        verdict: 'STOP',
+        path: rel,
+        message: 'must_not is the enforced source and cannot be empty',
+      });
+  }
   return findings;
 }
 
@@ -197,17 +199,17 @@ export function driftConvention(root: string, only?: string[]): Finding[] {
 const PROJECT_OWNED = new Set(['bindings.yaml', 'gates.yaml', 'install.yaml', 'generated.yaml']);
 
 /** Drift, match layer — the installed `.agents/harness/` against the packaged upstream at the pinned version (design §6). */
-export function driftMatch(root: string): Finding[] {
-  const installed = join(root, '.agents', 'harness');
-  const pinPath = join(installed, 'install.yaml');
-  if (!existsSync(pinPath)) return [];
+export function driftMatch(root: string, rd: Reader = workTreeReader(root)): Finding[] {
+  const installed = '.agents/harness';
+  const pinText = rd.read(`${installed}/install.yaml`);
+  if (pinText === undefined) return [];
   let up: string;
   try {
     up = packageHarness();
   } catch {
     return [];
   }
-  const pinned = parse(readFileSync(pinPath, 'utf8')) as { version?: string; tier?: string };
+  const pinned = parse(pinText) as { version?: string; tier?: string };
   const pin = pinned.version;
   const upVersion = harnessVersion(up);
   if (pin !== upVersion)
@@ -221,12 +223,12 @@ export function driftMatch(root: string): Finding[] {
       },
     ];
   const findings: Finding[] = [];
-  for (const abs of walk(installed)) {
-    const rel = relPath(installed, abs);
+  for (const entry of rd.list(installed)) {
+    const rel = entry.slice(installed.length + 1);
     if (PROJECT_OWNED.has(rel)) continue;
     const src = join(up, rel);
     if (!existsSync(src)) continue;
-    if (readFileSync(src, 'utf8') !== readFileSync(abs, 'utf8'))
+    if (readFileSync(src, 'utf8') !== rd.read(entry))
       findings.push({
         reason: 'F2',
         verdict: 'STOP',
@@ -238,14 +240,10 @@ export function driftMatch(root: string): Finding[] {
   // installed skill entry points = the packaged ones
   const skillsUp = packageSkills();
   for (const name of tierSkills(pinned.tier ?? 'graph')) {
-    const dir = join(root, '.agents', 'skills', name);
-    if (!existsSync(dir)) continue;
+    const dir = `.agents/skills/${name}`;
+    if (rd.list(dir).length === 0) continue;
     for (const f of listFiles(join(skillsUp, name))) {
-      const mine = join(dir, f);
-      if (
-        !existsSync(mine) ||
-        readFileSync(mine, 'utf8') !== readFileSync(join(skillsUp, name, f), 'utf8')
-      )
+      if (rd.read(`${dir}/${f}`) !== readFileSync(join(skillsUp, name, f), 'utf8'))
         findings.push({
           reason: 'F2',
           verdict: 'STOP',

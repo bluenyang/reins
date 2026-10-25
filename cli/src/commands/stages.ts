@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { harnessDir, readYaml } from '../lib/harness.js';
 import { loadSchemas, validateFile } from '../lib/schema.js';
 import type { Finding } from '../lib/verdict.js';
+import { compound } from './gate.js';
 import {
   approvedBy,
   busFor,
@@ -225,11 +226,6 @@ export function readEvidence(
   return { text, cmd, exit: code === undefined ? undefined : Number(code) };
 }
 
-/** A pipe outside quotes — a gate whose output was massaged (C5) is not evidence. */
-function piped(cmd: string): boolean {
-  return /\|/.test(cmd.replace(/'[^']*'|"[^"]*"/g, ''));
-}
-
 /** T3 — at a gate or test verdict: the latest verification of a ticket must be a real pass. */
 export function verdictCheck(root: string, id: string): Finding[] {
   const verifies = busFor(root, id).filter((b) => b.request?.['kind'] === 'verify');
@@ -314,12 +310,12 @@ export function verdictCheck(root: string, id: string): Finding[] {
         message: 'evidence does not show the command that ran ("$ <cmd>")',
         resume: 're-run the gate from gates.yaml and keep the command line',
       });
-    else if (piped(e.cmd))
+    else if (compound(e.cmd))
       findings.push({
         reason: 'D4',
         verdict: 'STOP',
         path: at,
-        message: `the gate ran through a pipe: ${e.cmd}`,
+        message: `the gate did not run as a single command: ${e.cmd}`,
         resume: 'run the gate exactly as gates.yaml declares it (C5)',
       });
   }

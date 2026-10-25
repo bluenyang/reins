@@ -102,11 +102,11 @@ describe('T1 ticket-start', () => {
   });
 });
 
+const req = (id: string) =>
+  `schema: reins/bus/request@1\nid: ${id}\nfrom: pl\nto: verify-tool\nticket: 001-1\nintent: "001"\nkind: verify\nchanges: []\nwhy: w\nrevert: r\n`;
+const res = (id: string, verdict: string, evidence: string) =>
+  `schema: reins/bus/response@1\nrequest: ${id}\nfrom: verify-tool\nverdict: ${verdict}\ngrounds: g\nmay_proceed: true\nevidence: ${JSON.stringify(evidence)}\n`;
 describe('T3 verdict', () => {
-  const req = (id: string) =>
-    `schema: reins/bus/request@1\nid: ${id}\nfrom: pl\nto: verify-tool\nticket: 001-1\nintent: "001"\nkind: verify\nchanges: []\nwhy: w\nrevert: r\n`;
-  const res = (id: string, verdict: string, evidence: string) =>
-    `schema: reins/bus/response@1\nrequest: ${id}\nfrom: verify-tool\nverdict: ${verdict}\ngrounds: g\nmay_proceed: true\nevidence: ${JSON.stringify(evidence)}\n`;
   let d: string;
   beforeAll(async () => {
     d = await project();
@@ -128,7 +128,7 @@ describe('T3 verdict', () => {
     expect(verdictCheck(d, '001-1')).toEqual([]);
     bus('001-1_01', 'pass', '$ pnpm test | tail -5\nok\nexit 0');
     expect(verdictCheck(d, '001-1').map((x) => x.message)).toEqual([
-      'the gate ran through a pipe: pnpm test | tail -5',
+      'the gate did not run as a single command: pnpm test | tail -5',
     ]);
     bus('001-1_01', 'pass', '$ pnpm test\n1 failed\nexit 1');
     expect(verdictCheck(d, '001-1')[0]?.reason).toBe('D4');

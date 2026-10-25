@@ -5,6 +5,7 @@ import { runInstall, type Tier } from './commands/install.js';
 import { runMigrate } from './commands/migrate.js';
 import { runUpdate } from './commands/update.js';
 import { configureBindings } from './commands/configure.js';
+import { runGates } from './commands/gate.js';
 import { defaultsAsker, stdinAsker } from './lib/ask.js';
 import { EXIT } from './lib/verdict.js';
 
@@ -195,6 +196,27 @@ configure
       for (const p of g.removed) process.stdout.write(`  - ${p}\n`);
       for (const x of g.refused) process.stdout.write(`• left alone ${x.path}: ${x.why}\n`);
     }
+  });
+
+program
+  .command('gate')
+  .description(
+    'run gates.yaml gates as declared; raw output goes to .loctx/reports/ as T3 evidence',
+  )
+  .argument('[names...]', 'gates to run (default: the declared order)')
+  .option('--ticket <id>', 'name the reports after this ticket')
+  .option('--all', 'keep going after a failure')
+  .option('--json')
+  .action((names: string[], o: { ticket?: string; all?: boolean; json?: boolean }) => {
+    const r = runGates({ names, ticket: o.ticket, all: o.all });
+    if (o.json) process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
+    else if (r.refused) process.stderr.write(`reins gate: ${r.refused}\n`);
+    else
+      for (const g of r.runs)
+        process.stdout.write(
+          `  ${g.skipped ? '-' : g.exit === 0 ? 'ok' : 'FAIL'} ${g.gate.padEnd(10)} ${g.skipped ?? `exit ${g.exit} → ${g.report}`}\n`,
+        );
+    process.exit(r.refused ? 2 : r.runs.every((g) => g.exit === 0) ? 0 : 1);
   });
 
 for (const n of ['recall', 'status', 'doctor'])

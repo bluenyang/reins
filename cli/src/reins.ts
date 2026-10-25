@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { runCheck, STAGES, type Stage } from './commands/check.js';
 import { runInstall, type Tier } from './commands/install.js';
 import { runMigrate } from './commands/migrate.js';
+import { runStatus } from './commands/status.js';
 import { runUpdate } from './commands/update.js';
 import { configureBindings } from './commands/configure.js';
 import { runGates } from './commands/gate.js';
@@ -219,7 +220,18 @@ program
     process.exit(r.refused ? 2 : r.runs.every((g) => g.exit === 0) ? 0 : 1);
   });
 
-for (const n of ['recall', 'status', 'doctor'])
+program
+  .command('status')
+  .description('where the project stands: harness, intents, tickets, bus, last history (read-only)')
+  .option('--json')
+  .action((o: { json?: boolean }) => {
+    const r = runStatus({ json: o.json });
+    process.stdout.write(r.stdout);
+    process.stderr.write(r.stderr);
+    process.exit(r.code);
+  });
+
+for (const n of ['recall', 'doctor'])
   program.command(n).allowUnknownOption().allowExcessArguments().action(notYet(n));
 
 program

@@ -11,6 +11,7 @@ import {
   checkBinding,
   listModels,
   newModelCache,
+  spawnModels,
   vendorOf,
   type ModelsRunner,
   type Vendor,
@@ -31,6 +32,22 @@ function fake(out: Record<string, string>, calls: string[][] = []) {
   const cache = newModelCache({ run, onPath: () => true, warn: (m) => warns.push(m) });
   return { cache, warns, calls };
 }
+
+const run1 = (r: ReturnType<ModelsRunner>) =>
+  checkBinding('x', 'google', newModelCache({ run: () => r, onPath: () => true }));
+const detectOnlyClaude = () =>
+  (['claude', 'openai', 'google', 'cursor'] as const).map((name) => ({
+    name,
+    cli: name,
+    detected: name === 'claude',
+  }));
+
+describe('no real vendor CLI under test', () => {
+  it('the real runner refuses to spawn, and the default cache sees every CLI as absent', () => {
+    expect(() => spawnModels('agy', ['models'])).toThrow(/refusing to spawn/);
+    expect(checkBinding('gemini-3-pro', 'google', newModelCache())).toBeNull();
+  });
+});
 
 describe('vendorOf (C-2)', () => {
   it('maps the four prefixes and the rest', () => {
@@ -63,16 +80,14 @@ describe('listModels / checkBinding (C-3)', () => {
   });
 
   it('failure, timeout and empty output are failures', () => {
-    const mk = (r: ReturnType<ModelsRunner>) =>
-      checkBinding('x', 'google', newModelCache({ run: () => r, onPath: () => true }));
-    expect(mk({ status: 2, stdout: '' })).toEqual({
+    expect(run1({ status: 2, stdout: '' })).toEqual({
       unverified: true,
       note: 'agy models failed: exit 2',
     });
-    expect(mk({ status: null, stdout: '', timedOut: true })?.note).toMatch(
+    expect(run1({ status: null, stdout: '', timedOut: true })?.note).toMatch(
       /^agy models failed: timed out/,
     );
-    expect(mk({ status: 0, stdout: 'nothing\n' })?.note).toMatch(/no model IDs/);
+    expect(run1({ status: 0, stdout: 'nothing\n' })?.note).toMatch(/no model IDs/);
   });
 
   it('runs once per CLI with only [models]; skips absent CLIs and claude/openai', () => {
@@ -114,19 +129,13 @@ describe('configure --set (C-4)', () => {
     const d = mkdtempSync(join(tmpdir(), 'reins-models-'));
     execFileSync('git', ['init', '-q'], { cwd: d });
     writeFileSync(join(d, 'package.json'), '{}');
-    const detectVendors = () =>
-      (['claude', 'openai', 'google', 'cursor'] as const).map((name) => ({
-        name,
-        cli: name,
-        detected: name === 'claude',
-      }));
     const { cache: c0 } = fake({});
     await runInstall({
       tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
-      detectVendors,
+      detectVendors: detectOnlyClaude,
       modelCache: c0,
     });
     const { cache, warns } = fake({ agy: AGY });

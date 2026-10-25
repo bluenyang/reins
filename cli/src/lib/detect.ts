@@ -148,6 +148,7 @@ export type ModelsRunner = (cli: string, args: string[]) => RunResult;
 
 /** Runs `<cli> models` without a shell, stdin closed, 10 s limit. Nothing else is ever run. */
 export const spawnModels: ModelsRunner = (cli, args) => {
+  if (process.env['REINS_NO_VENDOR_SPAWN']) throw new Error(`refusing to spawn ${cli} under test`);
   const r = spawnSync(cli, args, {
     stdio: ['ignore', 'pipe', 'ignore'],
     timeout: 10_000,
@@ -205,7 +206,7 @@ export interface ModelCache {
 export function newModelCache(o: Partial<Omit<ModelCache, 'lists'>> = {}): ModelCache {
   return {
     run: o.run ?? spawnModels,
-    onPath: o.onPath ?? onPath,
+    onPath: o.onPath ?? (process.env['REINS_NO_VENDOR_SPAWN'] ? () => false : onPath),
     warn: o.warn ?? ((m) => void process.stderr.write(`warning: ${m}\n`)),
     lists: new Map(),
   };

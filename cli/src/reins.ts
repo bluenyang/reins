@@ -4,6 +4,7 @@ import { runCheck, type CheckOptions } from './commands/check.js';
 import { runInstall, type Tier } from './commands/install.js';
 import { runMigrate } from './commands/migrate.js';
 import { runUpdate } from './commands/update.js';
+import { configureBindings } from './commands/configure.js';
 import { defaultsAsker, stdinAsker } from './lib/ask.js';
 import { EXIT } from './lib/verdict.js';
 
@@ -155,7 +156,48 @@ program
     if (r.install?.history) process.stdout.write(`recorded: ${r.install.history}\n`);
   });
 
-for (const n of ['configure', 'recall', 'status', 'doctor'])
+const configure = program.command('configure').description('change project-owned settings');
+configure
+  .command('bindings')
+  .description(
+    'bind roles to models: --set role=model … or --vendors claude,openai,…; no options asks',
+  )
+  .option('--set <pairs...>', 'role=model pairs')
+  .option(
+    '--vendors <list>',
+    'rebuild every role from its defaults for these vendors (comma-separated)',
+  )
+  .option('--json')
+  .action(async (o: { set?: string[]; vendors?: string; json?: boolean }) => {
+    const asker = !o.set && !o.vendors ? await stdinAsker() : undefined;
+    const r = await configureBindings({
+      set: o.set,
+      vendors: o.vendors?.split(',').map((s) => s.trim()),
+      asker,
+    });
+    asker?.close();
+    if (o.json) {
+      process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
+      process.exit(r.refused ? 2 : 0);
+    }
+    if (r.refused) {
+      process.stderr.write(`reins configure bindings: ${r.refused}\n`);
+      process.exit(2);
+    }
+    for (const t of r.table)
+      process.stdout.write(
+        `  ${r.changed.includes(t.role) ? '*' : ' '} ${t.role.padEnd(12)} ${t.vendor.padEnd(7)} ${t.model}\n`,
+      );
+    process.stdout.write(r.changed.length ? `changed: ${r.changed.join(', ')}\n` : 'no change\n');
+    const g = r.generated;
+    if (g) {
+      for (const p of g.written) process.stdout.write(`  ~ ${p}\n`);
+      for (const p of g.removed) process.stdout.write(`  - ${p}\n`);
+      for (const x of g.refused) process.stdout.write(`• left alone ${x.path}: ${x.why}\n`);
+    }
+  });
+
+for (const n of ['recall', 'status', 'doctor'])
   program.command(n).allowUnknownOption().allowExcessArguments().action(notYet(n));
 
 program

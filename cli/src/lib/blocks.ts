@@ -106,7 +106,8 @@ export function swapSections(text: string, upstream: Block[]): SectionSwap {
     if (!m) continue;
     const start = m.index;
     const rest = out.slice(start + m[0].length);
-    const next = /^#{1,2} /m.exec(rest);
+    // a section ends at the next heading of the same or higher level, or where a managed block begins
+    const next = /^(?:#{1,2} |<!-- reins:begin )/m.exec(rest);
     const end = next ? start + m[0].length + next.index : out.length;
     removed.push(out.slice(start, end).trimEnd());
     out = `${out.slice(0, start)}${b.body}\n\n${out.slice(end).replace(/^\n+/, '')}`.replace(

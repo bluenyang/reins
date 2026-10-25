@@ -50,3 +50,18 @@ describe('migrate swaps project sections for managed blocks', () => {
     expect(swapSections(r.text, UP).swapped).toEqual([]); // idempotent
   });
 });
+
+describe('a swapped section never swallows a managed block that follows it', () => {
+  it('stops at a block marker', async () => {
+    const { swapSections, parseBlocks: pb } = await import('../src/lib/blocks.js');
+    const text =
+      '# A\n\n## Workflow\nold\n\n<!-- reins:begin notice v=0.1.0 -->\n> generated\n<!-- reins:end notice -->\n';
+    const r = swapSections(text, UP);
+    expect(
+      pb(r.text)
+        .map((b) => b.name)
+        .toSorted(),
+    ).toEqual(['notice', 'workflow']);
+    expect(r.removed).toBe('## Workflow\nold');
+  });
+});

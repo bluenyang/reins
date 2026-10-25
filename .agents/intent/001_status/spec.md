@@ -1,9 +1,10 @@
 ---
 intent: "001"
-status: reviewed
+status: accepted
 approvals:
   - { role: qa-design, at: 2026-10-25, kind: first-review }
   - { role: pm, at: 2026-10-25 }
+  - { role: user, at: 2026-10-25, kind: summary }
 summary_for_user: |
   `reins status`가 하네스(버전·드리프트), intent별 진행 단계와 다음 할 일(누가 무엇을), 열린 ticket과 다음 check, 남은 버스 파일, 마지막 history를 한 화면에 보여준다.
   todo ticket은 T1(`check --stage ticket-start`)을 실제로 돌린 결과를 그대로 보여줘서, status와 check가 다른 말을 하지 않는다.

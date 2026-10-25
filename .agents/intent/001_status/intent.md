@@ -2,9 +2,10 @@
 id: "001"
 slug: status
 version: 0.1.0
-status: draft
+status: approved
 origin: agent
-approvals: []
+approvals:
+  - { role: user, at: 2026-10-25 }
 supersedes: null
 ---
 ## 문제

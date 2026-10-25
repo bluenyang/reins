@@ -4,7 +4,12 @@ import { parse, stringify } from 'yaml';
 import type { Asker } from '../lib/ask.js';
 import { applyBlocks, parseBlocks } from '../lib/blocks.js';
 import {
+  CONFIRMED_MODELS,
+  checkBinding,
   discoverGates,
+  newModelCache,
+  vendorOf,
+  type ModelCache,
   generation,
   stacks,
   vendors,
@@ -29,6 +34,8 @@ export interface InstallOptions {
   asker: Asker;
   /** tests: replace vendor detection */
   detectVendors?: () => Vendor[];
+  /** model-list check (spec S-3); tests inject a runner */
+  modelCache?: ModelCache;
   now?: Date;
   /** migrate installs over an old harness it is about to move away */
   overExisting?: boolean;
@@ -60,16 +67,13 @@ function tierFiles(all: string[], tier: Tier): string[] {
   });
 }
 
-const VENDOR_OF = (model: string): Vendor['name'] =>
-  model.startsWith('gpt') ? 'openai' : model.startsWith('gemini') ? 'google' : 'claude';
-const CONFIRMED_MODELS = new Set(['claude-opus-5-5', 'claude-fable-5-1']); // seen working in this environment
-
 /** bindings.yaml (design §5): defaults from role files; an unavailable vendor falls back, else to pm's model. */
 export function buildBindings(
   harness: string,
   available: Set<Vendor['name']>,
   vs: Vendor[],
   mode: string,
+  cache?: ModelCache,
 ): string {
   const roles: Record<string, Record<string, unknown>> = {};
   const files = readdirSync(join(harness, 'roles'))
@@ -87,13 +91,17 @@ export function buildBindings(
   for (const [role, m] of meta) {
     let model = m.def;
     let note: string | undefined;
-    if (!available.has(VENDOR_OF(model))) {
-      note = `${VENDOR_OF(model)} not available — default was ${model}`;
-      model = m.fb && available.has(VENDOR_OF(m.fb)) ? m.fb : pm;
+    if (!available.has(vendorOf(model))) {
+      note = `${vendorOf(model)} not available — default was ${model}`;
+      model = m.fb && available.has(vendorOf(m.fb)) ? m.fb : pm;
     }
-    const entry: Record<string, unknown> = { vendor: VENDOR_OF(model), model };
+    const entry: Record<string, unknown> = { vendor: vendorOf(model), model };
     if (role === 'implementer') entry['parallel'] = 4;
-    if (!CONFIRMED_MODELS.has(model)) entry['unverified'] = true;
+    const chk = cache ? checkBinding(model, entry['vendor'] as Vendor['name'], cache) : null;
+    if (chk) {
+      if (chk.unverified) entry['unverified'] = true;
+      if (chk.note) note = note ? `${note}; ${chk.note}` : chk.note;
+    } else if (!CONFIRMED_MODELS.has(model)) entry['unverified'] = true;
     if (note) entry['note'] = note;
     roles[role] = entry;
   }
@@ -217,7 +225,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   if (o.tier === 'graph' && !hasBindings)
     add(
       '.agents/harness/bindings.yaml',
-      buildBindings(up, avail, vs, o.mode),
+      buildBindings(up, avail, vs, o.mode, o.modelCache ?? newModelCache()),
       'role ↔ model bindings',
     );
   add(

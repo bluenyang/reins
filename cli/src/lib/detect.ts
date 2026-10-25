@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -125,4 +125,111 @@ export function discoverGates(root: string): GateProposal {
         res.gates.push({ name: t, cmd: `make ${t}`, from: `Makefile:${t}` });
   }
   return res;
+}
+
+/** Vendor of a model ID by prefix, in order: gpt, gemini, cursor-, else claude (spec S-2). */
+export function vendorOf(model: string): Vendor['name'] {
+  if (model.startsWith('gpt')) return 'openai';
+  if (model.startsWith('gemini')) return 'google';
+  if (model.startsWith('cursor-')) return 'cursor';
+  return 'claude';
+}
+
+/** Model IDs seen working in this environment. */
+export const CONFIRMED_MODELS = new Set(['claude-opus-5-5', 'claude-fable-5-1']);
+
+export interface RunResult {
+  status: number | null;
+  stdout: string;
+  timedOut?: boolean;
+  error?: string;
+}
+export type ModelsRunner = (cli: string, args: string[]) => RunResult;
+
+/** Runs `<cli> models` without a shell, stdin closed, 10 s limit. Nothing else is ever run. */
+export const spawnModels: ModelsRunner = (cli, args) => {
+  const r = spawnSync(cli, args, {
+    stdio: ['ignore', 'pipe', 'ignore'],
+    timeout: 10_000,
+    encoding: 'utf8',
+  });
+  const code = (r.error as NodeJS.ErrnoException | undefined)?.code;
+  return {
+    status: r.status,
+    stdout: r.stdout ?? '',
+    timedOut: code === 'ETIMEDOUT',
+    error: r.error?.message,
+  };
+};
+
+const LISTERS = { google: 'agy', cursor: 'cursor-agent' } as const;
+// eslint-disable-next-line no-control-regex
+const ANSI = /\u001b\[[0-9;?]*[A-Za-z]/g;
+
+function parseModels(cli: string, out: string): string[] {
+  const ids: string[] = [];
+  for (const line of out.replace(ANSI, '').split(/\r?\n/)) {
+    if (cli === 'agy') {
+      if (line.includes('\t')) ids.push(line.split('\t')[0]!.trim());
+    } else {
+      const m = /^(\S+) - .+$/.exec(line);
+      if (m) ids.push(m[1]!);
+    }
+  }
+  return ids.filter(Boolean);
+}
+
+export type ListResult = { ids: string[] } | { failed: string };
+
+/** `<cli> models` → model IDs, or the reason it could not be read. */
+export function listModels(
+  vendor: 'google' | 'cursor',
+  run: ModelsRunner = spawnModels,
+): ListResult {
+  const cli = LISTERS[vendor];
+  const r = run(cli, ['models']);
+  if (r.timedOut) return { failed: 'timed out after 10 s' };
+  if (r.error) return { failed: r.error };
+  if (r.status !== 0) return { failed: `exit ${r.status}` };
+  const ids = parseModels(cli, r.stdout);
+  return ids.length ? { ids } : { failed: 'no model IDs in output' };
+}
+
+export interface ModelCache {
+  run: ModelsRunner;
+  onPath: (bin: string) => boolean;
+  warn: (msg: string) => void;
+  lists: Map<string, ListResult>;
+}
+
+export function newModelCache(o: Partial<Omit<ModelCache, 'lists'>> = {}): ModelCache {
+  return {
+    run: o.run ?? spawnModels,
+    onPath: o.onPath ?? onPath,
+    warn: o.warn ?? ((m) => void process.stderr.write(`warning: ${m}\n`)),
+    lists: new Map(),
+  };
+}
+
+/**
+ * Checks a binding against the vendor CLI's model list (spec S-3). Returns the fields to record,
+ * or null when the vendor has no list command or its CLI is absent. Never blocks, never changes the model.
+ */
+export function checkBinding(
+  model: string,
+  vendor: Vendor['name'],
+  cache: ModelCache,
+): { unverified?: true; note?: string } | null {
+  if (vendor !== 'google' && vendor !== 'cursor') return null;
+  const cli = LISTERS[vendor];
+  if (!cache.onPath(cli)) return null;
+  let res = cache.lists.get(cli);
+  if (!res) {
+    res = listModels(vendor, cache.run);
+    cache.lists.set(cli, res);
+  }
+  if ('failed' in res) return { unverified: true, note: `${cli} models failed: ${res.failed}` };
+  if (res.ids.includes(model)) return {};
+  cache.warn(`${model} is not in \`${cli} models\` — recorded as unverified`);
+  return { unverified: true, note: `not in ${cli} models` };
 }

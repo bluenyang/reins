@@ -2,7 +2,15 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import type { Asker } from '../lib/ask.js';
-import { vendors, type Vendor } from '../lib/detect.js';
+import {
+  CONFIRMED_MODELS,
+  checkBinding,
+  newModelCache,
+  vendorOf,
+  vendors,
+  type ModelCache,
+  type Vendor,
+} from '../lib/detect.js';
 import { generateVendorFiles } from '../lib/generate.js';
 import { repoRoot } from '../lib/git.js';
 import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
@@ -31,6 +39,7 @@ export interface ConfigureBindingsOptions {
   vendors?: string[];
   asker?: Asker;
   detectVendors?: () => Vendor[];
+  modelCache?: ModelCache;
 }
 
 export interface ConfigureResult {
@@ -39,16 +48,6 @@ export interface ConfigureResult {
   table: { role: string; vendor: string; model: string }[];
   generated?: GenWriteResult;
 }
-
-const CONFIRMED = new Set(['claude-opus-5-5', 'claude-fable-5-1']);
-const vendorOf = (model: string) =>
-  model.startsWith('gpt')
-    ? 'openai'
-    : model.startsWith('gemini')
-      ? 'google'
-      : model.startsWith('cursor')
-        ? 'cursor'
-        : 'claude';
 
 /** `reins configure bindings` (R57–R59): any role, any model, any vendor; then the vendor files follow. */
 export async function configureBindings(o: ConfigureBindingsOptions): Promise<ConfigureResult> {
@@ -63,6 +62,7 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
   );
   let doc = parse(readFileSync(path, 'utf8')) as BindingsDoc;
   const changed: string[] = [];
+  const cache = o.modelCache ?? newModelCache();
 
   if (o.vendors?.length) {
     const vs = (o.detectVendors ?? vendors)();
@@ -71,7 +71,7 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
       ...(o.vendors.filter((v) => ['openai', 'google', 'cursor'].includes(v)) as Vendor['name'][]),
     ]);
     const rebuilt = parse(
-      buildBindings(packageHarness(), avail, vs, doc.mode ?? 'manual'),
+      buildBindings(packageHarness(), avail, vs, doc.mode ?? 'manual', cache),
     ) as BindingsDoc;
     for (const r of Object.keys(rebuilt.roles))
       if (JSON.stringify(rebuilt.roles[r]) !== JSON.stringify(doc.roles[r])) changed.push(r);
@@ -100,7 +100,11 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
       };
     const entry: Binding = { vendor: vendorOf(model), model };
     if (role === 'implementer') entry['parallel'] = doc.roles[role]?.['parallel'] ?? 4;
-    if (!CONFIRMED.has(model)) entry['unverified'] = true;
+    const chk = checkBinding(model, entry.vendor as Vendor['name'], cache);
+    if (chk) {
+      if (chk.unverified) entry['unverified'] = true;
+      if (chk.note) entry['note'] = chk.note;
+    } else if (!CONFIRMED_MODELS.has(model)) entry['unverified'] = true;
     if (JSON.stringify(doc.roles[role]) !== JSON.stringify(entry)) {
       doc.roles[role] = entry;
       if (!changed.includes(role)) changed.push(role);

@@ -274,7 +274,7 @@ const SCENARIOS: Scenario[] = [
     'V11',
     'ticket that the plan does not list',
     ticketStart('001-3'),
-    { reason: 'C2', verdict: 'STOP', message: 'ticket 001-3 is not in the plan' },
+    { reason: 'P2', verdict: 'STOP', message: 'ticket 001-3 is not in the plan' },
     (d) => {
       chain(d);
       put(d, '.loctx/ticket/001-3_x.md', TICKET('001-3'));

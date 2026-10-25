@@ -98,7 +98,7 @@ describe('T1 ticket-start', () => {
     put(d, '.loctx/ticket/001-2_docs.md', TICKET('001-2', 'depends: ["001-1"]\n'));
     expect(ticketStart(d, '001-2').map((x) => x.reason)).toEqual(['F2']);
     put(d, '.loctx/ticket/001-3_x.md', TICKET('001-3').replace('implementer', 'wizard'));
-    expect(ticketStart(d, '001-3').map((x) => x.reason)).toEqual(['C2', 'F2']);
+    expect(ticketStart(d, '001-3').map((x) => x.reason)).toEqual(['P2', 'F2']);
   });
 });
 

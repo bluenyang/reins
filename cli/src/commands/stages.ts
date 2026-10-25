@@ -104,7 +104,7 @@ function approvalChain(root: string, intent: string, ticket: string): Finding[] 
     });
   else if (!list(p.data['tickets']).includes(ticket))
     out.push({
-      reason: 'C2',
+      reason: 'P2',
       verdict: 'STOP',
       path: p.path,
       message: `ticket ${ticket} is not in the plan's tickets:`,
@@ -388,7 +388,7 @@ export function rcClose(root: string, release: string | undefined): Finding[] {
     for (const o of open)
       if (o.data['intent'] === id && !planned.includes(str(o.data['id'])))
         findings.push({
-          reason: 'C2',
+          reason: 'P2',
           verdict: 'STOP',
           path: o.path,
           message: `ticket ${str(o.data['id'])} is not in the plan of intent ${id}`,

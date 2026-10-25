@@ -50,7 +50,7 @@ describe('reins update', () => {
     expect(r.changes.length).toBeGreaterThan(0);
     expect(readFileSync(role, 'utf8')).not.toContain('old text');
     expect(readFileSync(b, 'utf8')).toContain('model: claude-fable-5-1');
-    expect(readFileSync(pin, 'utf8')).toMatch(/version: 0\.1\.0/);
+    expect(readFileSync(pin, 'utf8')).toMatch(/version: 0\.1\.1/);
     expect(driftMatch(d)).toEqual([]);
     expect(r.install?.history).toBe('.loctx/history/2026-10-25-1400_update-graph.md');
   });

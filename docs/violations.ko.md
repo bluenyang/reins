@@ -32,8 +32,8 @@
 | B3 | 변경이 intent나 spec과 충돌 | role, verifier | 범위 충돌 자체는 역할의 판단. `check --stage ticket-start`는 승인 사슬(`Approved-by:` 커밋이 있는 승인된 intent, 수락된 spec)만 확인 | V9 |
 | B4 | 로드맵이 침묵하거나 자기모순 | role | pm | — |
 | B5 | 외부 API·환경이 설계 가정과 어긋남 | role | 발견한 역할, 이후 `spec.md` | — |
-| C1 (정지) | 작업의 근거가 더는 성립하지 않음 | role | plan과 ticket을 읽는 역할들 | — |
-| C2 (정지) | diff가 `plan.md`에서 벗어났는데 plan을 고치지 않음 | verifier | `check --stage ticket-start`(plan의 `tickets:`에 없는 ticket)와 `rc-close`(plan에 없는 intent의 열린 ticket) | V11 |
+| P1 (정지) | 작업의 근거가 더는 성립하지 않음 | role | plan과 ticket을 읽는 역할들 | — |
+| P2 (정지) | diff가 `plan.md`에서 벗어났는데 plan을 고치지 않음 | verifier | `check --stage ticket-start`(plan의 `tickets:`에 없는 ticket)와 `rc-close`(plan에 없는 intent의 열린 ticket) | V11 |
 | D1 | 검증 라운드가 연속 두 번 실패 | verifier | `check --stage verdict` | V15 |
 | D2 | history·knowledge에 해결이 없는 red check 두 번 | none (gap) | — | — |
 | D3 | flaky: 혼자서는 통과, 전체 실행에서는 실패 | none (gap) | — | — |
@@ -48,7 +48,7 @@
 | G1 | 사용자가 중단: 채팅, Ctrl+C, 세션 종료 | none (gap) | — | — |
 | G2 | 사용자가 spec 요약을 거부 | role | pm (`stops.yaml`의 `detect: pm`) | — |
 
-`C1`과 `C2`는 두 번 나옵니다. 공통 금지선(설계 §2)과 정지 조건(설계 §3) 양쪽에 같은 id가 있기 때문입니다. 표는 둘 다 두고 `(금지선)`, `(정지)`로 구분합니다. 정지 보고서의 `reason: C1`·`reason: C2`는 정지 조건이고, `reason: C3`·`C4` 같은 나머지 금지선 id는 금지선입니다. id 충돌은 이름 문제이고 코드 문제는 아닙니다.
+정지 조건 P1·P2(전제)는 예전에 C1·C2였고, 공통 금지선 C1·C2(설계 §2)와 id가 겹쳤습니다. 하네스 0.1.1부터 정지 조건은 P1·P2이고, 정지 보고서의 `reason: C1`~`C10`은 언제나 금지선입니다. `metrics`는 `reason: C1`·`C2`로 적힌 옛 기록을 P1·P2로 읽습니다.
 
 ## 행별 설명
 
@@ -63,8 +63,8 @@
 - **A2, A3, A4**: `stops.yaml`은 `detect: verifier`로 적고 T4도 이들을 나열하지만, `prePush`는 A1만 구현합니다.
 - **B2**: `stops.yaml`은 `detect: verifier`로 적었지만, 설계 불변식과 기록된 결정을 비교하는 코드가 없습니다.
 - **B3**: `stops.yaml`은 B3을 `detect: role`로 적었으나, ticket-start의 승인 사슬 검사는 `reason: B3`으로 보고합니다.
-- **C1 (정지)**: `stops.yaml`은 `detect: role`로 적었고, 근거를 평가하는 코드는 없습니다.
-- **C2 (정지)**: ticket이 plan에 있는지 보는 검사만 있습니다. diff를 `plan.md`와 비교하는 코드는 없으므로 T2의 C2·C10 검사도 없습니다.
+- **P1 (정지)**: `stops.yaml`은 `detect: role`로 적었고, 근거를 평가하는 코드는 없습니다.
+- **P2 (정지)**: ticket이 plan에 있는지 보는 검사만 있습니다. diff를 `plan.md`와 비교하는 코드는 없으므로 T2의 P2·C10 검사도 없습니다.
 - **D1**: 한 ticket의 연속된 실패 `verify` 교환 수를 셉니다(1회는 경고, 2회는 escalate). "rc.1 전은 ticket, 후는 rc"의 구분은 하지 않습니다.
 - **D4**: `verdictCheck`는 증거에 명령 줄(`$ cmd`)과 `exit 0`이 있는지만 봅니다. 그 사이에 무엇이 있는지는 보지 않습니다. 이 두 줄만 있는 증거도 통과하고, `reins gate`는 빈 명령 출력을 그대로 보고서에 씁니다. 증거 자체가 없는 경우는 다른 사례로, D5(V12)입니다.
 - **D2, D3**: `stops.yaml`은 `detect: verifier`로 적었지만, 실행 사이의 기억도, 단독 실행과 전체 실행의 비교도 없습니다.

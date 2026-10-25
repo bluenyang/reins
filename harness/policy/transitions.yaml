@@ -2,7 +2,7 @@ schema: reins/policy/transitions@1
 # Verifier transition points (design §3). `checks` are stop ids or named checks the verifier runs there.
 points:
   - { id: T1, when: before a ticket starts, checks: [B1, dependencies-done, budget-left, bindings-valid, asks-vs-decisions] }
-  - { id: T2, when: before a commit (hook), checks: [C2, C10, F2, C4, C5] }
+  - { id: T2, when: before a commit (hook), checks: [P2, C10, F2, C4, C5] }
   - { id: T3, when: at a gate or test verdict, checks: [D1, D2, D3, D4, D5, evidence-present] }
   - { id: T4, when: before leaving the machine, checks: [A1, A2, A3, A4, C6, loop-step] }
   - { id: T5, when: an rc closes, checks: [E3, no-open-tickets, history-written, plan-agreement] }

@@ -66,9 +66,11 @@ describe('classify (S-1)', () => {
     expect(classify(['B3'], h)).toEqual({ intent: 1, knowledge: 0, redline: 0 });
     expect(classify(['F2'], h)).toEqual({ intent: 0, knowledge: 1, redline: 0 });
     expect(classify(['C4'], h)).toEqual({ intent: 0, knowledge: 0, redline: 1 });
-    // C2 is in both lists: stops.yaml wins, so it is a knowledge stop
+    // old records carry C1 and C2 for the premise stops: they read as P1 and P2
+    expect(classify(['P2'], h)).toEqual({ intent: 0, knowledge: 1, redline: 0 });
     expect(classify(['C2'], h)).toEqual({ intent: 0, knowledge: 1, redline: 0 });
     expect(classify(['C1'], h)).toEqual({ intent: 0, knowledge: 1, redline: 0 });
+    expect(classify(['C1', 'P1'], h)).toEqual({ intent: 0, knowledge: 1, redline: 0 });
     expect(classify(['ZZ9'], h)).toEqual({ intent: 0, knowledge: 0, redline: 0 });
     expect(classify(['B3', 'B3', 'F2', 'C4', 'C2', 'ZZ9'], h)).toEqual({
       intent: 1,

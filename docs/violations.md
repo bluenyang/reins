@@ -32,8 +32,8 @@ Columns:
 | B3 | a change conflicts with the intent or spec | role, verifier | the scope conflict itself is a role's judgement; `check --stage ticket-start` checks only the approval chain (intent approved with an `Approved-by:` commit, spec accepted) | V9 |
 | B4 | the roadmap is silent or contradicts itself | role | pm | — |
 | B5 | an external API or environment contradicts a design assumption | role | the role that finds it, then `spec.md` | — |
-| C1 (stop) | the rationale for the work no longer holds | role | the roles that read plan and ticket | — |
-| C2 (stop) | the diff departs from `plan.md` and the plan was not updated | verifier | `check --stage ticket-start` (ticket not in the plan's `tickets:`) and `rc-close` (open ticket of the intent not in the plan) | V11 |
+| P1 (stop) | the rationale for the work no longer holds | role | the roles that read plan and ticket | — |
+| P2 (stop) | the diff departs from `plan.md` and the plan was not updated | verifier | `check --stage ticket-start` (ticket not in the plan's `tickets:`) and `rc-close` (open ticket of the intent not in the plan) | V11 |
 | D1 | two failed verification rounds in a row | verifier | `check --stage verdict` | V15 |
 | D2 | a red check twice with no fix in history or knowledge | none (gap) | — | — |
 | D3 | flaky: passes alone, fails in the full run | none (gap) | — | — |
@@ -48,7 +48,7 @@ Columns:
 | G1 | the user interrupts: chat, Ctrl+C, session end | none (gap) | — | — |
 | G2 | the user vetoes a spec summary | role | pm (`stops.yaml` `detect: pm`) | — |
 
-`C1` and `C2` exist twice: as common red lines (design §2) and as stop conditions (design §3). The table keeps both and marks them `(red line)` and `(stop)`. The stop report's `reason: C1` or `reason: C2` is the stop condition. `reason: C3`, `C4` and the other red-line ids are red lines. The collision is a naming problem, not a code one.
+Stop conditions P1 and P2 (premise) used to be called C1 and C2, which collided with the common red lines C1 and C2 (design §2). Since harness 0.1.1 the stops are P1 and P2 and a stop report's `reason: C1`..`C10` is always a red line. `metrics` still reads old records with `reason: C1` or `C2` as P1 and P2.
 
 ## Notes on rows
 
@@ -63,8 +63,8 @@ Columns:
 - **A2, A3, A4**: `stops.yaml` says `detect: verifier` and T4 lists them, but `prePush` implements only A1.
 - **B2**: `stops.yaml` says `detect: verifier`; no code compares a design invariant with a recorded decision.
 - **B3**: the ticket-start approval chain reports `reason: B3`, although `stops.yaml` marks B3 as `detect: role`.
-- **C1 (stop)**: `stops.yaml` says `detect: role`; no code evaluates a rationale.
-- **C2 (stop)**: only the ticket-in-plan check exists. There is no comparison of a diff with `plan.md`, so T2's C2 and C10 checks do not exist either.
+- **P1 (stop)**: `stops.yaml` says `detect: role`; no code evaluates a rationale.
+- **P2 (stop)**: only the ticket-in-plan check exists. There is no comparison of a diff with `plan.md`, so T2's P2 and C10 checks do not exist either.
 - **D1**: counts consecutive failed `verify` exchanges of one ticket (1 warns, 2 escalates); it does not tell "ticket before rc.1" from "rc after".
 - **D4**: `verdictCheck` needs a command line (`$ cmd`) and `exit 0` in the evidence; it does not look at what lies between. Evidence with only those two lines is accepted, and `reins gate` writes empty command output to its report without complaint. Missing evidence altogether is D5 (V12), which is a different case.
 - **D2, D3**: `stops.yaml` says `detect: verifier`; there is no cross-run memory and no alone-versus-full-run comparison.

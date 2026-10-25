@@ -62,7 +62,7 @@ describe('harness sources match the design (docs/design.md)', () => {
       expect(['HOLD', 'STOP', 'ESCALATE', 'WARN']).toContain(c.grade);
       groups.set(c.id[0] ?? '', (groups.get(c.id[0] ?? '') ?? 0) + 1);
     }
-    expect(Object.fromEntries(groups)).toEqual({ A: 4, B: 5, C: 2, D: 5, E: 3, F: 3, G: 2 });
+    expect(Object.fromEntries(groups)).toEqual({ A: 4, B: 5, P: 2, D: 5, E: 3, F: 3, G: 2 });
     // A, B, G are a person's call; C–F are learned away
     for (const c of s) expect(c.kind).toBe('ABG'.includes(c.id[0] ?? '') ? 'intent' : 'knowledge');
   });

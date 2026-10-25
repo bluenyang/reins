@@ -53,7 +53,7 @@ Every stop records ① where ② why (`reason: <ID>`) ③ how to resume (R48). R
 |---|---|---|
 | A irreversible | A1 force push · tag deletion · main rewrite / A2 stable release / A3 data · production / A4 leaving the machine outside the pre-release loop | intent |
 | B decision | B1 open `asks:` / B2 invariant change without a decision / B3 conflict with intent or spec / B4 roadmap silent or contradictory / B5 external assumption broken, scope changes | intent |
-| C premise | C1 rationale collapsed (fix plan and ticket first) / C2 diff departs from plan with no update (R45) | knowledge |
+| P premise | P1 rationale collapsed (fix plan and ticket first) / P2 diff departs from plan with no update (R45) | knowledge |
 | D failure | D1 two rounds in the same unit (ticket before rc.1, rc after) / D2 red check twice / D3 flaky → isolate, continue, report / D4 suspected false pass / D5 pass without evidence | knowledge |
 | E cost | E1 80% warning (not a stop) / E2 scope budget 100% STOP / E3 rc or session 100% HOLD — warning only when no value is set | knowledge |
 | F violation | F1 red-line attempt / F2 drift / F3 rejected proposal re-raised | knowledge |
@@ -66,7 +66,7 @@ Of these, the surveyed repositories had only A, B1, D1 and D2 — everything els
 project default (install, `policy/budget`) < version (PM, plan.md) < **user-defined scopes** (shipped: ticket · rc · session · role; `configure budget`). Unit: tokens. Without defaults, measure on first use.
 
 ### The verifier = `reins check` — six transition points
-T1 before a ticket starts (B1 · dependencies · budget · bindings · **`asks:` against `decisions:` to stop the same question recurring**) · T2 before commit (C2·C10·F2·C4·C5) · T3 at judgement (D1–D5 · evidence) · T4 before leaving the machine (A · C6 · loop stage) · T5 at rc close (E3 · zero open tickets · history written · plan-agreement S7) · T6 always (G1·F1).
+T1 before a ticket starts (B1 · dependencies · budget · bindings · **`asks:` against `decisions:` to stop the same question recurring**) · T2 before commit (P2·C10·F2·C4·C5) · T3 at judgement (D1–D5 · evidence) · T4 before leaving the machine (A · C6 · loop stage) · T5 at rc close (E3 · zero open tickets · history written · plan-agreement S7) · T6 always (G1·F1).
 Stage names for `reins check --stage`: `ticket-start --ticket <id>` (T1) · `pre-commit` (T2, hook) · `verdict --ticket <id>` (T3) · `pre-push` (T4, hook) · `rc-close --release <version>` (T5). Checks without their own id (dependencies, plan agreement, history written) report as F2.
 Verdicts CONTINUE / HOLD / STOP / ESCALATE → bus `stop-report` (reason · resume info · one line in the user's language). Exit codes 0/10/20/30.
 Loop tier: fewer roles, same T and conditions. Harness tier: T2·T4·T6 only.

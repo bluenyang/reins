@@ -165,9 +165,13 @@ export function readMetrics(root: string): { records: Metric[]; broken: number }
   return { records, broken };
 }
 
+/** Stop ids renamed in harness 0.1.1: old records carry the red-line-looking C1 and C2. */
+const LEGACY_IDS: Record<string, string> = { C1: 'P1', C2: 'P2' };
+
 /**
  * Counts blocking reason ids by kind. An id found in stops.yaml counts as that stop's kind
- * (so C1 and C2 are knowledge stops); otherwise an id in common-red-lines.yaml is a redline;
+ * (so P1 and P2 are knowledge stops; old C1 and C2 read as P1 and P2); otherwise an id in
+ * common-red-lines.yaml is a redline;
  * an id in neither is not counted and stays in `reasons` only. Each distinct id counts once.
  */
 export function classify(reasons: string[], harness: string | null): StopCounts {
@@ -181,7 +185,7 @@ export function classify(reasons: string[], harness: string | null): StopCounts 
   } catch {
     return out;
   }
-  for (const id of new Set(reasons)) {
+  for (const id of new Set(reasons.map((r) => LEGACY_IDS[r] ?? r))) {
     const k = kinds.get(id);
     if (k) out[k]++;
     else if (lines.has(id)) out.redline++;

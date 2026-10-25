@@ -57,7 +57,7 @@ C1 "통과하기 위한" 구현(하드코딩·보이기만) · C2 `AGENTS.md` �
 |---|---|---|
 | A 비가역 | A1 force push·태그 삭제·main 재작성 / A2 정식 릴리스 / A3 데이터·운영 / A4 pre-release 루프 밖에서 로컬을 떠남 | intent |
 | B 결정 | B1 열린 `asks:` / B2 불변식 변경에 결정 없음 / B3 intent·spec 충돌 / B4 로드맵 침묵·모순 / B5 외부 가정 붕괴로 범위 변경 | intent |
-| C 전제 | C1 근거 무너짐(plan·ticket 먼저 고침) / C2 diff가 plan에서 벗어났는데 갱신 없음(R45) | knowledge |
+| P 전제 | P1 근거 무너짐(plan·ticket 먼저 고침) / P2 diff가 plan에서 벗어났는데 갱신 없음(R45) | knowledge |
 | D 실패 | D1 같은 단위 2라운드(rc.1 전 = ticket, 후 = rc) / D2 red check 2회 / D3 flaky → 격리·계속·보고 / D4 거짓 통과 의심 / D5 증거 없는 pass | knowledge |
 | E 비용 | E1 80% 경고 / E2 범위 예산 100% STOP / E3 rc·세션 100% HOLD — 값 없으면 경고만 | knowledge |
 | F 위반 | F1 금지선 시도 / F2 드리프트 / F3 거절 재제시 | knowledge |
@@ -70,7 +70,7 @@ C1 "통과하기 위한" 구현(하드코딩·보이기만) · C2 `AGENTS.md` �
 프로젝트 기본값(install, `policy/budget`) < 버전(PM, plan.md) < **사용자 정의 범위**(기본 제공: ticket·rc·세션·역할; `configure budget`). 단위 토큰. 기본값 없으면 첫 적용 때 측정.
 
 ### 검증기 = `reins check` — 전환 지점 6
-T1 ticket 시작 전(B1·의존·예산·바인딩·**`asks:`↔`decisions:` 대조로 같은 질문 재발 방어**) · T2 커밋 전(C2·C10·F2·C4·C5) · T3 판정 시(D1~D5·증거) · T4 떠나기 전(A·C6·루프 단계) · T5 rc 종료(E3·열린 ticket 0·history·plan 일치율 S7) · T6 상시(G1·F1).
+T1 ticket 시작 전(B1·의존·예산·바인딩·**`asks:`↔`decisions:` 대조로 같은 질문 재발 방어**) · T2 커밋 전(P2·C10·F2·C4·C5) · T3 판정 시(D1~D5·증거) · T4 떠나기 전(A·C6·루프 단계) · T5 rc 종료(E3·열린 ticket 0·history·plan 일치율 S7) · T6 상시(G1·F1).
 `reins check --stage` 이름: `ticket-start --ticket <id>`(T1) · `pre-commit`(T2, 훅) · `verdict --ticket <id>`(T3) · `pre-push`(T4, 훅) · `rc-close --release <version>`(T5). 자기 id가 없는 검사(의존·plan 일치·history 기록)는 F2로 보고한다.
 판정 CONTINUE / HOLD / STOP / ESCALATE → bus `stop-report`(reason·재개 정보·사용자 언어 한 줄). exit 0/10/20/30.
 루프 단: 역할만 줄고 T·조건 유지. 하네스 단: T2·T4·T6만.

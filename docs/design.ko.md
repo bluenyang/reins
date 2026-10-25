@@ -63,6 +63,7 @@ C1 "통과하기 위한" 구현(하드코딩·보이기만) · C2 `AGENTS.md` �
 | F 위반 | F1 금지선 시도 / F2 드리프트 / F3 거절 재제시 | knowledge |
 | G 중단 | G1 채팅·Ctrl+C·세션 종료 → 재개 정보 기록 / G2 spec 요약 거부 | intent |
 `kind` = spike에서 살린 구분: **intent**(사람 몫, 자동화 않음) / **knowledge**(배워서 줄어듦). 지표: 항목당 knowledge stop 수. 카운터(D1·D2)는 통과하면 리셋.
+수치: `reins check`와 `reins gate`는 실행할 때마다 `reins/metric@1` 한 줄을 `.loctx/reports/metrics.jsonl`에 덧붙인다. 토큰 사용량은 호출한 쪽이 `reins metrics record`로 남긴다. `reins metrics`는 토큰을 역할·벤더·ticket·intent별로, knowledge stop을 ticket별로 요약한다.
 조사 레포에 있던 것은 A·B1·D1·D2뿐 — 나머지는 전부 새로 생긴다.
 
 ### 비용 범위 — 좁은 범위가 이김
@@ -116,7 +117,7 @@ T1 ticket 시작 전(B1·의존·예산·바인딩·**`asks:`↔`decisions:` 대
 검색 `reins recall`: `decisions·topics·symptoms` 3축 grep → 최근 N → 벡터는 선택 슬롯.
 
 ## 9. CLI와 플러그인 (D13·D14)
-`npx @bluenyang/reins` — `install <tier> [--mode manual|auto]` · `migrate <tier>` · `update` · `configure bindings|budget|gates|language` · `check [--stage] [--drift]` · `gate [<name>…] [--ticket]` (gates.yaml 그대로 실행, 원본 출력을 `$ cmd` … `exit N` 형식으로 `.loctx/reports/`에 — T3가 읽는 증거) · `recall` · `status` · `doctor`. 전부 `--dry-run`·`--json`. TS, Node ≥ 20, Python 없음(R65). **CLI는 모델을 부르지 않는다** — 에이전트 일은 스킬(`reins-setup` 등)이.
+`npx @bluenyang/reins` — `install <tier> [--mode manual|auto]` · `migrate <tier>` · `update` · `configure bindings|budget|gates|language` · `check [--stage] [--drift]` · `gate [<name>…] [--ticket]` (gates.yaml 그대로 실행, 원본 출력을 `$ cmd` … `exit N` 형식으로 `.loctx/reports/`에 — T3가 읽는 증거) · `metrics [--intent]`(`.loctx/reports/metrics.jsonl` 요약: 토큰을 역할·벤더·ticket·intent별로, knowledge stop을 ticket별로)와 `metrics record --role --tokens [--ticket|--intent]`(역할 실행에 쓴 토큰을 호출한 쪽이 보고, reins는 모델을 부르지 않는다) · `recall` · `status` · `doctor`. 전부 `--dry-run`·`--json`. TS, Node ≥ 20, Python 없음(R65). **CLI는 모델을 부르지 않는다** — 에이전트 일은 스킬(`reins-setup` 등)이.
 install은 3·4세대 하네스 위에서는 **거부하고 `migrate`로 안내**한다. 1·2세대면 설치하되 옛 `.ai/`는 건드리지 않고 migrate를 안내한다. 버전 핀과 설정은 `.agents/harness/install.yaml`(tier·version·mode·language).
 install 질문(manual): 벤더 · 바인딩 조정 · 게이트 확인 · 비밀 패턴 · 훅 **제안만** · 공개 레포? · 문서 언어 · 예산(선택). auto는 감지·기본값·리포트.
 레포 = 플러그인 + npm: `.claude-plugin/plugin.json`(`dependencies: []`, userConfig `language`·`default_mode`) · `skills/`(얇은 입구) · `agents/`(생성) · `harness/`(원본의 원본 + templates + knowledge-seeds + VERSION) · `cli/` · `codex/ gemini/ cursor/`(1차 unverified) · `hooks/` · `docs/ test/ .agents/ .loctx/`. 플러그인 루트 `bin/` 없음. 선택 의존(humanize-korean·diagram-design)은 감지해 권장만.

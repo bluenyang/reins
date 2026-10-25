@@ -66,6 +66,7 @@ project default (install, `policy/budget`) < version (PM, plan.md) < **user-defi
 
 ### The verifier = `reins check` — six transition points
 T1 before a ticket starts (B1 · dependencies · budget · bindings · **`asks:` against `decisions:` to stop the same question recurring**) · T2 before commit (C2·C10·F2·C4·C5) · T3 at judgement (D1–D5 · evidence) · T4 before leaving the machine (A · C6 · loop stage) · T5 at rc close (E3 · zero open tickets · history written · plan-agreement S7) · T6 always (G1·F1).
+Stage names for `reins check --stage`: `ticket-start --ticket <id>` (T1) · `pre-commit` (T2, hook) · `verdict --ticket <id>` (T3) · `pre-push` (T4, hook) · `rc-close --release <version>` (T5). Checks without their own id (dependencies, plan agreement, history written) report as F2.
 Verdicts CONTINUE / HOLD / STOP / ESCALATE → bus `stop-report` (reason · resume info · one line in the user's language). Exit codes 0/10/20/30.
 Loop tier: fewer roles, same T and conditions. Harness tier: T2·T4·T6 only.
 

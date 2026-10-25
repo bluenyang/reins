@@ -70,6 +70,7 @@ C1 "통과하기 위한" 구현(하드코딩·보이기만) · C2 `AGENTS.md` �
 
 ### 검증기 = `reins check` — 전환 지점 6
 T1 ticket 시작 전(B1·의존·예산·바인딩·**`asks:`↔`decisions:` 대조로 같은 질문 재발 방어**) · T2 커밋 전(C2·C10·F2·C4·C5) · T3 판정 시(D1~D5·증거) · T4 떠나기 전(A·C6·루프 단계) · T5 rc 종료(E3·열린 ticket 0·history·plan 일치율 S7) · T6 상시(G1·F1).
+`reins check --stage` 이름: `ticket-start --ticket <id>`(T1) · `pre-commit`(T2, 훅) · `verdict --ticket <id>`(T3) · `pre-push`(T4, 훅) · `rc-close --release <version>`(T5). 자기 id가 없는 검사(의존·plan 일치·history 기록)는 F2로 보고한다.
 판정 CONTINUE / HOLD / STOP / ESCALATE → bus `stop-report`(reason·재개 정보·사용자 언어 한 줄). exit 0/10/20/30.
 루프 단: 역할만 줄고 T·조건 유지. 하네스 단: T2·T4·T6만.
 

@@ -1,9 +1,10 @@
 ---
 intent: "007"
-status: reviewed
+status: accepted
 approvals:
   - { role: qa-design, at: 2026-10-26, kind: first-review }
   - { role: pm, at: 2026-10-26 }
+  - { role: user, at: 2026-10-26, kind: summary }
 summary_for_user: |
   저장소 루트를 Claude Code 플러그인(`reins`)이자 마켓플레이스(`bluenyang`)로 만든다. 마켓플레이스 항목은 `./skills/reins-setup`만 싣는다.
   플러그인 버전은 package.json 버전과 같아야 하고, 테스트가 이를 확인한다. 릴리스 때 publish 워크플로가 버전 동기화와 설치본 갱신까지 하고 함께 커밋한다.

@@ -70,6 +70,7 @@ T1 before a ticket starts (B1 · dependencies · budget · bindings · **`asks:`
 Stage names for `reins check --stage`: `ticket-start --ticket <id>` (T1) · `pre-commit` (T2, hook) · `verdict --ticket <id>` (T3) · `pre-push` (T4, hook) · `rc-close --release <version>` (T5). Checks without their own id (dependencies, plan agreement, history written) report as F2.
 Verdicts CONTINUE / HOLD / STOP / ESCALATE → bus `stop-report` (reason · resume info · one line in the user's language). Exit codes 0/10/20/30.
 Loop tier: fewer roles, same T and conditions. Harness tier: T2·T4·T6 only.
+Who catches which of the 34 (red lines C1–C10, conditions A1–G2), by the code as it stands, and the scenarios that back it: [`violations.md`](violations.md).
 
 ## 4. The five files people and agents exchange (D5·D6·D2)
 Common: YAML frontmatter (machine, schema-validated) + Markdown body (people). Body in the user's language, keys and the bus in English. Empty sections read `—`. **Approval = frontmatter `approvals:` plus the `Approved-by:` trailer on the status-changing commit** — no separate ledger.

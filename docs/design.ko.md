@@ -74,6 +74,7 @@ T1 ticket 시작 전(B1·의존·예산·바인딩·**`asks:`↔`decisions:` 대
 `reins check --stage` 이름: `ticket-start --ticket <id>`(T1) · `pre-commit`(T2, 훅) · `verdict --ticket <id>`(T3) · `pre-push`(T4, 훅) · `rc-close --release <version>`(T5). 자기 id가 없는 검사(의존·plan 일치·history 기록)는 F2로 보고한다.
 판정 CONTINUE / HOLD / STOP / ESCALATE → bus `stop-report`(reason·재개 정보·사용자 언어 한 줄). exit 0/10/20/30.
 루프 단: 역할만 줄고 T·조건 유지. 하네스 단: T2·T4·T6만.
+34개(금지선 C1~C10, 조건 A1~G2) 각각을 지금 코드에서 누가 잡는지, 그리고 뒷받침하는 시나리오: [`violations.ko.md`](violations.ko.md).
 
 ## 4. 사람과 에이전트가 주고받는 다섯 파일 (D5·D6·D2)
 공통: YAML 프론트매터(기계, 스키마 검증) + Markdown 본문(사람). 본문은 사용자 언어, 키와 bus는 영어. 빈 절은 `—`. **승인 = 프론트매터 `approvals:` + 상태 변경 커밋 트레일러 `Approved-by:`** — 별도 장부 없음.

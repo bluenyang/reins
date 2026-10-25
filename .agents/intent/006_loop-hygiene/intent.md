@@ -2,9 +2,10 @@
 id: "006"
 slug: loop-hygiene
 version: 0.1.1
-status: draft
+status: approved
 origin: agent
-approvals: []
+approvals:
+  - { role: user, at: 2026-10-26 }
 supersedes: null
 ---
 ## 문제

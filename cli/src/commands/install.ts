@@ -32,6 +32,8 @@ export interface InstallOptions {
   now?: Date;
   /** migrate installs over an old harness it is about to move away */
   overExisting?: boolean;
+  /** history file label: install (default), update, migrate */
+  recordAs?: string;
 }
 
 export interface InstallResult {
@@ -48,6 +50,7 @@ export interface InstallResult {
 function tierFiles(all: string[], tier: Tier): string[] {
   return all.filter((f) => {
     if (f.startsWith('knowledge-seeds/')) return false; // copied into knowledge/, not harness/
+    if (f === 'CHANGELOG.md') return false; // read by update from the package, not installed
     if (f === 'VERSION' || f.startsWith('policy/')) return true;
     if (f === 'templates/agents-md-blocks.md') return true;
     if (tier === 'harness') return false;
@@ -316,7 +319,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     const now = o.now ?? new Date();
     // local time, like every other history file name (<YYYY-MM-DD-HHmm>)
     const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
-    history = `.loctx/history/${stamp}_install-${o.tier}.md`;
+    history = `.loctx/history/${stamp}_${o.recordAs ?? 'install'}-${o.tier}.md`;
     const body = [
       `decisions: install-${o.tier}`,
       '',

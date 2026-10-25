@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { runCheck, type CheckOptions } from './commands/check.js';
 import { runInstall, type Tier } from './commands/install.js';
 import { runMigrate } from './commands/migrate.js';
+import { runUpdate } from './commands/update.js';
 import { defaultsAsker, stdinAsker } from './lib/ask.js';
 import { EXIT } from './lib/verdict.js';
 
@@ -113,7 +114,48 @@ program
     },
   );
 
-for (const n of ['update', 'configure', 'recall', 'status', 'doctor'])
+program
+  .command('update')
+  .description(
+    're-apply the packaged harness: upstream files, managed blocks, vendor files, version pin',
+  )
+  .option('--dry-run', 'show what would change')
+  .option('--json')
+  .action(async (o: { dryRun?: boolean; json?: boolean }) => {
+    const r = await runUpdate({ dryRun: o.dryRun });
+    if (o.json) {
+      process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
+      process.exit(r.refused ? 2 : 0);
+    }
+    if (r.refused) {
+      process.stderr.write(`reins update: ${r.refused}\n`);
+      process.exit(2);
+    }
+    const a = r.install?.applied;
+    process.stdout.write(
+      `reins update — harness v${r.from} → v${r.to}${o.dryRun ? ' (dry run)' : ''}\n`,
+    );
+    for (const c of r.changes) process.stdout.write(`  · ${c}\n`);
+    if (a) {
+      process.stdout.write(
+        `${o.dryRun ? 'would write' : 'wrote'}: ${a.created.length} new, ${a.changed.length} changed\n`,
+      );
+      for (const p of [...a.created, ...a.changed]) process.stdout.write(`  ~ ${p}\n`);
+    }
+    for (const n of r.overrides)
+      process.stdout.write(
+        `• block "${n}" is overridden by the project — compare it with the new upstream block\n`,
+      );
+    for (const n of r.install?.notes.filter((x) => x.startsWith('left alone')) ?? [])
+      process.stdout.write(`• ${n}\n`);
+    if (r.needsSkill)
+      process.stdout.write(
+        '• this update needs project sections changed: run /reins-update in your agent\n',
+      );
+    if (r.install?.history) process.stdout.write(`recorded: ${r.install.history}\n`);
+  });
+
+for (const n of ['configure', 'recall', 'status', 'doctor'])
   program.command(n).allowUnknownOption().allowExcessArguments().action(notYet(n));
 
 program

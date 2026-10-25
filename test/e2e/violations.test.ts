@@ -505,6 +505,29 @@ const SCENARIOS: Scenario[] = [
       put(d, 'AGENTS.md', `${edited}\n<!-- reins:override workflow -->\n`);
       const ov = reins(d, [...drift, '--json']);
       expect(own(ov).length, ov.stdout).toBe(0);
+      // deleting the whole block is caught too, in drift and in staged pre-commit
+      const gone = orig.replace(
+        /<!-- reins:begin workflow [\s\S]*?<!-- reins:end workflow -->/,
+        '',
+      );
+      expect(gone).not.toBe(orig);
+      const miss = (r: ReturnType<typeof reins>) =>
+        (JSON.parse(r.stdout) as Report).findings.filter(
+          (f) =>
+            f.reason === 'F2' &&
+            f.verdict === 'STOP' &&
+            f.message === 'managed block "workflow" is missing',
+        );
+      put(d, 'AGENTS.md', gone);
+      const md = reins(d, [...drift, '--json']);
+      expect(miss(md).length, md.stdout).toBeGreaterThan(0);
+      expect(md.code).toBe(EXIT.STOP);
+      git(d, 'add', '--', 'AGENTS.md');
+      const mp = reins(d, [...preCommit, '--json']);
+      expect(miss(mp).length, mp.stdout).toBeGreaterThan(0);
+      expect(mp.code).toBe(EXIT.STOP);
+      put(d, 'AGENTS.md', `${gone}\n<!-- reins:override workflow -->\n`);
+      expect(miss(reins(d, [...drift, '--json'])).length).toBe(0);
     },
   },
   stops(

@@ -298,7 +298,17 @@ export function driftBlocks(root: string, rd: Reader = workTreeReader(root)): Fi
   }
   const over = overrides(text);
   const findings: Finding[] = [];
-  for (const b of parseBlocks(text)) {
+  const have = parseBlocks(text);
+  for (const name of upBlocks.keys())
+    if (!over.has(name) && !have.some((b) => b.name === name))
+      findings.push({
+        reason: 'F2',
+        verdict: 'STOP',
+        path: 'AGENTS.md',
+        message: `managed block "${name}" is missing`,
+        resume: `run \`reins update\`, or add <!-- reins:override ${name} -->`,
+      });
+  for (const b of have) {
     const want = upBlocks.get(b.name);
     if (!want || over.has(b.name)) continue;
     if (normBlock(b.body) !== normBlock(want.body))

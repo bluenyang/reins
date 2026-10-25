@@ -37,13 +37,13 @@
 | D1 | 검증 라운드가 연속 두 번 실패 | verifier | `check --stage verdict` | V15 |
 | D2 | history·knowledge에 해결이 없는 red check 두 번 | none (gap) | — | — |
 | D3 | flaky: 혼자서는 통과, 전체 실행에서는 실패 | none (gap) | — | — |
-| D4 | 거짓 통과 의심: 종료 코드 없음, 빈 출력, 파이프를 거친 게이트 | verifier | `check --stage verdict`(종료 코드 줄 없음, 0이 아닌 종료 코드, 명령 줄 없음, 복합 명령), `reins gate`(복합 명령 거부). 명령 출력이 빈 경우: none (gap) | V13, V14, V17 |
-| D5 | 증거 없는 pass | verifier | `check --stage verdict` | V12 |
+| D4 | 거짓 통과 의심: 종료 코드 없음, 빈 출력, 파이프를 거친 게이트 | verifier | `check --stage verdict`(종료 코드 줄 없음, 0이 아닌 종료 코드, 명령 줄 없음, 복합 명령, 빈 게이트 출력은 WARN), `reins gate`(복합 명령 거부) | V13, V14, V17, V21, V23 |
+| D5 | 증거 없는 pass | verifier | `check --stage verdict`(저장소 밖 절대 증거 경로 포함) | V12, V22 |
 | E1 | 가장 좁은 예산의 80% | none (gap) | — | — |
 | E2 | ticket·범위 예산 100% | none (gap) | — | — |
 | E3 | rc·세션 예산 100% | none (gap) | — | — |
 | F1 | 역할이 자기 `must_not`이나 금지선에 있는 행동을 시도 | none (gap) | — | — |
-| F2 | 하네스 원본과 생성 파일 사이의 드리프트, 또는 규약 위반 | verifier | `check --stage pre-commit`과 `check --drift`(format·convention·match·generated 층). `ticket-start`·`rc-close`의 plan·ticket 검사도 F2로 보고 | V2, V3, V4, V6, V7, V16 |
+| F2 | 하네스 원본과 생성 파일 사이의 드리프트, 또는 규약 위반 | verifier | `check --stage pre-commit`과 `check --drift`(format·convention·match·generated 층). `ticket-start`·`rc-close`의 plan·ticket 검사, `verdict`의 마지막 verify 교환 스키마 검사도 F2로 보고 | V2, V3, V4, V6, V7, V16, V20 |
 | F3 | 거절된 제안을 다시 제시 | role | `stops.yaml`의 `detect: role` | — |
 | G1 | 사용자가 중단: 채팅, Ctrl+C, 세션 종료 | none (gap) | — | — |
 | G2 | 사용자가 spec 요약을 거부 | role | pm (`stops.yaml`의 `detect: pm`) | — |
@@ -66,7 +66,7 @@
 - **P1 (정지)**: `stops.yaml`은 `detect: role`로 적었고, 근거를 평가하는 코드는 없습니다.
 - **P2 (정지)**: ticket이 plan에 있는지 보는 검사만 있습니다. diff를 `plan.md`와 비교하는 코드는 없으므로 T2의 P2·C10 검사도 없습니다.
 - **D1**: 한 ticket의 연속된 실패 `verify` 교환 수를 셉니다(1회는 경고, 2회는 escalate). "rc.1 전은 ticket, 후는 rc"의 구분은 하지 않습니다.
-- **D4**: `verdictCheck`는 증거에 명령 줄(`$ cmd`)과 `exit 0`이 있는지만 봅니다. 그 사이에 무엇이 있는지는 보지 않습니다. 이 두 줄만 있는 증거도 통과하고, `reins gate`는 빈 명령 출력을 그대로 보고서에 씁니다. 증거 자체가 없는 경우는 다른 사례로, D5(V12)입니다.
+- **D4**: `verdictCheck`는 증거에 명령 줄(`$ cmd`)과 `exit 0`이 있는지 봅니다. 이 두 줄만 있는 증거는 WARN(`gate output is empty`, V23)이고 판정은 그대로입니다. `reins gate`는 빈 명령 출력을 그대로 보고서에 씁니다. 증거 자체가 없는 경우는 다른 사례로, D5(V12)입니다.
 - **D2, D3**: `stops.yaml`은 `detect: verifier`로 적었지만, 실행 사이의 기억도, 단독 실행과 전체 실행의 비교도 없습니다.
 - **E1, E2, E3**: `budget.yaml`에 기본값이 없고, 예산이나 토큰 수를 읽는 코드가 없습니다. T1의 `budget-left`와 T5의 E3은 없습니다.
 - **F1, G1**: T6("상시")은 `transitions.yaml`에 있으나 코드가 없습니다. CLI에는 시그널 처리가 없고, 중단 시 재개 기록도 쓰지 않습니다. F1은 Claude Code에서 deny 규칙이 일부를 막지만 정지로 기록되지는 않습니다.
@@ -97,4 +97,4 @@
 - C10 (금지선): diff가 intent와 plan 안에 머무는지 확인하는 자동 검사가 없습니다(T2에 나열됨). code-review 역할이 사람 손으로 합니다.
 - C5 (금지선): `git commit -n` 등 `--no-verify`의 줄임·변형 형태. 정확히 일치하는 deny 패턴이 막지 못합니다.
 - A1: 태그 삭제, 그리고 자손 커밋으로의 공개 태그 전진 이동.
-- D4: 빈 명령 출력은 `reins gate`와 `check --stage verdict` 모두 통과시킵니다.
+- D4: `reins gate`는 빈 명령 출력을 경고 없이 보고서에 씁니다.

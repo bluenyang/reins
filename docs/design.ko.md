@@ -58,7 +58,7 @@ C1 "통과하기 위한" 구현(하드코딩·보이기만) · C2 `AGENTS.md` �
 | A 비가역 | A1 force push·태그 삭제·main 재작성 / A2 정식 릴리스 / A3 데이터·운영 / A4 pre-release 루프 밖에서 로컬을 떠남 | intent |
 | B 결정 | B1 열린 `asks:` / B2 불변식 변경에 결정 없음 / B3 intent·spec 충돌 / B4 로드맵 침묵·모순 / B5 외부 가정 붕괴로 범위 변경 | intent |
 | P 전제 | P1 근거 무너짐(plan·ticket 먼저 고침) / P2 diff가 plan에서 벗어났는데 갱신 없음(R45) | knowledge |
-| D 실패 | D1 같은 단위 2라운드(rc.1 전 = ticket, 후 = rc) / D2 red check 2회 / D3 flaky → 격리·계속·보고 / D4 거짓 통과 의심 / D5 증거 없는 pass | knowledge |
+| D 실패 | D1 같은 단위 2라운드(rc.1 전 = ticket, 후 = rc) / D2 red check 2회 / D3 flaky → 격리·계속·보고 / D4 거짓 통과 의심(게이트 출력이 비면 STOP이 아니라 WARN) / D5 증거 없는 pass | knowledge |
 | E 비용 | E1 80% 경고 / E2 범위 예산 100% STOP / E3 rc·세션 100% HOLD — 값 없으면 경고만 | knowledge |
 | F 위반 | F1 금지선 시도 / F2 드리프트 / F3 거절 재제시 | knowledge |
 | G 중단 | G1 채팅·Ctrl+C·세션 종료 → 재개 정보 기록 / G2 spec 요약 거부 | intent |

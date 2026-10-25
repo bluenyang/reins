@@ -54,7 +54,7 @@ Every stop records ① where ② why (`reason: <ID>`) ③ how to resume (R48). R
 | A irreversible | A1 force push · tag deletion · main rewrite / A2 stable release / A3 data · production / A4 leaving the machine outside the pre-release loop | intent |
 | B decision | B1 open `asks:` / B2 invariant change without a decision / B3 conflict with intent or spec / B4 roadmap silent or contradictory / B5 external assumption broken, scope changes | intent |
 | P premise | P1 rationale collapsed (fix plan and ticket first) / P2 diff departs from plan with no update (R45) | knowledge |
-| D failure | D1 two rounds in the same unit (ticket before rc.1, rc after) / D2 red check twice / D3 flaky → isolate, continue, report / D4 suspected false pass / D5 pass without evidence | knowledge |
+| D failure | D1 two rounds in the same unit (ticket before rc.1, rc after) / D2 red check twice / D3 flaky → isolate, continue, report / D4 suspected false pass (gate output that is empty is a WARN, not a STOP) / D5 pass without evidence | knowledge |
 | E cost | E1 80% warning (not a stop) / E2 scope budget 100% STOP / E3 rc or session 100% HOLD — warning only when no value is set | knowledge |
 | F violation | F1 red-line attempt / F2 drift / F3 rejected proposal re-raised | knowledge |
 | G interrupt | G1 chat · Ctrl+C · session end → record resume info / G2 user vetoes the spec summary | intent |

@@ -37,13 +37,13 @@ Columns:
 | D1 | two failed verification rounds in a row | verifier | `check --stage verdict` | V15 |
 | D2 | a red check twice with no fix in history or knowledge | none (gap) | — | — |
 | D3 | flaky: passes alone, fails in the full run | none (gap) | — | — |
-| D4 | suspected false pass: no exit code, empty output, piped gate | verifier | `check --stage verdict` (no exit line, non-zero exit, no command line, compound command); `reins gate` (refuses a compound command). Empty command output: none (gap) | V13, V14, V17 |
-| D5 | a pass without evidence | verifier | `check --stage verdict` | V12 |
+| D4 | suspected false pass: no exit code, empty output, piped gate | verifier | `check --stage verdict` (no exit line, non-zero exit, no command line, compound command, empty gate output as a WARN); `reins gate` (refuses a compound command) | V13, V14, V17, V21, V23 |
+| D5 | a pass without evidence | verifier | `check --stage verdict` (also an absolute evidence path outside the repository) | V12, V22 |
 | E1 | 80% of the narrowest budget | none (gap) | — | — |
 | E2 | 100% of a ticket or scope budget | none (gap) | — | — |
 | E3 | 100% of an rc or session budget | none (gap) | — | — |
 | F1 | a role attempts an action on its `must_not` list or a red line | none (gap) | — | — |
-| F2 | drift between the harness sources and generated files, or a convention violation | verifier | `check --stage pre-commit` and `check --drift` (format, convention, match, generated layers); also the plan and ticket checks of `ticket-start` and `rc-close` | V2, V3, V4, V6, V7, V16 |
+| F2 | drift between the harness sources and generated files, or a convention violation | verifier | `check --stage pre-commit` and `check --drift` (format, convention, match, generated layers); also the plan and ticket checks of `ticket-start` and `rc-close`, and the schema of the last verify exchange at `verdict` | V2, V3, V4, V6, V7, V16, V20 |
 | F3 | a rejected proposal re-raised | role | `stops.yaml` `detect: role` | — |
 | G1 | the user interrupts: chat, Ctrl+C, session end | none (gap) | — | — |
 | G2 | the user vetoes a spec summary | role | pm (`stops.yaml` `detect: pm`) | — |
@@ -66,7 +66,7 @@ Stop conditions P1 and P2 (premise) used to be called C1 and C2, which collided 
 - **P1 (stop)**: `stops.yaml` says `detect: role`; no code evaluates a rationale.
 - **P2 (stop)**: only the ticket-in-plan check exists. There is no comparison of a diff with `plan.md`, so T2's P2 and C10 checks do not exist either.
 - **D1**: counts consecutive failed `verify` exchanges of one ticket (1 warns, 2 escalates); it does not tell "ticket before rc.1" from "rc after".
-- **D4**: `verdictCheck` needs a command line (`$ cmd`) and `exit 0` in the evidence; it does not look at what lies between. Evidence with only those two lines is accepted, and `reins gate` writes empty command output to its report without complaint. Missing evidence altogether is D5 (V12), which is a different case.
+- **D4**: `verdictCheck` needs a command line (`$ cmd`) and `exit 0` in the evidence. Evidence with only those two lines draws a WARN (`gate output is empty`, V23) and the verdict stays; `reins gate` still writes empty command output to its report without complaint. Missing evidence altogether is D5 (V12), which is a different case.
 - **D2, D3**: `stops.yaml` says `detect: verifier`; there is no cross-run memory and no alone-versus-full-run comparison.
 - **E1, E2, E3**: `budget.yaml` has no defaults, and nothing reads a budget or a token count. T1's `budget-left` and T5's E3 do not exist.
 - **F1, G1**: T6 ("always") is listed in `transitions.yaml` and has no code. The CLI has no signal handler and writes no resume record on an interrupt. F1 is partly blocked in Claude Code by the deny rules, but no stop is recorded.
@@ -97,4 +97,4 @@ Partial gaps (the row has a working detector for the rest; the uncovered part is
 - C10 (red line): no automatic check that the diff stays within the intent and plan (T2 lists it); the code-review role does it by hand.
 - C5 (red line): `git commit -n` and other short or reordered forms of `--no-verify`, which the exact deny patterns do not match.
 - A1: deleting a tag, and moving a published tag forward to a descendant commit.
-- D4: command output that is empty is accepted by `reins gate` and by `check --stage verdict`.
+- D4: `reins gate` writes empty command output to its report without a warning.

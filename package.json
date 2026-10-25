@@ -3,7 +3,10 @@
   "version": "0.1.0-rc.1",
   "description": "Installs, migrates and updates an agent harness (harness → loop → graph) that keeps coding agents inside their permitted roles.",
   "license": "MIT",
-  "repository": "github:bluenyang/reins",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bluenyang/reins.git"
+  },
   "type": "module",
   "bin": {
     "reins": "cli/dist/reins.js"
@@ -41,5 +44,9 @@
     "oxlint": "^1.89.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
+  },
+  "homepage": "https://github.com/bluenyang/reins#readme",
+  "bugs": {
+    "url": "https://github.com/bluenyang/reins/issues"
   }
 }

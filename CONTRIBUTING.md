@@ -57,6 +57,13 @@ Describe the intent or issue it serves, what changed, and how it was verified (p
 output, do not summarise it). Merging and releases are the maintainer's call; a stable release is
 always an explicit decision (A2).
 
+## Releases
+
+The maintainer releases from GitHub Actions → **publish** (`.github/workflows/publish.yml`): update
+`CHANGELOG.md` first, then run it with a release type or an exact version (`dry_run` checks and packs
+only). It runs the full gate, publishes to npm through trusted publishing (no token), and commits and
+tags the version. reins has no GitHub Releases.
+
 ## License
 
 By contributing you agree that your contribution is licensed under the [MIT License](LICENSE).

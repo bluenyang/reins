@@ -58,6 +58,13 @@ pnpm build       # cli/src → cli/dist
 출력은 요약하지 말고 그대로 붙여 주세요. 병합과 릴리스는 메인테이너가 결정하며, stable 릴리스는
 언제나 명시적인 결정이 있어야 합니다(A2).
 
+## 릴리스
+
+메인테이너가 GitHub Actions의 **publish**(`.github/workflows/publish.yml`)로 릴리스합니다. 먼저
+`CHANGELOG.md`를 고친 뒤 릴리스 종류나 정확한 버전을 넣어 실행합니다(`dry_run`은 검사와 패키징만
+합니다). 전체 게이트를 돌리고, 토큰 없이 trusted publishing으로 npm에 올린 뒤, 버전을 커밋하고 태그를
+붙입니다. GitHub Releases는 쓰지 않습니다.
+
 ## 라이선스
 
 기여한 내용은 [MIT 라이선스](../LICENSE)로 배포되는 데 동의한 것으로 봅니다.

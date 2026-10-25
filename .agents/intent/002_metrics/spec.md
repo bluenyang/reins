@@ -1,9 +1,10 @@
 ---
 intent: "002"
-status: reviewed
+status: accepted
 approvals:
   - { role: qa-design, at: 2026-10-25, kind: first-review }
   - { role: pm, at: 2026-10-25 }
+  - { role: user, at: 2026-10-25, kind: summary }
 summary_for_user: |
   `reins check`·`reins gate`가 돌 때마다 `.loctx/reports/metrics.jsonl`에 한 줄씩 남는다(단계·ticket·판정·사유 id·정지 종류).
   역할 실행 뒤에는 `reins metrics record --role … --tokens …`로 토큰을 남기고, `reins metrics`가 intent·ticket·역할·벤더별 토큰과 항목당 knowledge 정지 수를 요약한다.

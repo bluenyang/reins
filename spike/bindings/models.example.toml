@@ -1,9 +1,9 @@
 # Model bindings — which agent and model runs each role.
 #
 # Lookup order (later wins):
-#   1. this file's defaults, copied to ~/.config/loop-harness/models.toml by `harness.py install`
+#   1. this file's defaults, copied to ~/.config/reins/models.toml by `harness.py install`
 #      when that file does not exist
-#   2. ~/.config/loop-harness/models.toml        (per user, all projects)
+#   2. ~/.config/reins/models.toml        (per user, all projects)
 #   3. <project>/.ai/models.toml                 (per project, gitignored)
 #
 # `prompt` is the assembled role prompt; `{prompt_file}` is a file holding it.

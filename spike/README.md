@@ -1,4 +1,4 @@
-# loop-harness
+# reins
 
 A vendor-neutral agent loop for any repository: roles, loop limits, handoff reports, a failure
 catalog that learns, and deterministic gates — installed with one command, upgraded without
@@ -58,7 +58,7 @@ In Claude Code: `/loop <target>`, `/step <stage>`, `/decide`, `/learn`, `/verify
 ## Bindings
 
 `bindings/models.example.toml` maps roles to agent CLIs and models. Override per user in
-`~/.config/loop-harness/models.toml` or per project in `.ai/models.toml`.
+`~/.config/reins/models.toml` or per project in `.ai/models.toml`.
 
 ## Stacks
 

@@ -1,10 +1,10 @@
 # AGENTS.md
 
-Working agreement for AI agents on `loop-harness`.
+Working agreement for AI agents on `reins`.
 
 ## Project
 
-**loop-harness** — a reusable agent harness and loop (roles, loop policy, handoffs, knowledge,
+**reins** (`@bluenyang/reins`, GitHub `bluenyang/reins`) — a reusable agent harness and loop (roles, loop policy, handoffs, knowledge,
 gates) for BlueNyang's and Team Croffle's repositories, installable in new repositories and
 migratable from the harnesses those repositories already use.
 

@@ -1,4 +1,4 @@
-# loop-harness 기획서 — v1.1 (2026-10-25)
+# reins 기획서 — v1.1 (2026-10-25)
 
 > 한글 원본. 영어판은 [`proposal.md`](proposal.md) — 둘이 어긋나면 이 파일이 기준이다. 로컬 작업 공간 `.ai/plan/2_proposal.md`에서 확정된 뒤 윤문(humanize-korean v2.3 light, 3문장)을 거쳤다.
 

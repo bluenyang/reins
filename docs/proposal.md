@@ -1,4 +1,4 @@
-# loop-harness — planning document, v1.1 (2026-10-25)
+# reins — planning document, v1.1 (2026-10-25)
 
 > English edition. The Korean original is [`proposal.ko.md`](proposal.ko.md); where the two disagree, the Korean file wins.
 > Phase-2 output. It holds requirements, scope and success criteria only. File formats, schemas and code structure belong to **design (phase 3)**.

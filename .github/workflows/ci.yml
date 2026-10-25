@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # version from package.json#packageManager
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # lint, format check, typecheck, tests — the same gate the hooks run
+      - run: pnpm check
+      - run: pnpm build
+      # the harness verifier on the repository itself: skills format, schemas, installed harness = upstream, generated files untouched (S2)
+      - run: node cli/dist/reins.js check --drift

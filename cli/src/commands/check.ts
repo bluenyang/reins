@@ -172,6 +172,7 @@ export function driftConvention(
   const schemas = loadSchemasFrom(rd, hrel);
   const findings: Finding[] = [];
   const candidates = [
+    `${hrel}/install.yaml`,
     ...rd.list(`${hrel}/templates`),
     ...rd.list(`${hrel}/knowledge-seeds`),
     ...rd.list('.agents/intent'),

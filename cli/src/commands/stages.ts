@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import { harnessDir, readYaml } from '../lib/harness.js';
+import { dispatchLines, readRelease } from '../lib/release.js';
 import { loadSchemas, validateFile } from '../lib/schema.js';
 import type { Finding } from '../lib/verdict.js';
 import { compound } from './gate.js';
@@ -472,7 +473,29 @@ export function rcClose(root: string, release: string | undefined): Finding[] {
         });
   }
   if (findings.length === 0) findings.push(...nextRc(root, release));
+  if (findings.every((f) => f.verdict === 'WARN'))
+    findings.push(...dispatchFindings(root, findings));
   return findings;
+}
+
+/** The rc dispatch lines (S-3) from install.yaml `release:`; the rc number comes from the ledger finding. */
+function dispatchFindings(root: string, found: Finding[]): Finding[] {
+  const rc = found.map((f) => /^next rc: (\S+)$/.exec(f.message)?.[1]).find(Boolean);
+  const ws = readRelease(root);
+  if (!rc || !ws)
+    return [
+      {
+        reason: 'F2',
+        verdict: 'WARN',
+        message: 'no release settings (install.yaml has no release:) — merge only',
+      },
+    ];
+  const lines = dispatchLines(ws, 'rc', rc);
+  if (lines.length === 0)
+    return [
+      { reason: 'F2', verdict: 'WARN', message: 'no release workflow is set for the rc stage' },
+    ];
+  return lines.map((l) => ({ reason: 'F2', verdict: 'WARN' as const, message: `dispatch: ${l}` }));
 }
 
 /**

@@ -195,7 +195,9 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   const hasGates = existsSync(join(root, '.agents/harness/gates.yaml'));
   const pinPath = join(root, '.agents/harness/install.yaml');
   const pinned = existsSync(pinPath)
-    ? (parse(readFileSync(pinPath, 'utf8')) as { language?: string } | null)
+    ? (parse(readFileSync(pinPath, 'utf8')) as
+        | ({ language?: string } & Record<string, unknown>)
+        | null)
     : null;
   const vs = (o.detectVendors ?? vendors)();
   const detected = vs.filter((v) => v.detected).map((v) => v.name);
@@ -236,7 +238,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     );
   add(
     '.agents/harness/install.yaml',
-    `# version pin and install settings (R25) — read by reins update\n${stringify({ schema: 'reins/install@1', tier: o.tier, version, cli: packageVersion(), mode: o.mode, language })}`,
+    `# version pin and install settings (R25) — read by reins update\n${stringify({ ...pinned, schema: 'reins/install@1', tier: o.tier, version, cli: packageVersion(), mode: o.mode, language })}`,
     'version pin',
   );
 

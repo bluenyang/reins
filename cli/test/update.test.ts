@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { driftMatch } from '../src/commands/check.js';
 import { runInstall } from '../src/commands/install.js';
@@ -55,6 +56,31 @@ describe('reins update', () => {
     );
     expect(driftMatch(d)).toEqual([]);
     expect(r.install?.history).toBe('.loctx/history/2026-10-25-1400_update-graph.md');
+  });
+
+  it('keeps release: and keys it does not know across update (C-1)', async () => {
+    const d = mkdtempSync(join(tmpdir(), 'reins-up-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    writeFileSync(join(d, 'package.json'), '{}');
+    await runInstall({
+      tier: 'graph',
+      mode: 'auto',
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: claude,
+    });
+    const pin = join(d, '.agents/harness/install.yaml');
+    const extra =
+      'release:\n  workflows:\n    - file: publish.yml\n      inputs:\n        version: "{version}"\n      approval: npm-staged\nfuture_key: { a: 1 }\n';
+    writeFileSync(pin, readFileSync(pin, 'utf8') + extra);
+    await runUpdate({ cwd: d, detectVendors: claude });
+    const after = parse(readFileSync(pin, 'utf8')) as Record<string, unknown>;
+    expect(after['release']).toEqual({
+      workflows: [
+        { file: 'publish.yml', inputs: { version: '{version}' }, approval: 'npm-staged' },
+      ],
+    });
+    expect(after['future_key']).toEqual({ a: 1 });
   });
 
   it('refuses where reins is not installed', async () => {

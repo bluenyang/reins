@@ -4,6 +4,7 @@ import { matchesAny } from './glob.js';
 export const DEFAULT_SECRET_PATTERNS: readonly string[] = [
   '.env',
   '.env.*',
+  '*.env',
   'secrets/**',
   '*.key',
   '*.pem',

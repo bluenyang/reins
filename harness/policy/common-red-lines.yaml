@@ -9,7 +9,7 @@ rules:
     text: Editing one's own permission file or any generated vendor file.
   - id: C4
     text: Reading secret files.
-    patterns: ['.env', '.env.*', 'secrets/**', '*.key', '*.pem', '*.p12', '*.pfx', '*.properties', 'id_rsa', 'id_rsa.*', 'id_ed25519', 'id_ed25519.*']
+    patterns: ['.env', '.env.*', '*.env', 'secrets/**', '*.key', '*.pem', '*.p12', '*.pfx', '*.properties', 'id_rsa', 'id_rsa.*', 'id_ed25519', 'id_ed25519.*']
     allowed: ['.env.example', '*.example', '*.example.*', '*.sample']
   - id: C5
     text: Bypassing hooks (--no-verify) or massaging gate output (pipes that hide the exit code).

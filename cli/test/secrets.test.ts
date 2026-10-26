@@ -14,4 +14,11 @@ describe('secret patterns (C4)', () => {
     expect(isSecretPath('config/secret.example.yaml')).toBeNull();
     expect(isSecretPath('src/index.ts')).toBeNull();
   });
+  it('catches any *.env file, but not templates (012 S-12)', () => {
+    expect(isSecretPath('langfuse.env')).toBe('*.env');
+    expect(isSecretPath('a/b.env')).toBe('*.env');
+    expect(isSecretPath('x.env.example')).toBeNull();
+    expect(isSecretPath('x.example.env')).toBeNull();
+    expect(isSecretPath('.env.sample')).toBeNull();
+  });
 });

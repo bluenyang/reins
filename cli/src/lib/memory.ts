@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { listFiles, type Write } from './fsx.js';
 import { isSecretPath } from './secrets.js';
@@ -22,15 +22,26 @@ export function planMemoryProposals(
   const out: { writes: Write[]; notes: string[] } = { writes: [], notes: [] };
   const dir = join(root, '.claude/memory');
   if (!existsSync(dir)) return out;
-  const made = new Set<string>();
+  // a draft is identified by its `source:`, so names stay stable across runs
+  const pdir = join(root, '.loctx/knowledge-proposals');
+  const taken = new Set<string>();
+  const drafted = new Set<string>();
+  if (existsSync(pdir))
+    for (const n of readdirSync(pdir)) {
+      if (!/^memory-.*\.md$/.test(n)) continue;
+      taken.add(n.slice(0, -3));
+      const m = /^source:\s*(.+)$/m.exec(readFileSync(join(pdir, n), 'utf8'));
+      if (m) drafted.add(m[1]!.trim().replace(/^"(.*)"$/, '$1'));
+    }
   for (const f of listFiles(dir)) {
     const source = `.claude/memory/${f}`;
     if (isSecretPath(source)) continue;
-    let name = `memory-${slug(f)}`;
-    while (made.has(name)) name += '-2';
-    made.add(name);
+    if (drafted.has(source)) continue;
+    const base = `memory-${slug(f)}`;
+    let name = base;
+    for (let i = 2; taken.has(name); i++) name = `${base}-${i}`;
+    taken.add(name);
     const path = `.loctx/knowledge-proposals/${name}.md`;
-    if (existsSync(join(root, path))) continue;
     let text: string;
     try {
       text = readFileSync(join(dir, f), 'utf8');

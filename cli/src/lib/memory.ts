@@ -26,12 +26,24 @@ export function planMemoryProposals(
   const pdir = join(root, '.loctx/knowledge-proposals');
   const taken = new Set<string>();
   const drafted = new Set<string>();
+  const srcOf = (file: string) => {
+    const m = /^source:\s*(.+)$/m.exec(readFileSync(file, 'utf8'));
+    return m ? m[1]!.trim().replace(/^"(.*)"$/, '$1') : null;
+  };
+  // an accepted entry keeps the source: its draft had, so accepting does not cause a re-draft
+  const kdir = join(root, '.agents/knowledge');
+  if (existsSync(kdir))
+    for (const n of readdirSync(kdir)) {
+      if (!n.endsWith('.md')) continue;
+      const src = srcOf(join(kdir, n));
+      if (src) drafted.add(src);
+    }
   if (existsSync(pdir))
     for (const n of readdirSync(pdir)) {
       if (!/^memory-.*\.md$/.test(n)) continue;
       taken.add(n.slice(0, -3));
-      const m = /^source:\s*(.+)$/m.exec(readFileSync(join(pdir, n), 'utf8'));
-      if (m) drafted.add(m[1]!.trim().replace(/^"(.*)"$/, '$1'));
+      const src = srcOf(join(pdir, n));
+      if (src) drafted.add(src);
     }
   for (const f of listFiles(dir)) {
     const source = `.claude/memory/${f}`;

@@ -125,6 +125,29 @@ describe('reins retro', () => {
   });
 });
 
+describe('noise', () => {
+  it('tool-written pages and ticketless records are not units', async () => {
+    const d = await fixture();
+    put(d, '.loctx/history/2026-10-26-1200_update-graph.md', 'decisions: update-graph\n\n# x\n');
+    put(d, '.loctx/history/2026-10-26-1201_update-graph.md', 'decisions: update-graph\n\n# x\n');
+    put(d, '.loctx/history/2026-10-26-1202_a.md', 'decisions: marked\nsource: tool\n');
+    put(d, '.loctx/history/2026-10-26-1203_b.md', 'decisions: marked\nsource: tool\n');
+    put(d, '.loctx/history/2026-10-26-1204_c.md', 'decisions: plain\n');
+    put(d, '.loctx/history/2026-10-26-1205_d.md', 'decisions: plain\n');
+    put(
+      d,
+      METRICS_FILE,
+      [check(undefined, 'STOP', ['Z9']), check(undefined, 'STOP', ['Z9'])].join('\n') + '\n',
+    );
+    const keys = runRetro({ cwd: d }).candidates.map((c) => c.key);
+    expect(keys).toContain('decision:plain'); // untagged ticketless pages still count, one each
+    expect(keys).not.toContain('decision:update-graph');
+    expect(keys).not.toContain('decision:marked');
+    expect(keys).not.toContain('stop:Z9');
+    expect(runRetro({ cwd: d }).stops).toEqual({ Z9: 2 });
+  });
+});
+
 describe('reins knowledge', () => {
   it('propose writes only a draft; accept writes an approved entry and removes it (C-5)', async () => {
     const d = await fixture();

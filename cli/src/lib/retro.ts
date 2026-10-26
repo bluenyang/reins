@@ -55,6 +55,12 @@ export function promotedSlugs(root: string): Set<string> {
   return out;
 }
 
+/** Pages the tool wrote itself (install, update, migrate): marked `source: tool`, or named so before the marker existed. */
+export const toolPage = (h: { path: string; text: string }) =>
+  !ticketOfPage(h.path) &&
+  (/^source:\s*tool\s*$/m.test(h.text) ||
+    /_(install|update|migrate)-(harness|loop|graph)\.md$/.test(h.path));
+
 const ticketOfPage = (path: string) => /_(\d{3}-\d+)(?:-|\.|$)/.exec(path)?.[1];
 
 function releaseIntents(root: string, version: string): Set<string> {
@@ -87,7 +93,7 @@ export function collectRetro(root: string, opts: { release?: string } = {}): Ret
     if (r.verdict === 'HOLD' || r.verdict === 'STOP') failedRounds[r.verdict]++;
     for (const id of new Set(r.reasons)) {
       stops[id] = (stops[id] ?? 0) + 1;
-      add(`stop:${id}`, 'stop', r.ticket ?? (r.intent ? `intent-${r.intent}` : 'none'));
+      if (r.ticket) add(`stop:${id}`, 'stop', r.ticket);
     }
   }
 
@@ -96,7 +102,7 @@ export function collectRetro(root: string, opts: { release?: string } = {}): Ret
     return !scope || (!!t && scope.has(t.slice(0, 3)));
   };
   for (const h of historyPages(root)) {
-    if (!pageIn(h.path)) continue;
+    if (!pageIn(h.path) || toolPage(h)) continue;
     const unit = ticketOfPage(h.path) ?? h.path;
     for (const [axis, field] of [
       ['reason', 'reasons'],

@@ -361,6 +361,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     history = `.loctx/history/${stamp}_${o.recordAs ?? 'install'}-${o.tier}.md`;
     const body = [
       `decisions: install-${o.tier}`,
+      'source: tool',
       '',
       `# reins install ${o.tier} (${o.mode}) — v${version}`,
       '',

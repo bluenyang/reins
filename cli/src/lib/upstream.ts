@@ -12,6 +12,12 @@ export function packageHarness(): string {
   throw new Error('reins: cannot find the packaged harness/ directory');
 }
 
+/** The version of the installed package (package.json next to `harness/`); stage skills pin the CLI to it. */
+export function packageVersion(): string {
+  const p = join(packageHarness(), '..', 'package.json');
+  return (JSON.parse(readFileSync(p, 'utf8')) as { version: string }).version;
+}
+
 export function harnessVersion(dir: string): string {
   return readFileSync(join(dir, 'VERSION'), 'utf8').trim();
 }

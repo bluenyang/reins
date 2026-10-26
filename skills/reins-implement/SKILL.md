@@ -5,7 +5,7 @@ description: Implement one ticket as the implementer role — runs the T1 ticket
 
 # reins-implement
 
-implementer role. Run the CLI as `npx @bluenyang/reins@<v>` where `<v>` is `version` in `.agents/harness/install.yaml` (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
+implementer role. Run the CLI as `npx @bluenyang/reins@<v>` where `<v>` is `cli` in `.agents/harness/install.yaml` (no `cli` line: installed before 0.1.3, run `npx @bluenyang/reins@latest update` once) (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
 
 1. **Check first (T1).** `reins check --stage ticket-start --ticket <id>`. Not CONTINUE → stop and follow the verdict; do not start. Open `asks:` hold for the user; the check also names recorded decisions that may already answer them.
 2. Branch `type/<NNN>-<slug>` from the default branch (never commit on it). Launch the `reins-implementer` subagent: ticket → plan section → `reins recall` → implement.

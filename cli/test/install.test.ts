@@ -208,3 +208,28 @@ describe('skill entry points (design §6)', () => {
     expect(existsSync(join(d, '.agents/skills/reins-loop'))).toBe(false);
   });
 });
+
+describe('install.yaml pins the CLI (0.1.3 rc.3)', () => {
+  it('records the package version as cli next to the harness version', async () => {
+    const d = repo();
+    await runInstall({
+      tier: 'graph',
+      mode: 'auto',
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: onlyClaude,
+    });
+    const pin = readFileSync(join(d, '.agents/harness/install.yaml'), 'utf8');
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string };
+    expect(pin).toContain(`cli: ${pkg.version}`);
+    expect(pin).toMatch(/^version: \d+\.\d+\.\d+$/m);
+  });
+
+  it('every stage skill reads cli, not version, from install.yaml', () => {
+    for (const s of tierSkills('graph').filter((n) => n !== 'reins-setup')) {
+      const text = readFileSync(join('skills', s, 'SKILL.md'), 'utf8');
+      expect(text, s).toContain('is `cli` in `.agents/harness/install.yaml`');
+      expect(text, s).not.toContain('is `version` in `.agents/harness/install.yaml`');
+    }
+  });
+});

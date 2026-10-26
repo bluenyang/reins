@@ -7,7 +7,7 @@ import { runMigrate } from './commands/migrate.js';
 import { runStatus } from './commands/status.js';
 import { runUpdate } from './commands/update.js';
 import { configureBindings } from './commands/configure.js';
-import { runGates } from './commands/gate.js';
+import { runGates, writeResponse } from './commands/gate.js';
 import { newIntent, newRequest, newTicket, type NewResult } from './commands/new.js';
 import {
   collectMetrics,
@@ -16,6 +16,7 @@ import {
   logGates,
   recordUsage,
 } from './commands/metrics.js';
+import { repoRoot } from './lib/git.js';
 import { defaultsAsker, stdinAsker } from './lib/ask.js';
 import { EXIT } from './lib/verdict.js';
 
@@ -224,19 +225,40 @@ program
   .argument('[names...]', 'gates to run (default: the declared order)')
   .option('--ticket <id>', 'name the reports after this ticket')
   .option('--all', 'keep going after a failure')
+  .option(
+    '--respond',
+    'with --ticket: write the bus response for the open verify request (one line per gate on stdout)',
+  )
   .option('--json')
-  .action((names: string[], o: { ticket?: string; all?: boolean; json?: boolean }) => {
-    const r = runGates({ names, ticket: o.ticket, all: o.all });
-    logGates(r.runs, { ticket: o.ticket });
-    if (o.json) process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
-    else if (r.refused) process.stderr.write(`reins gate: ${r.refused}\n`);
-    else
-      for (const g of r.runs)
-        process.stdout.write(
-          `  ${g.skipped ? '-' : g.exit === 0 ? 'ok' : 'FAIL'} ${g.gate.padEnd(10)} ${g.skipped ?? `exit ${g.exit} → ${g.report}`}\n`,
-        );
-    process.exit(r.refused ? 2 : r.runs.every((g) => g.exit === 0) ? 0 : 1);
-  });
+  .action(
+    (names: string[], o: { ticket?: string; all?: boolean; json?: boolean; respond?: boolean }) => {
+      if (o.respond && !o.ticket) {
+        process.stderr.write('reins gate: --respond needs --ticket <id>\n');
+        process.exit(2);
+      }
+      const r = runGates({ names, ticket: o.ticket, all: o.all });
+      logGates(r.runs, { ticket: o.ticket });
+      const resp =
+        o.respond && o.ticket && !r.refused
+          ? writeResponse(repoRoot(process.cwd()), o.ticket, r.runs)
+          : null;
+      if (o.json)
+        process.stdout.write(`${JSON.stringify(resp ? { ...r, respond: resp } : r, null, 2)}\n`);
+      else if (r.refused) process.stderr.write(`reins gate: ${r.refused}\n`);
+      else
+        for (const g of r.runs)
+          process.stdout.write(
+            `  ${g.skipped ? '-' : g.exit === 0 ? 'ok' : 'FAIL'} ${g.gate.padEnd(10)} ${g.skipped ?? `exit ${g.exit} → ${g.report}`}\n`,
+          );
+      if (resp && !o.json) {
+        for (const [gate, s] of Object.entries(resp.summaries))
+          process.stdout.write(`    ! ${gate}: ${s}\n`);
+        if (resp.response) process.stdout.write(`response: ${resp.response} (${resp.verdict})\n`);
+        else process.stderr.write(`reins gate: no response written — ${resp.refused}\n`);
+      }
+      process.exit(r.refused ? 2 : resp?.refused ? 1 : r.runs.every((g) => g.exit === 0) ? 0 : 1);
+    },
+  );
 
 const done = (r: NewResult) => {
   process.stdout.write(r.stdout);

@@ -24,7 +24,7 @@ Exit codes 0/10/20/30. Use `npx @bluenyang/reins` (inside the reins repository: 
    ticket → plan section → `reins recall` → implement, **one commit per finished unit** (the hook runs **T2**).
    A diff outside the plan updates plan.md's departure log in the same commit (P2), or opens a new ticket (C10).
 6. **Verify.** Write `.loctx/bus/<id>_<nn>.request.yaml` (`kind: verify`); verify-tool runs
-   `reins gate --ticket <id>` and answers in `<id>_<nn>.response.yaml` with the report paths as `evidence:`.
+   `reins gate --ticket <id> --respond`, which runs the gates, keeps the raw reports and writes `<id>_<nn>.response.yaml` (report paths as `evidence:`) for the open verify request.
    Bus values that contain `: ` or ` #`, or start with one of `- [ { * & ! | > ' " % @`, go in double quotes; an unquoted one breaks the YAML and the check stops with F2.
    **T3** `reins check --stage verdict --ticket <id>`. Fail → back to 5 (a second failure escalates, D1).
 7. **Review.** code-review gets the diff against plan and spec (`kind: review`) and proposes fixes only;
@@ -35,7 +35,7 @@ Exit codes 0/10/20/30. Use `npx @bluenyang/reins` (inside the reins repository: 
 8. **Close.** `status: done`; one history page or line in `.loctx/history/` naming the ticket id, its commits,
    and a `decisions:` line; then delete the ticket file and its bus files.
 
-**Metrics.** After each role run, report what it cost: `reins metrics record --role <r> --tokens <n> --ticket <id>`.
+**Metrics.** After each role run, report what it cost with one call: `reins metrics record --role <role> --tokens <n> --intent <id> [--ticket <id>] --vendor <v> --model <m>`.
 Tokens come from the vendor — Claude subagent: the Agent result's token count · `codex exec`: the "tokens used"
 line · `agy`, `cursor-agent` with `--output-format json`: the usage field when present. No count from the
 vendor → record nothing, never guess. `reins check` and `reins gate` log themselves to

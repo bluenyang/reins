@@ -31,5 +31,7 @@ summary may be vetoed by the user** (R64). Everything here leads to one of them;
    `status: accepted`, `approvals:` pm, qa-design and `{role: user, kind: summary}`; commit with
    `Approved-by:`. Then hand over to `reins-loop`.
 
+**Metrics.** After each role run, report what it cost with one call: `reins metrics record --role <role> --tokens <n> --intent <id> [--ticket <id>] --vendor <v> --model <m>`. No token count from the vendor → record nothing, never guess.
+
 A role bound to a vendor with no generated files yet (round one generates Claude only) runs on Claude with
 its role file as instructions; say so in the history line.

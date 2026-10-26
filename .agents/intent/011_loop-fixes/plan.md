@@ -1,6 +1,6 @@
 ---
 intent: "011"
-status: done
+status: active
 approvals:
   - { role: qa-design, at: 2026-10-26, kind: light-review }
 agents:
@@ -8,7 +8,7 @@ agents:
   verify: [verify-tool]
   review: [code-review]
 budget: {}
-tickets: ["011-1", "011-2", "011-3", "011-4", "011-5"]
+tickets: ["011-1", "011-2", "011-3", "011-4", "011-5", "011-6"]
 ---
 ## 바뀌는 파일
 - 011-1: `cli/src/commands/new.ts`(새), `cli/src/reins.ts`, 테스트, `docs/design.md`·`docs/design.ko.md`(S-1~S-4 `reins new`, 같은 커밋)
@@ -32,4 +32,5 @@ tickets: ["011-1", "011-2", "011-3", "011-4", "011-5"]
 - [ ] spec C-1~C-12
 
 ## 이탈 기록
+- 2026-10-26 (pl, rc.2 스모크 테스트, 사용자 지시 "rc.3 진행"): 011-6 단계 스킬이 CLI를 install.yaml `version`(하네스 0.1.2)으로 고정해 새 설치에서 옛 CLI를 부름 → install.yaml에 `cli:`(패키지 버전)를 두고 스킬이 그것을 읽음. release: stabilization.
 - 2026-10-26 (pl, 0.1.3 rc.1 이후 안정화, 사용자 지시): 011-3 `reins new ticket`이 plan이 예약한 id를 씀 · 011-4 테스트가 만든 임시 디렉터리를 지움(/tmp/reins-* 약 1만 개가 쌓여 inode 100%) · 011-5 e2e control 테스트가 publish에서 간헐적으로 빈 stdout — 실패 시 stderr를 남기고 원인 제거. 모두 release: stabilization.

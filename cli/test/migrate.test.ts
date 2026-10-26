@@ -256,6 +256,8 @@ describe('reins migrate — ticket ids, intent 000, legacy (012-3)', () => {
     const rep = r.report.join('\n');
     expect(rep).toMatch(/test\/\.env matches a secret pattern/);
     expect(rep).toMatch(/review before committing/);
+    expect(rep).toMatch(/\.ai\/verify\/ \(\d+ files\) moved to \.agents\/legacy\//);
+    expect(rep).not.toMatch(/moved to \.loctx\/_legacy\//);
   });
 
   it('--legacy committed keeps an x.env file local', async () => {

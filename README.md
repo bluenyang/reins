@@ -122,7 +122,8 @@ To work on reins itself: `git clone https://github.com/bluenyang/reins.git`, the
 | `metrics` | implemented | summary of `.loctx/reports/metrics.jsonl`: tokens by role, vendor, ticket and intent, knowledge stops per ticket; `metrics record` adds a role run's tokens |
 | `recall` | not implemented | search past decisions by symptom |
 | `doctor` | not implemented | — |
-| `configure budget\|gates\|language` | not implemented | — |
+| `configure gates` | implemented | lists subdirectory gate proposals; `--add <name>...` appends them to gates.yaml |
+| `configure budget\|language` | not implemented | — |
 
 `install`, `migrate`, `update`, `gate`, `status`, `check` and `metrics` take `--json`. Every `check` and `gate` run also appends a line to `.loctx/reports/metrics.jsonl`. `check` stages map to
 T1 (`ticket-start`), T2 (`pre-commit`), T3 (`verdict`), T4 (`pre-push`) and T5 (`rc-close`).

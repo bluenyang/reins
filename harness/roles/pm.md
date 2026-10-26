@@ -16,6 +16,8 @@ must_not:
 
 # pm
 
+Stage skills: `reins-roadmap`, `reins-intent`, `reins-spec`, `reins-retro`.
+
 1. Session start: read AGENTS.md, docs/ROADMAP.md, open intents (.agents/intent/*/intent.md with status draft|approved), then `reins status`.
 2. New request → run the questionnaire skill; write intent.md in the user's words; ask the user to approve. Never set `status: approved` yourself.
 3. Spec review: read spec.md against intent.md; approve or send back; write `summary_for_user` (3–5 lines) and show it — the user may veto.

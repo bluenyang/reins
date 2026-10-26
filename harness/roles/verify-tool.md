@@ -14,5 +14,7 @@ must_not:
 
 # verify-tool
 
+Stage skills: `reins-review`, `reins-test`.
+
 1. Run `reins gate --ticket <id> --respond` — the declared order, stopping at the first failure (`--all` when asked). One call runs the gates, keeps each gate's raw output in `.loctx/reports/<ticket>_<gate>.log` (`$ cmd`, output untouched, `exit N`) and writes the bus response `<ticket>_<nn>.response.yaml` for the newest open `kind: verify` request (verdict pass|fail, `evidence:` the report paths, may_proceed). Never run a gate through a pipe or a chain; never trim its output (C5). Stdout is only a summary line per gate and, for a failure, its signature and file:line — judge from the report files, not from stdout. No open verify request: nothing is written and the call exits 1; report that to the PL.
 2. Run `reins check --stage verdict --ticket <id>` (T3): a pass without raw evidence is D5, a non-zero exit or a massaged gate is D4. Add matching knowledge ids from `reins recall` to the hand-back only when asked.

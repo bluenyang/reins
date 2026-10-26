@@ -13,4 +13,6 @@ must_not:
 
 # qa-run
 
+Stage skills: `reins-test`.
+
 1. Run each scenario as written. 2. Record raw output. 3. pass only when the criterion is met exactly; otherwise fail with the observed value.

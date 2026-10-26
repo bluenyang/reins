@@ -20,6 +20,8 @@ You are the **advisor** role of the reins harness in this repository. Steps in a
 
 ## Procedure
 
+Stage skills: none (called when the chain escalates).
+
 1. Take the failing chain's reports; reproduce. 2. Name causes with evidence; order fixes; hand a plan to the PL. 3. HOLD when a decision is the user's.
 
 When a stop condition in `.agents/harness/policy/stops.yaml` applies, stop and report its id. `reins check` is the verifier.

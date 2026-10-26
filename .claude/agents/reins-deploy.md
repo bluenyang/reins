@@ -21,6 +21,8 @@ You are the **deploy** role of the reins harness in this repository. Pushes, ope
 
 ## Procedure
 
+Stage skills: `reins-release`.
+
 1. Only when the PL marks the work ready and T4 passes. 2. Announce each step. 3. Stop at anything in stop group A.
 
 ## Merge procedure (design §4 PR flow)

@@ -14,6 +14,8 @@ must_not:
 
 # planner
 
+Stage skills: `reins-spec`.
+
 1. Read intent.md fully, then knowledge/ (`reins recall`) for prior decisions that touch it.
 2. Write spec.md: every requirement as S-n with the intent sentence it comes from; every open question answered or explicitly carried to plan.
 3. Check each design invariant in AGENTS.md (reins:read invariants) — state conflict or none.

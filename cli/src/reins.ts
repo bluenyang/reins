@@ -4,6 +4,8 @@ import { Command } from 'commander';
 import { runCheck, STAGES, type Stage } from './commands/check.js';
 import { runInstall, type Tier } from './commands/install.js';
 import { runMigrate } from './commands/migrate.js';
+import { acceptKnowledge, proposeKnowledge } from './commands/knowledge.js';
+import { formatRetro, runRetro } from './commands/retro.js';
 import { runStatus } from './commands/status.js';
 import { runUpdate } from './commands/update.js';
 import { configureBindings } from './commands/configure.js';
@@ -368,6 +370,42 @@ metrics
       );
     },
   );
+
+program
+  .command('retro')
+  .description(
+    'what repeated: stop ids, review reasons, decisions, failed rounds, tokens; knowledge candidates',
+  )
+  .option('--release <v>', 'only the intents whose version is v')
+  .option('--json')
+  .action((o: { release?: string; json?: boolean }) => {
+    const r = runRetro({ release: o.release });
+    process.stdout.write(o.json ? `${JSON.stringify(r, null, 2)}\n` : formatRetro(r));
+  });
+
+const knowledge = program
+  .command('knowledge')
+  .description('promote a repeated key to a knowledge entry');
+const knowledgeDone = (verb: string, r: { path?: string; refused?: string }) => {
+  if (r.refused) {
+    process.stderr.write(`reins knowledge ${verb}: ${r.refused}\n`);
+    process.exit(2);
+  }
+  process.stdout.write(`${r.path}\n`);
+};
+knowledge
+  .command('propose')
+  .description('write a draft to .loctx/knowledge-proposals/ (records no approval)')
+  .argument('<key>', 'a retro key (decision:<slug>) or a slug')
+  .option('--from <history...>', 'history pages that back it')
+  .action((key: string, o: { from?: string[] }) =>
+    knowledgeDone('propose', proposeKnowledge(key, o)),
+  );
+knowledge
+  .command('accept')
+  .description('after the user approves: write .agents/knowledge/<date>_<slug>.md with approved')
+  .argument('<draft>', 'the draft slug')
+  .action((draft: string) => knowledgeDone('accept', acceptKnowledge(draft)));
 
 for (const n of ['recall', 'doctor'])
   program.command(n).allowUnknownOption().allowExcessArguments().action(notYet(n));

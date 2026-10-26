@@ -187,6 +187,20 @@ export function driftConvention(
     if (!m) continue;
     const v = schemas.get(m.schema);
     if (!v) continue;
+    if (m.schema === 'knowledge' && rel.startsWith('.agents/knowledge/')) {
+      // design §8: an entry reaches .agents/knowledge/ only through the user's approval (presets ship with the package)
+      const { data } = splitFrontmatter(text);
+      const ap = data?.['approved'] as { by?: unknown } | undefined;
+      if (data && data['source'] !== 'preset' && !(ap && typeof ap.by === 'string' && ap.by))
+        findings.push({
+          reason: 'F2',
+          verdict: 'STOP',
+          path: rel,
+          message: 'knowledge entry without approved',
+          resume:
+            'propose it with reins knowledge propose; the user approves, then reins knowledge accept',
+        });
+    }
     for (const i of validateFile(v, join(root, rel), m.whole, text))
       findings.push({
         reason: 'F2',

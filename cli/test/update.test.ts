@@ -1,13 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { driftMatch } from '../src/commands/check.js';
-import { runInstall } from '../src/commands/install.js';
+import { retiredFiles, runInstall } from '../src/commands/install.js';
 import { changesBetween, newer, runUpdate } from '../src/commands/update.js';
 import { defaultsAsker } from '../src/lib/ask.js';
+import { packageHarness } from '../src/lib/upstream.js';
 
 const claude = () =>
   (['claude', 'openai', 'google', 'cursor'] as const).map((name) => ({
@@ -81,6 +82,45 @@ describe('reins update', () => {
       ],
     });
     expect(after['future_key']).toEqual({ a: 1 });
+  });
+
+  it('removes a file the tier no longer installs; drift only warns first (C-12)', async () => {
+    const d = mkdtempSync(join(tmpdir(), 'reins-up-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    writeFileSync(join(d, 'package.json'), '{}');
+    await runInstall({
+      tier: 'graph',
+      mode: 'auto',
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: claude,
+    });
+    const h = join(d, '.agents/harness');
+    const packaged = readFileSync(join(packageHarness(), 'CHANGELOG.md'), 'utf8');
+    writeFileSync(join(h, 'CHANGELOG.md'), packaged + '- an older line\n');
+    writeFileSync(join(h, 'notes.md'), 'mine\n');
+    expect(driftMatch(d).map((f) => `${f.reason} ${f.verdict} ${f.path}`)).toEqual([
+      'F2 WARN .agents/harness/CHANGELOG.md',
+    ]);
+    expect(driftMatch(d)[0]?.resume).toMatch(/reins update/);
+
+    const dry = await runUpdate({ cwd: d, detectVendors: claude, dryRun: true });
+    expect(dry.install?.applied?.removed).toEqual(['.agents/harness/CHANGELOG.md']);
+    expect(existsSync(join(h, 'CHANGELOG.md'))).toBe(true);
+
+    const r = await runUpdate({ cwd: d, detectVendors: claude });
+    expect(r.install?.applied?.removed).toEqual(['.agents/harness/CHANGELOG.md']);
+    expect(existsSync(join(h, 'CHANGELOG.md'))).toBe(false);
+    expect(existsSync(join(h, 'gates.yaml'))).toBe(true);
+    expect(readFileSync(join(h, 'notes.md'), 'utf8')).toBe('mine\n');
+    expect(driftMatch(d)).toEqual([]);
+  });
+
+  it('retiredFiles lists only upstream-owned files outside the tier', () => {
+    const up = ['CHANGELOG.md', 'VERSION', 'roles/pl.md', 'knowledge-seeds/a.md', 'gates.yaml'];
+    const have = [...up, 'notes.md', 'knowledge/x.md'];
+    expect(retiredFiles(have, up, 'graph')).toEqual(['CHANGELOG.md', 'knowledge-seeds/a.md']);
+    expect(retiredFiles(have, up, 'harness')).toContain('roles/pl.md');
   });
 
   it('refuses where reins is not installed', async () => {

@@ -18,6 +18,7 @@ Readiness for large repositories (intent 012, planned).
 - Gate discovery also finds subdirectory candidates (`package.json` scripts, `Makefile` targets, `go.mod`; depth 3). `install` offers them in manual mode and reports them in auto mode; `reins configure gates [--add <name>…]` lists and appends them.
 - `migrate` numbers open work `000-1…000-N` in path order (no more repeated `000-1`), remaps `depends` inside a version and records the rest in `asks:`, writes intent 000 as a draft, and takes `--legacy committed` (secret-pattern files stay in `.loctx/_legacy/`).
 - `install` and `migrate` no longer touch `.claude/memory/*`; each file gets a draft `.loctx/knowledge-proposals/memory-<name>.md` to accept with `reins knowledge accept`. `*.env` joins the C4 secret patterns (`*.example*` and `*.sample` stay allowed).
+- `update` deletes harness files the tier no longer installs (e.g. `.agents/harness/CHANGELOG.md` from a 0.1.0 install) and lists them; `--dry-run` only lists. Drift compares only the files the tier installs and warns about such leftovers instead of stopping with F2.
 
 ## [0.1.3] — 2026-10-27
 

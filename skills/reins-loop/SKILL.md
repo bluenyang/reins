@@ -8,7 +8,7 @@ description: Conduct an accepted spec through the reins loop by calling the stag
 Roles judge, scripts enforce. Each stage skill starts with its own check, and **its verdict decides what happens next**:
 CONTINUE → go on · HOLD → ask the user (one line: reason id + what you need) · STOP → do what `resume` says,
 then re-run the same check · ESCALATE → the next role in the chain (pl → pm → advisor → user).
-Exit codes 0/10/20/30. Use `npx @bluenyang/reins` (inside the reins repository: `node cli/dist/reins.js`).
+Exit codes 0/10/20/30. Run the CLI as `npx @bluenyang/reins@<v>` where `<v>` is `version` in `.agents/harness/install.yaml` (inside the reins repository: `node cli/dist/reins.js`).
 
 ## Order
 1. `reins-roadmap` (when the roadmap changes) → `reins-intent` → `reins-spec`

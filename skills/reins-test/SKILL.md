@@ -5,7 +5,7 @@ description: Test a version before release — qa-design designs e2e scenarios f
 
 # reins-test
 
-Run the CLI as `npx @bluenyang/reins` (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
+Run the CLI as `npx @bluenyang/reins@<v>` where `<v>` is `version` in `.agents/harness/install.yaml` (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
 
 1. **Check first.** `reins status` and `reins check --drift`. The version must have no open ticket and every planned ticket done; anything left → HOLD (do not re-run T3 on a closed ticket).
 2. **qa-design:** write the e2e scenarios from the version's spec acceptance criteria (call per `../reins-loop/references/vendor-cli.md`).

@@ -43,3 +43,15 @@ describe('role stage-skill lines match the design table (008 C-5)', () => {
     });
   }
 });
+
+describe('skills pin the CLI version (008)', () => {
+  const dirs = readdirSync(join(root, 'skills')).filter((d) => d !== 'reins-setup');
+  for (const d of dirs) {
+    it(`${d} has no unpinned npx invocation`, () => {
+      const t = read(`skills/${d}/SKILL.md`);
+      expect(t).toContain('npx @bluenyang/reins@<v>');
+      expect(t).toContain('.agents/harness/install.yaml');
+      expect(t.match(/npx @bluenyang\/reins(?!@)/g) ?? []).toEqual([]);
+    });
+  }
+});

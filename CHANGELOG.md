@@ -10,7 +10,11 @@ This file is about the package. The harness that `reins update` re-applies to in
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md); an entry there tagged `[skill]`
 needs the `/reins-update` skill.
 
-## [Unreleased] — 0.1.3
+## [Unreleased] — 0.1.4
+
+Readiness for large repositories (intent 012, planned).
+
+## [0.1.3] — 2026-10-27
 
 The workflow the maintainer laid out, end to end (intents 008–011). Harness 0.1.2.
 

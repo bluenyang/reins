@@ -345,14 +345,7 @@ export function planMigration(root: string, opts: PlanOptions = {}): MigratePlan
     seen.add(m.to);
   }
 
-  // .claude/memory (AI-GW) → knowledge; old procedures → legacy
-  for (const f of dirFiles(root, '.claude/memory'))
-    moves.push({
-      from: f,
-      to: `.agents/knowledge/${f.slice('.claude/memory/'.length)}`,
-      action: 'move',
-      why: 'shared memory → knowledge',
-    });
+  // old procedures → legacy (.claude/memory is left in place; install drafts knowledge proposals)
   for (const d of [
     '.claude/commands',
     ...(existsSync(join(root, '.claude/skills'))

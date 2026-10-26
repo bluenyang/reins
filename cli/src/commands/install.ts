@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import type { Asker } from '../lib/ask.js';
+import { planMemoryProposals } from '../lib/memory.js';
 import { applyBlocks, parseBlocks } from '../lib/blocks.js';
 import {
   CONFIRMED_MODELS,
@@ -328,6 +329,17 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
       `${gi.replace(/\s*$/, '')}\n\n# reins local workspace\n.loctx/\n`,
       'keep .loctx out of git',
     );
+
+  // 4b. .claude/memory is never moved: each file becomes a knowledge draft (design §7)
+  {
+    const d = o.now ?? new Date();
+    const memory = planMemoryProposals(
+      root,
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    );
+    writes.push(...memory.writes);
+    notes.push(...memory.notes);
+  }
 
   // 5. AGENTS.md managed blocks, CLAUDE.md pointer
   const agentsPath = join(root, 'AGENTS.md');

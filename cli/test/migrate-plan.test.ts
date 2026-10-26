@@ -42,9 +42,9 @@ describe('migrate plan (design §7)', () => {
       '.ai/test/compose-test.env': 'legacy:.loctx/_legacy/test/compose-test.env',
       '.ai/verify/check.mjs': 'legacy:.loctx/_legacy/verify/check.mjs',
       '.ai/conversation/2026-09-01-sync.md': 'move:.loctx/context/conversation/2026-09-01-sync.md',
-      '.claude/memory/2026-10-14_deploy.md': 'move:.agents/knowledge/2026-10-14_deploy.md',
       '.claude/commands/work.md': 'legacy:.loctx/_legacy/.claude/commands/work.md',
     });
+    expect(p.moves.some((m) => m.from.startsWith('.claude/memory/'))).toBe(false);
     expect(p.report.join('\n')).toMatch(/compose-test\.env/);
     expect(new Set(p.moves.map((m) => m.to)).size).toBe(p.moves.length);
   });

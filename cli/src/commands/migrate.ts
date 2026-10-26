@@ -150,6 +150,7 @@ export async function runMigrate(o: MigrateOptions): Promise<MigrateResult> {
       join(root, res.history),
       [
         `decisions: migrate-${o.tier}`,
+        'source: tool',
         '',
         `# reins migrate ${o.tier} — from ${gen}`,
         '',

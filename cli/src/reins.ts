@@ -7,7 +7,7 @@ import { runMigrate } from './commands/migrate.js';
 import { runStatus } from './commands/status.js';
 import { runUpdate } from './commands/update.js';
 import { configureBindings } from './commands/configure.js';
-import { runGates, writeResponse } from './commands/gate.js';
+import { respondRefusal, runGates, writeResponse } from './commands/gate.js';
 import { newIntent, newRequest, newTicket, type NewResult } from './commands/new.js';
 import {
   collectMetrics,
@@ -232,6 +232,11 @@ program
   .option('--json')
   .action(
     (names: string[], o: { ticket?: string; all?: boolean; json?: boolean; respond?: boolean }) => {
+      const refusal = o.respond ? respondRefusal(names) : null;
+      if (refusal) {
+        process.stderr.write(`reins gate: ${refusal}\n`);
+        process.exit(2);
+      }
       if (o.respond && !o.ticket) {
         process.stderr.write('reins gate: --respond needs --ticket <id>\n');
         process.exit(2);

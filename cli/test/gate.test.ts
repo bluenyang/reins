@@ -7,6 +7,7 @@ import {
   compound,
   failureSummary,
   openVerifyRequest,
+  respondRefusal,
   runGates,
   writeResponse,
 } from '../src/commands/gate.js';
@@ -150,6 +151,32 @@ describe('reins gate', () => {
       expect(failureSummary('$ x\nsome noise\nError: bad thing\n  at src/a.ts:3:1\nexit 1\n')).toBe(
         'Error: bad thing @ src/a.ts:3:1',
       );
+    });
+
+    it('refuses explicit gate names with --respond: no run, no response', () => {
+      const d = withBus(GATES, { '001-1_01.request.yaml': 'verify' });
+      expect(respondRefusal([])).toBeNull();
+      expect(respondRefusal(['ok'])).toContain('every declared gate');
+      let code = 0;
+      try {
+        execFileSync(
+          'node',
+          [
+            join(process.cwd(), 'cli/dist/reins.js'),
+            'gate',
+            'ok',
+            '--ticket',
+            '001-1',
+            '--respond',
+          ],
+          { cwd: d, stdio: 'pipe' },
+        );
+      } catch (e) {
+        code = (e as { status: number }).status;
+      }
+      expect(code).toBe(2);
+      expect(existsSync(join(d, '.loctx/bus/001-1_01.response.yaml'))).toBe(false);
+      expect(existsSync(join(d, '.loctx/reports/001-1_ok.log'))).toBe(false);
     });
   });
 });

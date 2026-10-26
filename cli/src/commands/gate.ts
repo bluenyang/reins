@@ -166,3 +166,8 @@ export function writeResponse(root: string, ticket: string, runs: GateRun[]): Re
   writeFileSync(join(root, rel), content, { flag: 'wx' });
   return { response: rel, verdict: body.verdict as 'pass' | 'fail', summaries };
 }
+
+/** `--respond` may only answer for the whole declared order, so a pass never rests on a subset of the gates. */
+export function respondRefusal(names: string[]): string | null {
+  return names.length > 0 ? '--respond runs every declared gate; do not name gates' : null;
+}

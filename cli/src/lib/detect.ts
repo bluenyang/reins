@@ -140,6 +140,7 @@ export function discoverGates(root: string): GateProposal {
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'vendor', '.loctx', '.agents']);
 const MAX_DEPTH = 3;
 const SAFE_DIR = /^[\w@.+-]+(\/[\w@.+-]+)*$/;
+const ROOT_GATE_NAMES = ['check', 'test', 'build', 'e2e'];
 const NODE_SCRIPTS = ['check', 'verify', 'ci', 'typecheck', 'lint', 'test', 'build'];
 
 function dirRunner(root: string, dir: string, rootRunner: string | null): 'pnpm' | 'yarn' | 'npm' {
@@ -149,19 +150,23 @@ function dirRunner(root: string, dir: string, rootRunner: string | null): 'pnpm'
   return rootRunner === 'pnpm' || rootRunner === 'yarn' ? rootRunner : 'npm';
 }
 
+const SOURCE_ORDER = ['npm', 'make', 'go'] as const;
+type Source = (typeof SOURCE_ORDER)[number];
+interface Candidate {
+  rel: string;
+  source: Source;
+  script: string;
+  cmd: string;
+  from: string;
+}
+
 /**
  * Gate candidates below the root (spec S-5): package.json scripts, Makefile targets and go.mod,
  * to depth 3. One command each, using the tool's own directory option. The caller chooses.
  */
 export function subdirProposals(root: string): SubdirGate[] {
-  const out: SubdirGate[] = [];
-  const seen = new Set<string>();
+  const cands: Candidate[] = [];
   const rootRunner = runner(root);
-  const push = (g: SubdirGate) => {
-    if (seen.has(g.name) || compound(g.cmd)) return;
-    seen.add(g.name);
-    out.push(g);
-  };
   const walk = (dir: string, depth: number) => {
     let entries;
     try {
@@ -169,11 +174,10 @@ export function subdirProposals(root: string): SubdirGate[] {
     } catch {
       return;
     }
-    for (const e of entries.toSorted((a, b) => a.name.localeCompare(b.name))) {
+    for (const e of entries) {
       if (!e.isDirectory() || SKIP_DIRS.has(e.name)) continue;
       const rel = dir ? `${dir}/${e.name}` : e.name;
       if (!SAFE_DIR.test(rel)) continue;
-      const slug = rel.replace(/\//g, '-');
       const pkg = join(root, rel, 'package.json');
       if (existsSync(pkg)) {
         let scripts: Record<string, string> = {};
@@ -193,7 +197,13 @@ export function subdirProposals(root: string): SubdirGate[] {
                 : run === 'yarn'
                   ? `yarn --cwd ${rel} ${sc}`
                   : `pnpm --dir ${rel} ${sc}`;
-            push({ name: `${slug}-${sc}`, cmd, from: `${rel}/package.json#scripts.${sc}` });
+            cands.push({
+              rel,
+              source: 'npm',
+              script: sc,
+              cmd,
+              from: `${rel}/package.json#scripts.${sc}`,
+            });
           }
       }
       const mk = join(root, rel, 'Makefile');
@@ -201,22 +211,47 @@ export function subdirProposals(root: string): SubdirGate[] {
         const text = readFileSync(mk, 'utf8');
         for (const t of ['check', 'test', 'build'])
           if (new RegExp(`^${t}:`, 'm').test(text))
-            push({
-              name: `${slug}-${t}`,
+            cands.push({
+              rel,
+              source: 'make',
+              script: t,
               cmd: `make -C ${rel} ${t}`,
               from: `${rel}/Makefile:${t}`,
             });
       }
       if (existsSync(join(root, rel, 'go.mod')))
-        for (const t of ['test', 'vet']) {
-          // a Makefile target of the same name keeps its name; the go gate becomes <slug>-go-<t>
-          const name = seen.has(`${slug}-${t}`) ? `${slug}-go-${t}` : `${slug}-${t}`;
-          push({ name, cmd: `go -C ${rel} ${t} ./...`, from: `${rel}/go.mod` });
-        }
+        for (const t of ['test', 'vet'])
+          cands.push({
+            rel,
+            source: 'go',
+            script: t,
+            cmd: `go -C ${rel} ${t} ./...`,
+            from: `${rel}/go.mod`,
+          });
       if (depth < MAX_DEPTH) walk(rel, depth + 1);
     }
   };
   walk('', 1);
+
+  // Every candidate is kept. Names are settled in a fixed order (path, source, script): the first
+  // keeps `<dir-slug>-<script>`, a later one takes a source suffix, then -2, -3 … until free.
+  cands.sort(
+    (a, b) =>
+      (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0) ||
+      SOURCE_ORDER.indexOf(a.source) - SOURCE_ORDER.indexOf(b.source) ||
+      (a.script < b.script ? -1 : a.script > b.script ? 1 : 0),
+  );
+  const taken = new Set(ROOT_GATE_NAMES);
+  const out: SubdirGate[] = [];
+  for (const c of cands) {
+    if (compound(c.cmd)) continue;
+    const base = `${c.rel.replace(/\//g, '-')}-${c.script}`;
+    let name = base;
+    if (taken.has(name)) name = `${base}-${c.source}`;
+    for (let i = 2; taken.has(name); i++) name = `${base}-${c.source}-${i}`;
+    taken.add(name);
+    out.push({ name, cmd: c.cmd, from: c.from });
+  }
   return out;
 }
 

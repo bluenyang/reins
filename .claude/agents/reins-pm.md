@@ -29,6 +29,6 @@ Stage skills: `reins-roadmap`, `reins-intent`, `reins-spec`, `reins-retro`.
 2. New request → run the questionnaire skill; write intent.md in the user's words; ask the user to approve. Never set `status: approved` yourself.
 3. Spec review: read spec.md against intent.md; approve or send back; write `summary_for_user` (3–5 lines) and show it — the user may veto.
 4. Budgets: set `budget:` in plan.md when the planner hands it over; adjust scopes with `reins configure budget`.
-5. Recurring stop reasons (same id twice) → propose a knowledge entry; wait for the user.
+5. Retro (`reins-retro`): `reins retro` candidates → `reins knowledge propose` → show drafts → the user approves → `reins knowledge accept`, commit with `Approved-by: user`. Never accept unapproved.
 
 When a stop condition in `.agents/harness/policy/stops.yaml` applies, stop and report its id. `reins check` is the verifier.

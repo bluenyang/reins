@@ -36,7 +36,7 @@ describe('migrate plan (design §7)', () => {
       '.ai/ROADMAP.local.md': 'move:.loctx/ROADMAP.local.md',
       '.ai/ROADMAP.pub.md': 'move:docs/ROADMAP.md',
       '.ai/history/2026-10-01-0900_x.md': 'move:.loctx/history/2026-10-01-0900_x.md',
-      '.ai/work/1.2.0_3_fix.md': 'ticket:.loctx/ticket/1.2.0_3_fix.md',
+      '.ai/work/1.2.0_3_fix.md': 'ticket:.loctx/ticket/000-1_1-2-0-3-fix.md',
       '.ai/work/1.1.0_1_old.md': 'move:.loctx/history/work/1.1.0_1_old.md',
       '.ai/test/2026-10-02_1.2.0.md': 'move:.loctx/reports/2026-10-02_1.2.0.md',
       '.ai/test/compose-test.env': 'legacy:.loctx/_legacy/test/compose-test.env',
@@ -53,12 +53,13 @@ describe('migrate plan (design §7)', () => {
     const t = convertWorkToTicket(
       '---\nid: 3\ntitle: fix it\nstatus: doing\nrelease: 1.2.0-rc.2\n---\n## 목적\nx\n',
       '1.2.0_3_fix.md',
+      7,
     );
     expect(t).toMatch(/release: "stabilization"/);
     expect(t).toMatch(/status: "doing"/);
-    expect(t).toMatch(/id: "000-3"/);
+    expect(t).toMatch(/id: "000-7"/);
     expect(t).toMatch(/## 목적\nx/);
-    expect(convertWorkToTicket('---\nrelease: 1.2.0-rc.1\n---\n', 'a.md')).toMatch(
+    expect(convertWorkToTicket('---\nrelease: 1.2.0-rc.1\n---\n', 'a.md', 1)).toMatch(
       /release: "planned"/,
     );
   });

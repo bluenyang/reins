@@ -14,7 +14,8 @@ reins를 이 저장소 밖의 큰 저장소(croffle, AI-GW, pipit-hub)에 붙이
 - migrate가 `.ai/work`를 ticket으로 바꿀 때 id가 겹친다(croffle: `000-1` 네 개). intent 000이 없어 T1에서 멈출 것으로 보인다.
 - 하네스가 없는 저장소는 install 대상인데, install은 `.claude/memory` 같은 기존 기억을 knowledge로 옮기지 않는다. migrate 쪽의 같은 경로는 도달할 수 없는 코드다.
 - 비밀 파일 패턴에 `*.env`가 없다(AI-GW에 `langfuse.env`가 커밋되어 있음).
-- 작은 것: status가 하네스 버전을 "package"로 보여 준다. ticket이 열린 intent의 다음 할 일이 비어 있다.
+- 0.1.0 설치본을 update하면 `.agents/harness/CHANGELOG.md`가 남아 drift가 F2 STOP한다(지금은 설치하지 않는 파일). update가 더 이상 설치하지 않는 파일을 지워야 한다(0.1.3 update 테스트 2026-10-27).
+- 작은 것: status와 update 출력이 하네스 버전만 보여 준다(`harness v0.1.2 → v0.1.2`, "package v0.1.2"). CLI 버전과 "already up to date"를 보여야 한다. ticket이 열린 intent의 다음 할 일이 비어 있다.
 
 ## 바라는 결과
 - croffle을 graph 단계로 migrate해 실제로 쓸 수 있다. 사용자의 `migrate --dry-run` 결과를 범위 확정에 반영한다.

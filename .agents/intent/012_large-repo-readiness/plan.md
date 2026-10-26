@@ -1,6 +1,6 @@
 ---
 intent: "012"
-status: reviewed
+status: done
 approvals:
   - { role: qa-design, at: 2026-10-27, kind: light-review }
 agents:
@@ -40,4 +40,4 @@ tickets: ["012-1", "012-2", "012-3", "012-4", "012-5", "012-6"]
 - [ ] spec C-1~C-15
 - [ ] npm rc 스모크: install(하위 게이트 제안), migrate fixture(id 겹침), 0.1.0·0.1.3 설치본 update
 ## 이탈 기록
-—
+- 2026-10-27 (pl, 버전 e2e): `--legacy committed`인데 보고서가 `.loctx/_legacy/`라고 적음 → 012-3 후속 커밋으로 수정(review 012-3_04 approve). 그 밖의 e2e는 통과: 모노레포 제안·configure gates·memory 초안·`*.env` deny·버전 출력·0.1.0 설치본 update·migrate id/intent 000/재실행.

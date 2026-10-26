@@ -13,9 +13,10 @@ The first target is this repository itself.
 | 0.1.0 | published | the verifier (`reins check`), the harness sources (twelve roles, stop conditions, schemas, templates), self-install and `migrate`, generated agent files and `update`, the loop checks and `reins gate`, three entry skills, `reins status`, metrics, the violation scenarios, README in two languages |
 | 0.1.1 | done | stabilisation: fixes the loop found in 0.1.0 (drift detection of managed blocks, evidence paths, sealed tests, model id checks, stop id collisions, bus response schema) |
 | 0.1.2 | done | Claude Code plugin: `/plugin marketplace add bluenyang/reins`; the plugin carries `reins-setup` only, the other skills are installed into the project |
-| 0.1.3 | in progress | stage skills, release flow, retro and knowledge, loop fixes (below) |
+| 0.1.3 | rc.3 published; stable on the maintainer's instruction | stage skills, release flow, retro and knowledge, loop fixes (below) |
+| 0.1.4 | planned | readiness for large repositories: release flow as a repository setting, gate discovery in monorepos and Go, migrate ticket ids, carrying memory files on install, `*.env` secrets |
 
-### 0.1.3 in progress
+### 0.1.3
 
 - **Stage skills.** The loop is split into ten skills, one per workflow stage; `reins-loop` stays as the conductor that calls them in order.
 - **Release flow.** The publish summary and version sync are corrected, and the deploy role's rc flow is written down as a skill.

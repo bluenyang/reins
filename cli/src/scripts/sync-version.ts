@@ -4,6 +4,14 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+/** Replaces only the first `"version": "<x>"` value; every other byte stays. Null when there is no such key. */
+export function replaceVersion(text: string, version: string): string | null {
+  const re = /("version"\s*:\s*")[^"]*(")/;
+  return re.test(text)
+    ? text.replace(re, (_m, a: string, b: string) => `${a}${version}${b}`)
+    : null;
+}
+
 // compiled to cli/dist/scripts/: the repository root is three levels up (or the first argument)
 const root = pathToFileURL(
   `${resolve(process.argv[2] ?? new URL('../../../', import.meta.url).pathname)}/`,
@@ -11,15 +19,22 @@ const root = pathToFileURL(
 const read = (p: string): string => readFileSync(new URL(p, root), 'utf8');
 const write = (p: string, s: string): void => writeFileSync(new URL(p, root), s);
 
-const version = (JSON.parse(read('package.json')) as { version: string }).version;
+export function sync(): number {
+  const version = (JSON.parse(read('package.json')) as { version: string }).version;
+  const pluginPath = '.claude-plugin/plugin.json';
+  const next = replaceVersion(read(pluginPath), version);
+  if (next === null) {
+    console.error(`sync-version: no "version" key in ${pluginPath}`);
+    return 1;
+  }
+  write(pluginPath, next);
+  const skillPath = 'skills/reins-setup/SKILL.md';
+  write(
+    skillPath,
+    read(skillPath).replace(/@bluenyang\/reins@[0-9][\w.+-]*/g, `@bluenyang/reins@${version}`),
+  );
+  console.log(`synced to ${version}`);
+  return 0;
+}
 
-const plugin = JSON.parse(read('.claude-plugin/plugin.json')) as { version: string };
-plugin.version = version;
-write('.claude-plugin/plugin.json', `${JSON.stringify(plugin, null, 2)}\n`);
-
-const skillPath = 'skills/reins-setup/SKILL.md';
-write(
-  skillPath,
-  read(skillPath).replace(/@bluenyang\/reins@[0-9][\w.+-]*/g, `@bluenyang/reins@${version}`),
-);
-console.log(`synced to ${version}`);
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) process.exitCode = sync();

@@ -69,4 +69,61 @@ describe('claude plugin manifests', () => {
     expect(skill).toContain('@bluenyang/reins@9.8.7');
     expect(skill).not.toContain(`@bluenyang/reins@${json('package.json').version}`);
   });
+
+  describe('sync-version keeps the rest of plugin.json as written (C-8)', () => {
+    const script = new URL('cli/dist/scripts/sync-version.js', root).pathname;
+    function fixture(pluginText: string): string {
+      const tmp = mkdtempSync(join(tmpdir(), 'reins-sync-'));
+      mkdirSync(join(tmp, '.claude-plugin'));
+      mkdirSync(join(tmp, 'skills/reins-setup'), { recursive: true });
+      writeFileSync(join(tmp, '.claude-plugin/plugin.json'), pluginText);
+      writeFileSync(join(tmp, 'skills/reins-setup/SKILL.md'), 'npx @bluenyang/reins@0.0.1\n');
+      writeFileSync(join(tmp, 'package.json'), '{"version":"9.8.7"}');
+      return tmp;
+    }
+    it.each([
+      ['tabs', '{\n\t"name": "reins",\n\t"version": "0.0.1",\n\t"tags": ["a",   "b"]\n}'],
+      ['two spaces, no final newline', '{\n  "name": "reins",\n  "version" : "0.0.1"\n}'],
+      ['compact', '{"name":"reins","version":"0.0.1"}\n'],
+    ])('only the version string changes (%s)', (_n, text) => {
+      const tmp = fixture(text);
+      execFileSync('node', [script, tmp]);
+      expect(readFileSync(join(tmp, '.claude-plugin/plugin.json'), 'utf8')).toBe(
+        text.replace('0.0.1', '9.8.7'),
+      );
+    });
+    it('exits 1 and leaves the file alone without a version key', () => {
+      const text = '{\n\t"name": "reins"\n}\n';
+      const tmp = fixture(text);
+      let code = 0;
+      try {
+        execFileSync('node', [script, tmp], { stdio: 'pipe' });
+      } catch (e) {
+        code = (e as { status: number }).status;
+      }
+      expect(code).toBe(1);
+      expect(readFileSync(join(tmp, '.claude-plugin/plugin.json'), 'utf8')).toBe(text);
+    });
+  });
+});
+
+describe('publish summary and design paths (C-9)', () => {
+  it('publish.yml drops `npm stage list` and keeps the two approval lines', () => {
+    const y = read('.github/workflows/publish.yml');
+    expect(y).not.toContain('npm stage list');
+    expect(y).toContain('is staged, not live');
+    expect(y).toContain('npm stage approve <stage-id>');
+  });
+  it.each(['docs/design.md', 'docs/design.ko.md'])(
+    '%s names the real script path and 011 features',
+    (p) => {
+      const d = read(p);
+      expect(d).toContain('`cli/src/scripts/sync-version.ts`');
+      expect(d.replace('`cli/src/scripts/sync-version.ts`', '')).not.toContain(
+        '`scripts/sync-version.ts`',
+      );
+      for (const s of ['`new intent', '`released`', '--respond', '`reins metrics record --role'])
+        expect(d).toContain(s);
+    },
+  );
 });

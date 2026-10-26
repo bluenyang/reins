@@ -152,8 +152,6 @@ jobs:
             {
               echo "### @bluenyang/reins v${{ steps.version.outputs.version }} is staged, not live"
               echo "Approve it with 2FA: npmjs.com → Staged Packages, or \`npm stage approve <stage-id>\`."
-              echo
-              echo '```'; npm stage list @bluenyang/reins || true; echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 

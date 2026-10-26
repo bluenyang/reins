@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { driftConvention } from '../src/commands/check.js';
+import { dispatchLines, readRelease } from '../src/lib/release.js';
 import { rcClose, ticketStart, verdictCheck } from '../src/commands/stages.js';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker } from '../src/lib/ask.js';
@@ -231,5 +232,53 @@ describe('T5 rc-close', () => {
       expect(d).toContain('release:');
       expect(d).toContain('npm-staged');
     }
+  });
+});
+
+describe('release dispatch lines', () => {
+  it('quotes so the printed line round-trips through sh (review 1)', () => {
+    const v = "a b'c $(x)";
+    const [line] = dispatchLines(
+      [{ file: 'p q.yml', inputs: { k: '{version}' }, stages: ['rc'], approval: 'none' }],
+      'rc',
+      v,
+    );
+    const out = execFileSync(
+      'sh',
+      ['-c', `set -- ${line?.replace('gh workflow run', '')}; printf '%s\\n' "$@"`],
+      {
+        encoding: 'utf8',
+      },
+    );
+    expect(out).toBe(`p q.yml\n-f\nk=${v}\n`);
+    expect(
+      dispatchLines(
+        [
+          {
+            file: 'publish.yml',
+            inputs: { version: '{version}' },
+            stages: ['rc'],
+            approval: 'none',
+          },
+        ],
+        'rc',
+        '1.0.0-rc.1',
+      ),
+    ).toEqual(['gh workflow run publish.yml -f version=1.0.0-rc.1']);
+  });
+
+  it('stages default only when omitted; empty list fails the schema (review 2)', async () => {
+    const d = await project();
+    const pin = join(d, '.agents/harness/install.yaml');
+    const base = readFileSync(pin, 'utf8');
+    writeFileSync(
+      pin,
+      `${base}release:\n  workflows:\n    - { file: s.yml, stages: [stable] }\n    - { file: all.yml }\n`,
+    );
+    expect(dispatchLines(readRelease(d) ?? [], 'rc', '1.0.0-rc.1')).toEqual([
+      'gh workflow run all.yml',
+    ]);
+    writeFileSync(pin, `${base}release:\n  workflows:\n    - { file: s.yml, stages: [] }\n`);
+    expect(driftConvention(d).filter((f) => f.path?.endsWith('install.yaml'))).not.toEqual([]);
   });
 });

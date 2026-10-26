@@ -2,9 +2,10 @@
 id: "012"
 slug: large-repo-readiness
 version: "0.1.4"
-status: draft
+status: approved
 origin: user
-approvals: []
+approvals:
+  - { role: user, at: 2026-10-27 }
 supersedes: null
 ---
 ## 문제

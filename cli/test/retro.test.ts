@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runInstall } from '../src/commands/install.js';
-import { acceptKnowledge, proposeKnowledge } from '../src/commands/knowledge.js';
+import { acceptKnowledge, dismissKnowledge, proposeKnowledge } from '../src/commands/knowledge.js';
 import { runRetro } from '../src/commands/retro.js';
 import { collectStatus } from '../src/commands/status.js';
 import { defaultsAsker } from '../src/lib/ask.js';
@@ -190,6 +190,27 @@ describe('reins knowledge', () => {
     expect(readFileSync(join(d, p.path!), 'utf8')).toMatch(/1100_002-1-z\.md/);
     expect(proposeKnowledge('quote-values', { cwd: d, from: [ok] }).refused).toMatch(/exists/);
     expect(acceptKnowledge('absent', { cwd: d }).refused).toMatch(/no draft/);
+  });
+
+  it('dismiss: retro and status stop counting a candidate until it repeats further', async () => {
+    const d = await fixture();
+    expect(dismissKnowledge('stop:F2', { cwd: d }).refused).toMatch(/--reason/);
+    expect(dismissKnowledge('decision:only-here', { cwd: d, reason: 'r' }).refused).toMatch(
+      /not a current candidate/,
+    );
+    const r = dismissKnowledge('stop:F2', { cwd: d, reason: 'a dependency wait, not a lesson' });
+    expect(r.path).toBe('.loctx/knowledge-proposals/dismissed.jsonl');
+    const after = runRetro({ cwd: d });
+    expect(after.candidates.map((c) => c.key)).not.toContain('stop:F2');
+    expect(after.dismissed.map((c) => c.key)).toEqual(['stop:F2']);
+    expect(collectStatus(d).knowledgeCandidates).toBe(2);
+    expect(dismissKnowledge('stop:F2', { cwd: d, reason: 'again' }).refused).toMatch(
+      /not a current candidate/,
+    );
+    // a third ticket stops on F2: the key is back
+    const m = readFileSync(join(d, METRICS_FILE), 'utf8');
+    put(d, METRICS_FILE, `${m}${check('002-2', 'STOP', ['F2'])}\n`);
+    expect(runRetro({ cwd: d }).candidates.map((c) => c.key)).toContain('stop:F2');
   });
 
   it('a knowledge entry without approved stops the convention check (C-6)', async () => {

@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import { runCheck, STAGES, type Stage } from './commands/check.js';
 import { runInstall, type Tier } from './commands/install.js';
 import { runMigrate } from './commands/migrate.js';
-import { acceptKnowledge, proposeKnowledge } from './commands/knowledge.js';
+import { acceptKnowledge, dismissKnowledge, proposeKnowledge } from './commands/knowledge.js';
 import { formatRetro, runRetro } from './commands/retro.js';
 import { runStatus } from './commands/status.js';
 import { runUpdate } from './commands/update.js';
@@ -406,6 +406,14 @@ knowledge
   .description('after the user approves: write .agents/knowledge/<date>_<slug>.md with approved')
   .argument('<draft>', 'the draft slug')
   .action((draft: string) => knowledgeDone('accept', acceptKnowledge(draft)));
+knowledge
+  .command('dismiss')
+  .description('record that a candidate is not a lesson; it returns when it repeats further')
+  .argument('<key>', 'a candidate key as reins retro prints it')
+  .requiredOption('--reason <text>', 'why it is not a lesson')
+  .action((key: string, o: { reason: string }) =>
+    knowledgeDone('dismiss', dismissKnowledge(key, o)),
+  );
 
 for (const n of ['recall', 'doctor'])
   program.command(n).allowUnknownOption().allowExcessArguments().action(notYet(n));

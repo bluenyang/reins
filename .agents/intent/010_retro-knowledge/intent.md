@@ -2,7 +2,7 @@
 id: "010"
 slug: retro-knowledge
 version: 0.1.3
-status: approved
+status: released
 origin: user
 approvals:
   - { role: user, at: 2026-10-26 }

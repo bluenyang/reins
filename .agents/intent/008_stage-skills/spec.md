@@ -1,9 +1,10 @@
 ---
 intent: "008"
-status: reviewed
+status: accepted
 approvals:
   - { role: qa-design, at: 2026-10-26, kind: first-review }
   - { role: pm, at: 2026-10-26 }
+  - { role: user, at: 2026-10-26, kind: summary }
 summary_for_user: |
   스킬을 workflow 단계별로 나눈다: roadmap·intent·spec·implement·review·test·release·retro 여덟 개로 늘려 setup·loop와 함께 열 개가 되고, reins-loop는 이들을 순서대로 부르는 지휘자로 남는다.
   각 스킬은 맨 먼저 자기 단계의 check(T1·T3·T5 또는 drift)를 부르고, 앞 단계 산출물이 없으면 그 결과(HOLD/STOP)를 따른다. 따로 하나만 불러도 그 단계가 끝난다.

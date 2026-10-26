@@ -1,6 +1,6 @@
 ---
 intent: "010"
-status: done
+status: active
 approvals:
   - { role: qa-design, at: 2026-10-26, kind: light-review }
 agents:
@@ -8,7 +8,7 @@ agents:
   verify: [verify-tool]
   review: [code-review]
 budget: {}
-tickets: ["010-1", "010-2"]
+tickets: ["010-1", "010-2", "010-3"]
 ---
 ## 바뀌는 파일
 - 010-1: `cli/src/commands/{retro,knowledge}.ts`(새), `cli/src/reins.ts`, status 후보 수, 검사(승인 없는 knowledge → STOP), history `reasons:` 줄 형식, 테스트, `docs/design*.md` §8·§9
@@ -29,4 +29,5 @@ tickets: ["010-1", "010-2"]
 - [ ] spec C-1~C-9
 
 ## 이탈 기록
+- 2026-10-26 (pl, 0.1.3 rc.1 이후 안정화, 사용자 지시): 010-3 승격하지 않기로 한 retro 후보를 status가 계속 세지 않도록 dismiss 기록. release: stabilization.
 - 2026-10-26 (pl): 010-2의 "첫 회고는 0.1.3 rc 대상"은 순서상 불가 — rc.1은 010까지 끝나야 나온다. 첫 회고는 지금까지의 기록 전체(0.1.0~0.1.3 진행분)를 대상으로 하고, rc.1 뒤의 회고는 정상 흐름(reins-release → reins-retro)으로 돈다.

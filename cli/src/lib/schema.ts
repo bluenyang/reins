@@ -94,6 +94,7 @@ export function schemaFor(rel: string): { schema: string; whole: boolean } | nul
     rel.endsWith('templates/knowledge.md')
   )
     return { schema: 'knowledge', whole: false };
+  if (rel.endsWith('.agents/harness/install.yaml')) return { schema: 'install', whole: true };
   if (name.endsWith('.request.yaml') || rel.endsWith('templates/bus/request.yaml'))
     return { schema: 'bus-request', whole: true };
   if (name.endsWith('.response.yaml') || rel.endsWith('templates/bus/response.yaml'))

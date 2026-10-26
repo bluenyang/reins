@@ -4,7 +4,7 @@ default_binding: "claude-haiku-5-5"
 summary: "Pushes, opens PRs, cuts rc releases and publishes notes — inside the pre-release loop only."
 may:
   - "push the feature branch; open and rebase-merge the PR when checks are green"
-  - "run the rc release workflow; publish release notes"
+  - "dispatch the release workflows the repository configures (install.yaml release:); publish release notes"
   - "escalate to claude-sonnet-5-5 then claude-opus-5-5 on failure"
 must_not:
   - "cut a stable release (user's explicit instruction, every time)"
@@ -20,19 +20,26 @@ Stage skills: `reins-release`.
 
 ## Merge procedure (design §4 PR flow)
 
-1. Push the feature branch (`type/topic`); never push to `master`/`main` (T4 holds it, A4).
+The merge target is the repository's default branch (`gh repo view --json defaultBranchRef -q .defaultBranchRef.name`), never a name assumed in advance.
+
+1. Push the feature branch (`type/topic`); never push to the default branch (T4 holds it, A4).
 2. Open the PR with `gh pr create`; the body comes from the docs role.
 3. Wait: `gh pr checks --watch`.
 4. Only when every required check is green: `gh pr merge --rebase --delete-branch`.
 5. If any check is red, do not merge. Return it to the PL (D2: a red check twice).
+6. Without `release:` in `.agents/harness/install.yaml` the work ends here: report "no release settings".
 
 ## rc procedure (design §4)
 
 1. Run `reins check --stage rc-close --release <V>`. Anything but CONTINUE (open `release: planned` or `release: stabilization` tickets, F2) means no dispatch.
-2. Take the rc number T5 reports (`next rc: <V>-rc.<N>`; rc.1 when `.loctx/release/<V>.md` is missing).
-3. Note the time, then `gh workflow run publish.yml -f version=<V>-rc.<N> -f dry_run=false`.
-4. Identify the dispatched run: poll `gh run list --workflow publish.yml --event workflow_dispatch --json databaseId,displayTitle,headSha,createdAt` (every 5 s, up to ~60 s) for a run whose `displayTitle` is exactly `publish <V>-rc.<N> (dry_run=false)`, `createdAt` is after the noted time and `headSha` is the master commit being released. Never fall back to another run; none found means stop and report to the PL. Then `gh run watch <id> --exit-status`. On failure: no ledger line; report to the PL.
-5. Only on success: read the stage id from that run's log line "staged with id …" and its release commit/tag, then append `- rc.<N> <commit> <stage-id> <date>` to `.loctx/release/<V>.md` (local ledger, not committed).
-6. Ask the user to approve the staged version on npm. Fixes after an rc are `release: stabilization` tickets; the next rc follows the next T5 pass.
-7. Stable (`version=<V>`) only on the user's explicit instruction; the workflow requires a `v<V>-rc.*` tag at master HEAD. After the stable version is approved on npm, set the intent's `status: released` in its intent.md (S-8, intent 011) and commit it.
+2. T5 prints the next rc (`next rc: <V>-rc.<N>`; rc.1 when `.loctx/release/<V>.md` is missing) and one `dispatch: gh workflow run <file> -f k=v …` line per workflow configured for the rc stage (also in `--json`). Or "no release settings": stop after the merge.
+3. Run each `dispatch:` line exactly as printed. If the run is refused for permissions, do not look for another way: hand the printed line to the user and wait.
+4. `gh run watch <id> --exit-status` on the dispatched run (find it with `gh run list --workflow <file> --event workflow_dispatch`, newest after the noted time). On failure: no ledger line; report to the PL.
+5. On success append `- rc.<N> <commit> <date>` to `.loctx/release/<V>.md` (local ledger, not committed). Fixes after an rc are `release: stabilization` tickets; the next rc follows the next T5 pass.
+6. Stable only on the user's explicit instruction (A2): the same workflows whose `stages` include stable, with `{version}` = `<V>`. Then set the intent's `status: released` in its intent.md and commit it.
 
+### `approval: npm-staged` (added steps, only for workflows with this value)
+
+- Step 3: note the time first; identify the dispatched run by polling `gh run list --workflow <file> --event workflow_dispatch --json databaseId,displayTitle,headSha,createdAt` (every 5 s, up to ~60 s) for a run whose `displayTitle` carries the dispatched version, `createdAt` is after the noted time and `headSha` is the default-branch commit being released. Never fall back to another run; none found means stop and report to the PL.
+- Step 5: read the stage id from that run's log line "staged with id …" and add it to the ledger line: `- rc.<N> <commit> <stage-id> <date>`. Then ask the user to approve the staged version on npm.
+- Step 6: the workflow requires a `v<V>-rc.*` tag exactly at the default branch HEAD; after the stable version is approved on npm, set the intent `status: released`.

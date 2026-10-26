@@ -14,6 +14,8 @@ needs the `/reins-update` skill.
 
 Readiness for large repositories (intent 012, planned).
 
+- `install.yaml` `release:` sets the release workflows; T5 prints their `gh workflow run` lines and deploy dispatches them (merge target is the default branch); `update` keeps `release:` and unknown keys.
+
 ## [0.1.3] — 2026-10-27
 
 The workflow the maintainer laid out, end to end (intents 008–011). Harness 0.1.2.

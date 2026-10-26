@@ -1,8 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { driftConvention } from '../src/commands/check.js';
 import { rcClose, ticketStart, verdictCheck } from '../src/commands/stages.js';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker } from '../src/lib/ask.js';
@@ -173,14 +174,62 @@ describe('T5 rc-close', () => {
     rmSync(join(d, '.loctx/ticket/001-1_cli.md'));
     put(d, '.loctx/history/2026-10-26-1000_001.md', '# 001\n- 001-1 done\n- 001-2 done\n');
     const msgs = (r: string) => rcClose(d, r).map((x) => `${x.verdict} ${x.message}`);
-    expect(msgs('0.2.0')).toEqual(['WARN next rc: 0.2.0-rc.1']);
+    expect(msgs('0.2.0')).toEqual([
+      'WARN next rc: 0.2.0-rc.1',
+      'WARN no release settings (install.yaml has no release:) — merge only',
+    ]);
     put(
       d,
       '.loctx/release/0.2.0.md',
       '- rc.1 abc123 stage-1 2026-10-26\n- rc.2 def456 stage-2 2026-10-27\n',
     );
-    expect(msgs('0.2.0')).toEqual(['WARN next rc: 0.2.0-rc.3']);
+    expect(msgs('0.2.0').slice(0, 1)).toEqual(['WARN next rc: 0.2.0-rc.3']);
     put(d, '.loctx/release/0.2.0.md', '- rc.2 def456 s 2026-10-27\n- rc.1 abc123 s 2026-10-26\n');
     expect(msgs('0.2.0')).toEqual(['STOP 0.2.0-rc.2 is already recorded']);
+  });
+  it('prints the dispatch line from install.yaml release (C-2)', async () => {
+    const d = await project();
+    approved(d);
+    put(d, '.loctx/history/2026-10-26-1000_001.md', '# 001\n- 001-1 done\n- 001-2 done\n');
+    const pin = join(d, '.agents/harness/install.yaml');
+    writeFileSync(
+      pin,
+      readFileSync(pin, 'utf8') +
+        'release:\n  workflows:\n' +
+        '    - { file: publish.yml, inputs: { version: "{version}", dry_run: "false" }, approval: npm-staged }\n' +
+        '    - { file: notes.yml, inputs: { tag: "v{version}" }, stages: [stable] }\n',
+    );
+    const msgs = rcClose(d, '0.2.0').map((x) => x.message);
+    expect(msgs).toContain(
+      'dispatch: gh workflow run publish.yml -f version=0.2.0-rc.1 -f dry_run=false',
+    );
+    expect(msgs.filter((m) => m.startsWith('dispatch:'))).toHaveLength(1);
+  });
+
+  it('install.yaml with and without release passes the install schema (C-1)', async () => {
+    const d = await project();
+    const pin = join(d, '.agents/harness/install.yaml');
+    expect(driftConvention(d).filter((f) => f.path?.endsWith('install.yaml'))).toEqual([]);
+    writeFileSync(
+      pin,
+      readFileSync(pin, 'utf8') + 'release:\n  workflows:\n    - { file: p.yml }\n',
+    );
+    expect(driftConvention(d).filter((f) => f.path?.endsWith('install.yaml'))).toEqual([]);
+    writeFileSync(pin, readFileSync(pin, 'utf8') + '    - { approval: nope }\n');
+    expect(driftConvention(d).filter((f) => f.path?.endsWith('install.yaml'))).not.toEqual([]);
+  });
+  it('deploy role and release skill name no fixed branch or workflow outside npm-staged (C-3)', () => {
+    const deploy = readFileSync('harness/roles/deploy.md', 'utf8');
+    const skill = readFileSync('skills/reins-release/SKILL.md', 'utf8');
+    expect(deploy).not.toMatch(/master/);
+    expect(skill).not.toMatch(/master|publish\.yml/);
+    expect(deploy.split('### `approval: npm-staged`')[0]).not.toMatch(
+      /publish\.yml|approve the staged/,
+    );
+    for (const f of ['docs/design.md', 'docs/design.ko.md']) {
+      const d = readFileSync(f, 'utf8');
+      expect(d).toContain('release:');
+      expect(d).toContain('npm-staged');
+    }
   });
 });

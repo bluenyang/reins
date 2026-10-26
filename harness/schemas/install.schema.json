@@ -1,0 +1,29 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "reins/install@1", "type": "object",
+  "required": ["schema", "tier", "version"],
+  "properties": {
+    "schema": { "const": "reins/install@1" },
+    "tier": { "enum": ["harness", "loop", "graph"] },
+    "version": { "type": "string" },
+    "cli": { "type": "string" },
+    "mode": { "enum": ["manual", "auto"] },
+    "language": { "type": "string" },
+    "release": {
+      "type": "object",
+      "required": ["workflows"],
+      "properties": {
+        "workflows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["file"],
+            "properties": {
+              "file": { "type": "string", "minLength": 1 },
+              "inputs": { "type": "object", "additionalProperties": { "type": "string" } },
+              "stages": { "type": "array", "items": { "enum": ["rc", "stable"] } },
+              "approval": { "enum": ["npm-staged", "none"] }
+            }
+          }
+        }
+      }
+    }
+  } }

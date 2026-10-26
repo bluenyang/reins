@@ -5,7 +5,7 @@ description: Entry point for the retrospective of a released version, as the pm 
 
 # reins-retro
 
-pm role. Run the CLI as `npx @bluenyang/reins` (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
+pm role. Run the CLI as `npx @bluenyang/reins@<v>` where `<v>` is `version` in `.agents/harness/install.yaml` (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
 
 1. **Check first.** `reins status`. HOLD or STOP → follow it.
 2. Input: a version. Output: a retrospective summary and promotion candidates, proposed to the user.

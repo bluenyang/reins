@@ -5,7 +5,7 @@ description: Turn a request into an approved intent — runs the questionnaire w
 
 # reins-intent
 
-The point where a person decides (design §4): **the intent is approved by the user.** Never cross it alone. pm role. Run the CLI as `npx @bluenyang/reins` (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
+The point where a person decides (design §4): **the intent is approved by the user.** Never cross it alone. pm role. Run the CLI as `npx @bluenyang/reins@<v>` where `<v>` is `version` in `.agents/harness/install.yaml` (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
 
 1. **Check first.** `reins check --drift`. HOLD or STOP → follow it.
 2. Search what was already decided or rejected: `reins recall <keywords>` (until it ships:

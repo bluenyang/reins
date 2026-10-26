@@ -5,7 +5,7 @@ description: Update the public roadmap (docs/ROADMAP.md and docs/ROADMAP.ko.md) 
 
 # reins-roadmap
 
-pm role. Run the CLI as `npx @bluenyang/reins` (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
+pm role. Run the CLI as `npx @bluenyang/reins@<v>` where `<v>` is `version` in `.agents/harness/install.yaml` (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
 
 1. **Check first.** `reins status` and `reins check --drift`. HOLD or STOP → follow it; do not edit the roadmap on top of drift.
 2. Read the user's instruction, `docs/ROADMAP.md` and the open intents (`reins status`). Ask only what only the user knows (what moves, why); state defaults for the rest.

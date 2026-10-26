@@ -70,7 +70,7 @@ C1 "통과하기 위한" 구현(하드코딩·보이기만) · C2 `AGENTS.md` �
 프로젝트 기본값(install, `policy/budget`) < 버전(PM, plan.md) < **사용자 정의 범위**(기본 제공: ticket·rc·세션·역할; `configure budget`). 단위 토큰. 기본값 없으면 첫 적용 때 측정.
 
 ### 검증기 = `reins check` — 전환 지점 6
-T1 ticket 시작 전(B1·의존·예산·바인딩·**`asks:`↔`decisions:` 대조로 같은 질문 재발 방어**) · T2 커밋 전(P2·C10·F2·C4·C5) · T3 판정 시(D1~D5·증거) · T4 떠나기 전(A·C6·루프 단계·**기본 브랜치로 가는 push는 A4 HOLD**, publish 워크플로의 `release: v…` 커밋만 `GITHUB_ACTIONS=true`에서 예외) · T5 rc 종료(E3·열린 ticket 0·history·plan 일치율 S7) · T6 상시(G1·F1).
+T1 ticket 시작 전(B1·의존·예산·바인딩·**`asks:`↔`decisions:` 대조로 같은 질문 재발 방어**) · T2 커밋 전(P2·C10·F2·C4·C5) · T3 판정 시(D1~D5·증거) · T4 떠나기 전(A·C6·루프 단계·**기본 브랜치로 가는 push는 A4 HOLD**, publish 워크플로의 `release: v…` 커밋만 `GITHUB_ACTIONS=true`에서 예외) · T5 rc 종료(E3·열린 ticket 0(기획분·안정화분 모두)·history·plan 일치율 S7·**`.loctx/release/<V>.md`로 다음 rc 번호를 보고(없으면 rc.1)하고, 그 번호가 이미 기록돼 있으면 F2**) · T6 상시(G1·F1).
 `reins check --stage` 이름: `ticket-start --ticket <id>`(T1) · `pre-commit`(T2, 훅) · `verdict --ticket <id>`(T3) · `pre-push`(T4, 훅) · `rc-close --release <version>`(T5). 자기 id가 없는 검사(의존·plan 일치·history 기록)는 F2로 보고한다.
 판정 CONTINUE / HOLD / STOP / ESCALATE → bus `stop-report`(reason·재개 정보·사용자 언어 한 줄). exit 0/10/20/30.
 루프 단: 역할만 줄고 T·조건 유지. 하네스 단: T2·T4·T6만.
@@ -93,6 +93,8 @@ T1 ticket 시작 전(B1·의존·예산·바인딩·**`asks:`↔`decisions:` 대
 버전 = intent 묶음. **rc.1 = 기획 전부 완료.** rc.N = 안정화만(버그·조정·작은 추가 intent). rc = 출시 전 사람 확인 단계. 버전 범위는 작게. ticket `release:`는 기획분/안정화분.
 
 **PR 흐름.** 작업은 `type/topic` 브랜치 → PR → CI 초록 → 머지로만 기본 브랜치에 들어간다. deploy 역할이 브랜치를 push하고 PR을 열고(본문 초안은 docs) `gh pr checks --watch`로 기다린 뒤, 필수 체크가 모두 초록일 때만 `gh pr merge --rebase --delete-branch`로 머지한다. 빨간 체크가 있으면 머지하지 않고 pl에게 돌려준다(D2). pl·implementer는 머지하지 않는다. T4가 `master`/`main` 직접 push를 A4로 막는다. 브랜치 보호(PR 필수, 체크 `ci`)는 저장소 설정이라 사용자가 켠다.
+
+**rc와 stable.** 버전 `<V>`에서 T5가 통과하면 deploy 역할이 T5가 보고한 번호로 `gh workflow run publish.yml -f version=<V>-rc.<N> -f dry_run=false`를 돌리고, `.loctx/release/<V>.md`(로컬, gitignore된 장부)에 한 줄(`- rc.<N> <커밋> <stage id> <날짜>`)을 덧붙인 뒤 사용자에게 npm에서 staged 버전을 승인하라고 알린다. rc도 staged라서 승인 뒤에야 공개된다. rc 뒤 수정은 `release: stabilization` ticket이다. 다 닫히면 T5가 다시 통과하고 다음 rc를 낸다. stable `<V>`는 사용자 지시가 있을 때만 낸다(A2). publish 워크플로는 `v<V>-rc.*` 태그가 있고 그 커밋이 기본 브랜치 HEAD이거나 그 뒤가 `release: v…` 커밋뿐일 때만 진행한다(0.1.2 이하 버전은 해당 없음).
 
 ## 5. 프로젝트 것과 툴 것의 경계 (D7·D8·D9)
 ### `AGENTS.md` 관리 블록

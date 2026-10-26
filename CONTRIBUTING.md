@@ -62,9 +62,12 @@ decision (A2).
 
 ## Releases
 
-The maintainer releases from GitHub Actions → **publish** (`.github/workflows/publish.yml`): update
-`CHANGELOG.md` first, then run it with a release type or an exact version (`dry_run` checks and packs
-only). It runs the full gate, **stages** the version on npm through trusted publishing (no token), and
+Releases go through GitHub Actions → **publish** (`.github/workflows/publish.yml`); update
+`CHANGELOG.md` first. An rc is dispatched by the deploy role after T5 (`reins check --stage rc-close
+--release <V>`) passes, with `version=<V>-rc.<N>`; fixes after an rc are `release: stabilization`
+tickets, and the next rc follows the next T5 pass. A stable release is dispatched only on the
+maintainer's instruction (`version=<V>`) and needs a `v<V>-rc.*` tag at the current `master` head
+(`dry_run` checks and packs only). It runs the full gate, **stages** the version on npm through trusted publishing (no token), and
 commits and tags it. The version is live only after the maintainer approves it with 2FA (npmjs.com →
 Staged Packages, or `npm stage approve <stage-id>`). reins has no GitHub Releases.
 

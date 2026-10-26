@@ -31,6 +31,16 @@ export function nextTicketNumber(intent: string, ...sources: string[][]): number
   return Math.max(0, ...ns) + 1;
 }
 
+/**
+ * Number of a new ticket: the first id the plan's `tickets:` reserves that no open ticket or history
+ * page uses yet, so plan and files agree; once every reserved id is taken, the next free number.
+ */
+export function ticketNumber(intent: string, planned: string[], used: string[]): number {
+  const re = new RegExp(`^${intent}-(\\d+)$`);
+  const free = planned.find((id) => re.test(id) && !used.includes(id));
+  return free ? Number(re.exec(free)![1]) : nextTicketNumber(intent, used, planned);
+}
+
 /** Next two-digit bus number of a ticket, from the file names already in `.loctx/bus/`. */
 export function nextBusNumber(ticket: string, files: string[]): string {
   const ns = files.map((f) => {
@@ -145,7 +155,7 @@ export function newTicket(
     ? (plan.data['tickets'] as unknown[]).map(String)
     : [];
   const open = openTickets(root).map((f) => String(f.data['id'] ?? ''));
-  const n = nextTicketNumber(intent, open, historyTicketIds(root, intent), planned);
+  const n = ticketNumber(intent, planned, [...open, ...historyTicketIds(root, intent)]);
   const iSlug = idir
     .split('/')
     .pop()!

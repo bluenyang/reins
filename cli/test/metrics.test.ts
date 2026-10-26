@@ -355,15 +355,8 @@ describe('CLI wiring (S-2, C-1, C-2)', () => {
   let d: string;
 
   beforeAll(async () => {
-    execFileSync(
-      process.execPath,
-      [
-        join(repo, 'node_modules', 'typescript', 'bin', 'tsc'),
-        '-p',
-        join(repo, 'cli', 'tsconfig.json'),
-      ],
-      { cwd: repo },
-    );
+    // cli/dist is built once by the globalSetup (test/e2e/build.ts); rebuilding it here raced the
+    // test files that run the CLI in parallel, which then loaded half-written modules
     d = await project();
     put(
       d,
@@ -371,7 +364,7 @@ describe('CLI wiring (S-2, C-1, C-2)', () => {
       '---\nid: 001-1\nintent: "001"\nplan_step: 1\ntitle: t\nstatus: todo\nrelease: planned\nrole: implementer\n---\n## 목적\n—\n',
     );
     put(d, '.agents/harness/gates.yaml', 'gates:\n  ok: { cmd: "node -v" }\norder: [ok]\n');
-  }, 120_000);
+  });
 
   it('appends one line per check and gate run, with the expected keys', () => {
     expect(run(d, 'check', '--stage', 'ticket-start', '--ticket', '001-1').code).toBe(10);

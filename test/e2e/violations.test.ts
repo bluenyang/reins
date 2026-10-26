@@ -52,6 +52,11 @@ function put(root: string, rel: string, text: string) {
 
 function reins(cwd: string, args: string[], input?: string) {
   const r = spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', input });
+  // a --json run that printed nothing fails with its exit code, signal and stderr, not a bare JSON error
+  if (args.includes('--json') && !r.stdout?.trim())
+    throw new Error(
+      `reins ${args.join(' ')}: no output (exit ${r.status}, signal ${r.signal})\n${r.stderr}`,
+    );
   return { code: r.status, stdout: r.stdout, stderr: r.stderr };
 }
 

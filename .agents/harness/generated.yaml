@@ -9,8 +9,15 @@ files:
   .claude/agents/reins-planner.md: 46379fc68a8ad590
   .claude/agents/reins-pm.md: d62d7469b0ca57a4
   .claude/agents/reins-verify-tool.md: c0e2e5dc15257747
-  .claude/skills/reins-intent/SKILL.md: 5222a42f5183841b
-  .claude/skills/reins-loop/SKILL.md: ef9c01cdab18f562
-  .claude/skills/reins-loop/references/vendor-cli.md: d4ce510413921654
+  .claude/skills/reins-implement/SKILL.md: f2729a9a65c2d373
+  .claude/skills/reins-intent/SKILL.md: f779fc2adfb997bb
+  .claude/skills/reins-loop/SKILL.md: 9ddece09f74b28e6
+  .claude/skills/reins-loop/references/vendor-cli.md: ce807b233d0961b0
+  .claude/skills/reins-release/SKILL.md: a43ec4da69285858
+  .claude/skills/reins-retro/SKILL.md: ecdc18df500cb07b
+  .claude/skills/reins-review/SKILL.md: c8394e7463ee0760
+  .claude/skills/reins-roadmap/SKILL.md: e504fdcafe08273c
   .claude/skills/reins-setup/SKILL.md: 135be14fc407129f
+  .claude/skills/reins-spec/SKILL.md: c762d4162308fa26
+  .claude/skills/reins-test/SKILL.md: 976e24324e277e55
   .claude/settings.json: 382a29add5cfa8b3

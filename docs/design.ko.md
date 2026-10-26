@@ -63,7 +63,7 @@ C1 "통과하기 위한" 구현(하드코딩·보이기만) · C2 `AGENTS.md` �
 | F 위반 | F1 금지선 시도 / F2 드리프트 / F3 거절 재제시 | knowledge |
 | G 중단 | G1 채팅·Ctrl+C·세션 종료 → 재개 정보 기록 / G2 spec 요약 거부 | intent |
 `kind` = spike에서 살린 구분: **intent**(사람 몫, 자동화 않음) / **knowledge**(배워서 줄어듦). 지표: 항목당 knowledge stop 수. 카운터(D1·D2)는 통과하면 리셋.
-수치: 루프 스킬(`reins-loop`, `reins-intent`)은 역할 실행이 끝날 때마다 `reins metrics record --role <role> --tokens <n> --intent <id> [--ticket <id>] --vendor <v> --model <m>`을 한 줄 부르고, 벤더가 토큰 수를 주지 않으면 기록하지 않는다. `reins check`와 `reins gate`는 실행할 때마다 `reins/metric@1` 한 줄을 `.loctx/reports/metrics.jsonl`에 덧붙인다. 토큰 사용량은 호출한 쪽이 `reins metrics record`로 남긴다. `reins metrics`는 토큰을 역할·벤더·ticket·intent별로, knowledge stop을 ticket별로 요약한다.
+수치: 단계 스킬은 역할 실행이 끝날 때마다 `reins metrics record --role <role> --tokens <n> --intent <id> [--ticket <id>] --vendor <v> --model <m>`을 한 줄 부르고, 벤더가 토큰 수를 주지 않으면 기록하지 않는다. `reins check`와 `reins gate`는 실행할 때마다 `reins/metric@1` 한 줄을 `.loctx/reports/metrics.jsonl`에 덧붙인다. 토큰 사용량은 호출한 쪽이 `reins metrics record`로 남긴다. `reins metrics`는 토큰을 역할·벤더·ticket·intent별로, knowledge stop을 ticket별로 요약한다.
 조사 레포에 있던 것은 A·B1·D1·D2뿐 — 나머지는 전부 새로 생긴다.
 
 ### 비용 범위 — 좁은 범위가 이김
@@ -96,6 +96,22 @@ T1 ticket 시작 전(B1·의존·예산·바인딩·**`asks:`↔`decisions:` 대
 
 **rc와 stable.** 버전 `<V>`에서 T5가 통과하면 deploy 역할이 T5가 보고한 번호로 `gh workflow run publish.yml -f version=<V>-rc.<N> -f dry_run=false`를 돌리고, `.loctx/release/<V>.md`(로컬, gitignore된 장부)에 한 줄(`- rc.<N> <커밋> <stage id> <날짜>`)을 덧붙인 뒤 사용자에게 npm에서 staged 버전을 승인하라고 알린다. rc도 staged라서 승인 뒤에야 공개된다. rc 뒤 수정은 `release: stabilization` ticket이다. 다 닫히면 T5가 다시 통과하고 다음 rc를 낸다. stable `<V>`는 사용자 지시가 있을 때만 낸다(A2). publish 워크플로는 `v<V>-rc.*` 태그가 있고 그 커밋이 정확히 기본 브랜치 HEAD(rc 자신의 release 커밋)일 때만 진행한다. 마지막 rc와 stable 사이에는 아무것도 들어올 수 없다.
 
+### 단계 스킬
+workflow 단계마다 스킬 하나, 모두 열 개다. `reins-loop`는 단계 스킬을 순서대로 부르는 지휘자이며 공통 규칙(판정 코드·metrics·중단 기록)만 담는다. 단계 스킬은 얇은 입구다: 첫 단계가 자기 check이고, 판정(CONTINUE·HOLD·STOP·ESCALATE)을 따르며 HOLD·STOP이면 멈추고, 따로 불려도 그 단계를 끝낸다. 판단은 역할에, 강제는 스크립트에 두고 스킬은 판정 로직을 더하지 않는다. `--stage` check가 없는 단계(roadmap·intent·spec·test·retro, ticket 없는 review)는 `reins check --drift`와 `reins status`로 시작하고, 앞 산출물이 없으면 HOLD로 사용자에게 묻는다.
+
+| 스킬 | 역할 | 먼저 부르는 check | 출력 | 다음 |
+|---|---|---|---|---|
+| `reins-roadmap` | pm | status + drift | `docs/ROADMAP.md`(양판), 대상 버전 | `reins-intent` |
+| `reins-intent` | pm | drift | 승인된 `intent.md` | `reins-spec` |
+| `reins-spec` | planner → pm·qa-design → pl | drift, intent 승인 확인 | accepted `spec.md`, `plan.md`, ticket | `reins-implement` |
+| `reins-implement` | implementer | **T1** | 커밋(훅 **T2**) | `reins-review` |
+| `reins-review` | verify-tool → code-review, 판정은 pl | drift, ticket이 있으면 검증 교환 뒤 **T3** | bus 응답, ticket close | `reins-implement` 또는 `reins-test` |
+| `reins-test` | qa-design → qa-run, verify-tool | status + drift, 그 버전에 열린 ticket 없음 | e2e 시나리오, 결과, 빌드 | `reins-release` |
+| `reins-release` | deploy | **T5**(push 때 훅 **T4**) | PR·CI·merge·rc | `reins-retro` |
+| `reins-retro` | pm | status | 회고 요약 | `reins-roadmap` 또는 다음 intent |
+
+ticket 없는 `reins-review`(사용자가 직접 고친 범위)는 drift만 부르고 리뷰 전용 bus 쌍을 남기며, T3도 ticket close도 하지 않는다. 리뷰어에게 주는 diff는 설치된 사본(`.agents/harness`, `.agents/skills`, `.agents/SKILLS.md`, `.claude`)만 제외하고 그 `git diff --stat`을 덧붙인다. 설치된 사본의 변경은 항상 허용된다.
+
 ## 5. 프로젝트 것과 툴 것의 경계 (D7·D8·D9)
 ### `AGENTS.md` 관리 블록
 `<!-- reins:begin <block> v=X -->`…`<!-- reins:end <block> -->` 넷: notice · workflow · skills · language. 밖은 프로젝트 것. 손대면 F2, 바꾸려면 `reins:override`. **읽기 마커** `<!-- reins:read invariants|secrets|gates -->`로 프로젝트 소유 절을 검증기가 읽는다. 훅 파일엔 `npx @bluenyang/reins check --stage …` 한 줄(마커). 중첩 AGENTS.md는 설치한 디렉터리만.
@@ -125,7 +141,7 @@ T1 ticket 시작 전(B1·의존·예산·바인딩·**`asks:`↔`decisions:` 대
 `npx @bluenyang/reins` — `install <tier> [--mode manual|auto]` · `migrate <tier>` · `update` · `configure bindings|budget|gates|language` · `check [--stage] [--drift]` · `gate [<name>…] [--ticket] [--respond]` (gates.yaml 그대로 실행, 원본 출력을 `$ cmd` … `exit N` 형식으로 `.loctx/reports/`에 — T3가 읽는 증거. `--ticket <id> --respond`는 응답 없는 가장 최근 `kind: verify` 요청에 bus 응답 `<id>_<nn>.response.yaml`도 쓴다 — 모든 게이트가 돌아 exit 0일 때만 verdict pass, `evidence:`는 보고서 경로, `may_proceed` 포함. stdout에는 게이트마다 pass/fail 한 줄과 실패 게이트의 시그니처·file:line만 내고 원본은 내지 않으며, 열린 verify 요청이 없으면 쓰지 않고 exit 1. 그래서 verify-tool은 `gate --respond`와 `check --stage verdict` 두 번의 호출이다) · `new intent <slug> [--version] [--origin]` · `new ticket <intent> <step> <slug> [--title] [--depends] [--release] [--role]` · `new request <ticket> <kind> [--from] [--to]`(하네스 템플릿에서 파일을 만든다 — 다음 빈 번호, 스키마 검증을 먼저 통과해야 쓰고, 이미 있는 파일은 덮어쓰지 않으며, 거부하면 exit 1, 경로는 stdout, 대화형 질문 없음) · `metrics [--intent]`(`.loctx/reports/metrics.jsonl` 요약: 토큰을 역할·벤더·ticket·intent별로, knowledge stop을 ticket별로)와 `metrics record --role --tokens [--ticket|--intent]`(역할 실행에 쓴 토큰을 호출한 쪽이 보고, reins는 모델을 부르지 않는다) · `recall` · `status` · `doctor`. 전부 `--dry-run`·`--json`. TS, Node ≥ 20, Python 없음(R65). **CLI는 모델을 부르지 않는다** — 에이전트 일은 스킬(`reins-setup` 등)이.
 install은 3·4세대 하네스 위에서는 **거부하고 `migrate`로 안내**한다. 1·2세대면 설치하되 옛 `.ai/`는 건드리지 않고 migrate를 안내한다. 버전 핀과 설정은 `.agents/harness/install.yaml`(tier·version·mode·language).
 install 질문(manual): 벤더 · 바인딩 조정 · 게이트 확인 · 비밀 패턴 · 훅 **제안만** · 공개 레포? · 문서 언어 · 예산(선택). auto는 감지·기본값·리포트.
-레포 = Claude Code 플러그인 + 마켓플레이스 + npm 패키지. 저장소 루트가 둘 다다. `.claude-plugin/plugin.json`(name `reins`, `version`은 package.json과 같음, userConfig `language` 기본 `ko`·`default_mode` 기본 `manual`, `skills`·훅·에이전트·MCP·의존성 없음)과 `.claude-plugin/marketplace.json`(마켓플레이스 `bluenyang`, 항목 하나의 `skills`는 `["./skills/reins-setup"]`이라 플러그인은 `/reins:reins-setup`만 노출한다 — `reins-intent`·`reins-loop`는 `reins install`이 프로젝트에 쓰는 사본에만 두어 같은 스킬이 두 벌 생기지 않게 한다). `skills/reins-setup/SKILL.md`는 CLI를 `npx @bluenyang/reins@<version>`으로 고정해서 부르고, `cli/src/scripts/sync-version.ts`(`version` 라이프사이클 스크립트)가 package.json 기준으로 plugin.json과 이 고정 버전을 고치며, 세 값이 같은지 테스트가 확인한다. 그 밖: `skills/` · `agents/`(생성) · `harness/`(원본의 원본 + templates + knowledge-seeds + VERSION) · `cli/` · `codex/ gemini/ cursor/`(1차 unverified) · `hooks/` · `docs/ test/ .agents/ .loctx/`. 플러그인 루트 `bin/` 없음. npm 패키지에는 `.claude-plugin`을 넣지 않는다(마켓플레이스는 git으로 받는다). 선택 의존(humanize-korean·diagram-design)은 감지해 권장만.
+레포 = Claude Code 플러그인 + 마켓플레이스 + npm 패키지. 저장소 루트가 둘 다다. `.claude-plugin/plugin.json`(name `reins`, `version`은 package.json과 같음, userConfig `language` 기본 `ko`·`default_mode` 기본 `manual`, `skills`·훅·에이전트·MCP·의존성 없음)과 `.claude-plugin/marketplace.json`(마켓플레이스 `bluenyang`, 항목 하나의 `skills`는 `["./skills/reins-setup"]`이라 플러그인은 `/reins:reins-setup`만 노출한다 — 나머지 아홉 스킬은 loop 계층 이상에서 `reins install`이 프로젝트에 쓰는 사본에만 두어 같은 스킬이 두 벌 생기지 않게 한다). `skills/reins-setup/SKILL.md`는 CLI를 `npx @bluenyang/reins@<version>`으로 고정해서 부르고, `cli/src/scripts/sync-version.ts`(`version` 라이프사이클 스크립트)가 package.json 기준으로 plugin.json과 이 고정 버전을 고치며, 세 값이 같은지 테스트가 확인한다. 그 밖: `skills/` · `agents/`(생성) · `harness/`(원본의 원본 + templates + knowledge-seeds + VERSION) · `cli/` · `codex/ gemini/ cursor/`(1차 unverified) · `hooks/` · `docs/ test/ .agents/ .loctx/`. 플러그인 루트 `bin/` 없음. npm 패키지에는 `.claude-plugin`을 넣지 않는다(마켓플레이스는 git으로 받는다). 선택 의존(humanize-korean·diagram-design)은 감지해 권장만.
 
 ## 10. `spike/` (D15)
 생각 10개 살림(must_not 프론트매터 · intent/knowledge stop · failure 카탈로그+verified · 시드 · suggested_next · metrics.jsonl · 카운터 리셋 등 — §3·§4·§8에 반영). 코드·구조 전부 버림(Python, state.json 상태 기계, dispatch, 8단계, 게이트 프리셋, TOML, md 핸드오프). **디렉터리는 구현 시작 시 삭제**, 해시 `9ebb597`로 참조 — 사용자 확인.
@@ -136,7 +152,7 @@ install 질문(manual): 벤더 · 바인딩 조정 · 게이트 확인 · 비밀
 3. `install graph --mode manual` → 이 레포에 self-install → `.agents/`·`.loctx/` 생성 (S5).
 4. `migrate` — 이 레포의 `.ai/` → v4 배치 (S1).
 5. 생성기(Claude) + `update` + `configure bindings`.
-6. 스킬 입구(`reins-setup`·`reins-intent`·`reins-loop`) → 첫 intent를 **자기 루프로** 돌린다 (R66).
+6. 스킬 입구(`reins-setup`과 loop 계층의 단계 스킬 아홉 개) → 첫 intent를 **자기 루프로** 돌린다 (R66).
 7. metrics.jsonl로 비용 측정 → 루프·하네스 단으로 깎아 내리기(2차).
 
 ## 부록 — 조사자가 기본값으로 정한 것 (사용자 미확인, 설계 확정 시 함께)

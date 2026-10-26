@@ -122,7 +122,8 @@ reins 자체를 개발하려면 `git clone https://github.com/bluenyang/reins.gi
 | `metrics` | 구현됨 | `.loctx/reports/metrics.jsonl` 요약: 역할·벤더·ticket·intent별 토큰, ticket당 knowledge 정지 수. `metrics record`로 역할 실행의 토큰을 남깁니다 |
 | `recall` | 미구현 | 증상으로 과거 결정을 찾습니다 |
 | `doctor` | 미구현 | — |
-| `configure budget\|gates\|language` | 미구현 | — |
+| `configure gates` | 구현됨 | 하위 디렉터리 게이트 제안을 보여 줍니다. `--add <name>...`은 gates.yaml 끝에 덧붙입니다 |
+| `configure budget\|language` | 미구현 | — |
 
 `install`, `migrate`, `update`, `gate`, `status`, `check`, `metrics`는 `--json`을 받습니다. `check`와 `gate`는 실행할 때마다 `.loctx/reports/metrics.jsonl`에 한 줄을 남깁니다. `check`의 stage는
 T1(`ticket-start`), T2(`pre-commit`), T3(`verdict`), T4(`pre-push`), T5(`rc-close`)에 대응합니다.

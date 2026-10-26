@@ -1,11 +1,13 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parse, stringify } from 'yaml';
+import { parse, parseDocument, stringify } from 'yaml';
 import type { Asker } from '../lib/ask.js';
 import {
   CONFIRMED_MODELS,
   checkBinding,
   newModelCache,
+  subdirProposals,
+  type SubdirGate,
   vendorOf,
   vendors,
   type ModelCache,
@@ -123,4 +125,51 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
     .map(([role, b]) => ({ role, vendor: b.vendor, model: b.model }))
     .toSorted((a, b) => a.role.localeCompare(b.role));
   return { changed, table, generated };
+}
+
+export interface ConfigureGatesOptions {
+  cwd?: string;
+  /** names of proposals to append to gates.yaml */
+  add?: string[];
+}
+
+export interface ConfigureGatesResult {
+  /** 2: cannot run; 1: an unknown name (file untouched) */
+  refused?: string;
+  code?: 1 | 2;
+  /** proposals not yet in gates.yaml */
+  available: SubdirGate[];
+  added: string[];
+}
+
+/** `reins configure gates [--add <name>…]` (spec S-7): subdirectory proposals, appended after the existing gates. */
+export function configureGates(o: ConfigureGatesOptions = {}): ConfigureGatesResult {
+  const root = repoRoot(o.cwd ?? process.cwd());
+  const path = join(root, '.agents/harness/gates.yaml');
+  if (!existsSync(path))
+    return { refused: 'no gates.yaml — run reins install', code: 2, available: [], added: [] };
+  const doc = parseDocument(readFileSync(path, 'utf8'));
+  const have = new Set<string>(
+    Object.keys((doc.toJS() as { gates?: Record<string, unknown> } | null)?.gates ?? {}),
+  );
+  const available = subdirProposals(root).filter((g) => !have.has(g.name));
+  const names = o.add ?? [];
+  const unknown = names.filter((n) => !available.some((g) => g.name === n));
+  if (unknown.length)
+    return {
+      refused: `no such proposal: ${unknown.join(', ')} — available: ${available.map((g) => g.name).join(', ') || 'none'}`,
+      code: 1,
+      available,
+      added: [],
+    };
+  const added: string[] = [];
+  for (const n of new Set(names)) {
+    const g = available.find((x) => x.name === n)!;
+    doc.setIn(['gates', g.name], doc.createNode({ cmd: g.cmd, from: g.from }));
+    if (doc.has('order')) doc.addIn(['order'], g.name);
+    else doc.set('order', doc.createNode([g.name]));
+    added.push(g.name);
+  }
+  if (added.length) writeFileSync(path, doc.toString());
+  return { available: available.filter((g) => !added.includes(g.name)), added };
 }

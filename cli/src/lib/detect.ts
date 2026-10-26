@@ -1,5 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { compound } from '../commands/gate.js';
 import { join } from 'node:path';
 
 /** Generation of an existing harness (design §7). First match wins, from the most specific. */
@@ -75,9 +76,18 @@ export interface Gate {
   optional?: boolean;
 }
 
+/** A gate found in a subdirectory (spec S-5): named `<dir-slug>-<script>`, run from the repo root. */
+export interface SubdirGate {
+  name: string;
+  cmd: string;
+  from: string;
+}
+
 export interface GateProposal {
   gates: Gate[];
   excluded: { name: string; cmd: string; why: string }[];
+  /** subdirectory candidates; never part of `gates` */
+  proposals: SubdirGate[];
 }
 
 const MUTATING = /--fix\b|--write\b|\bfmt\b(?!:check)|(^|\s)format(\s|$)/;
@@ -87,7 +97,7 @@ const MUTATING = /--fix\b|--write\b|\bfmt\b(?!:check)|(^|\s)format(\s|$)/;
  * prefer the aggregate `check` the hooks and CI already call.
  */
 export function discoverGates(root: string): GateProposal {
-  const res: GateProposal = { gates: [], excluded: [] };
+  const res: GateProposal = { gates: [], excluded: [], proposals: subdirProposals(root) };
   const run = runner(root);
   const pkgPath = join(root, 'package.json');
   if (run && run !== 'make' && existsSync(pkgPath)) {
@@ -125,6 +135,89 @@ export function discoverGates(root: string): GateProposal {
         res.gates.push({ name: t, cmd: `make ${t}`, from: `Makefile:${t}` });
   }
   return res;
+}
+
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'vendor', '.loctx', '.agents']);
+const MAX_DEPTH = 3;
+const SAFE_DIR = /^[\w@.+-]+(\/[\w@.+-]+)*$/;
+const NODE_SCRIPTS = ['check', 'verify', 'ci', 'typecheck', 'lint', 'test', 'build'];
+
+function dirRunner(root: string, dir: string, rootRunner: string | null): 'pnpm' | 'yarn' | 'npm' {
+  if (existsSync(join(root, dir, 'pnpm-lock.yaml'))) return 'pnpm';
+  if (existsSync(join(root, dir, 'yarn.lock'))) return 'yarn';
+  if (existsSync(join(root, dir, 'package-lock.json'))) return 'npm';
+  return rootRunner === 'pnpm' || rootRunner === 'yarn' ? rootRunner : 'npm';
+}
+
+/**
+ * Gate candidates below the root (spec S-5): package.json scripts, Makefile targets and go.mod,
+ * to depth 3. One command each, using the tool's own directory option. The caller chooses.
+ */
+export function subdirProposals(root: string): SubdirGate[] {
+  const out: SubdirGate[] = [];
+  const seen = new Set<string>();
+  const rootRunner = runner(root);
+  const push = (g: SubdirGate) => {
+    if (seen.has(g.name) || compound(g.cmd)) return;
+    seen.add(g.name);
+    out.push(g);
+  };
+  const walk = (dir: string, depth: number) => {
+    let entries;
+    try {
+      entries = readdirSync(join(root, dir), { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries.toSorted((a, b) => a.name.localeCompare(b.name))) {
+      if (!e.isDirectory() || SKIP_DIRS.has(e.name)) continue;
+      const rel = dir ? `${dir}/${e.name}` : e.name;
+      if (!SAFE_DIR.test(rel)) continue;
+      const slug = rel.replace(/\//g, '-');
+      const pkg = join(root, rel, 'package.json');
+      if (existsSync(pkg)) {
+        let scripts: Record<string, string> = {};
+        try {
+          scripts =
+            (JSON.parse(readFileSync(pkg, 'utf8')) as { scripts?: Record<string, string> })
+              .scripts ?? {};
+        } catch {
+          // unreadable package.json: no proposals from it
+        }
+        const run = dirRunner(root, rel, rootRunner);
+        for (const sc of NODE_SCRIPTS)
+          if (sc in scripts && !MUTATING.test(scripts[sc] ?? '') && /^[\w:.-]+$/.test(sc)) {
+            const cmd =
+              run === 'npm'
+                ? `npm --prefix ${rel} run ${sc}`
+                : run === 'yarn'
+                  ? `yarn --cwd ${rel} ${sc}`
+                  : `pnpm --dir ${rel} ${sc}`;
+            push({ name: `${slug}-${sc}`, cmd, from: `${rel}/package.json#scripts.${sc}` });
+          }
+      }
+      const mk = join(root, rel, 'Makefile');
+      if (existsSync(mk)) {
+        const text = readFileSync(mk, 'utf8');
+        for (const t of ['check', 'test', 'build'])
+          if (new RegExp(`^${t}:`, 'm').test(text))
+            push({
+              name: `${slug}-${t}`,
+              cmd: `make -C ${rel} ${t}`,
+              from: `${rel}/Makefile:${t}`,
+            });
+      }
+      if (existsSync(join(root, rel, 'go.mod')))
+        for (const t of ['test', 'vet']) {
+          // a Makefile target of the same name keeps its name; the go gate becomes <slug>-go-<t>
+          const name = seen.has(`${slug}-${t}`) ? `${slug}-go-${t}` : `${slug}-${t}`;
+          push({ name, cmd: `go -C ${rel} ${t} ./...`, from: `${rel}/go.mod` });
+        }
+      if (depth < MAX_DEPTH) walk(rel, depth + 1);
+    }
+  };
+  walk('', 1);
+  return out;
 }
 
 /** Vendor of a model ID by prefix, in order: gpt, gemini, cursor-, else claude (spec S-2). */

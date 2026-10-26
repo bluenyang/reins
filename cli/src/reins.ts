@@ -8,7 +8,7 @@ import { acceptKnowledge, dismissKnowledge, proposeKnowledge } from './commands/
 import { formatRetro, runRetro } from './commands/retro.js';
 import { runStatus } from './commands/status.js';
 import { runUpdate } from './commands/update.js';
-import { configureBindings } from './commands/configure.js';
+import { configureBindings, configureGates } from './commands/configure.js';
 import { respondRefusal, runGates, writeResponse } from './commands/gate.js';
 import { newIntent, newRequest, newTicket, type NewResult } from './commands/new.js';
 import {
@@ -217,6 +217,26 @@ configure
       for (const p of g.removed) process.stdout.write(`  - ${p}\n`);
       for (const x of g.refused) process.stdout.write(`• left alone ${x.path}: ${x.why}\n`);
     }
+  });
+
+configure
+  .command('gates')
+  .description('subdirectory gate proposals not in gates.yaml; --add <name>… appends them')
+  .option('--add <names...>', 'proposal names to append after the existing gates')
+  .option('--json')
+  .action((o: { add?: string[]; json?: boolean }) => {
+    const r = configureGates({ add: o.add });
+    if (o.json) {
+      process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
+      process.exit(r.code ?? 0);
+    }
+    if (r.refused) {
+      process.stderr.write(`reins configure gates: ${r.refused}\n`);
+      process.exit(r.code ?? 2);
+    }
+    for (const n of r.added) process.stdout.write(`added: ${n}\n`);
+    if (!r.available.length) process.stdout.write('no more proposals\n');
+    for (const g of r.available) process.stdout.write(`  ${g.name}  ${g.cmd}   (${g.from})\n`);
   });
 
 program

@@ -15,6 +15,7 @@ needs the `/reins-update` skill.
 Readiness for large repositories (intent 012, planned).
 
 - `install.yaml` `release:` sets the release workflows; T5 prints their `gh workflow run` lines and deploy dispatches them (merge target is the default branch); `update` keeps `release:` and unknown keys.
+- Gate discovery also finds subdirectory candidates (`package.json` scripts, `Makefile` targets, `go.mod`; depth 3). `install` offers them in manual mode and reports them in auto mode; `reins configure gates [--add <name>…]` lists and appends them.
 
 ## [0.1.3] — 2026-10-27
 

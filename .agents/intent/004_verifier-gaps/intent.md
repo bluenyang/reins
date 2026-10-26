@@ -2,7 +2,7 @@
 id: "004"
 slug: verifier-gaps
 version: 0.1.1
-status: approved
+status: released
 origin: agent
 approvals:
   - { role: user, at: 2026-10-26 }

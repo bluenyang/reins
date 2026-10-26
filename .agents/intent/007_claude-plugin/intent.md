@@ -2,7 +2,7 @@
 id: "007"
 slug: claude-plugin
 version: 0.1.2
-status: approved
+status: released
 origin: user
 approvals:
   - { role: user, at: 2026-10-26 }

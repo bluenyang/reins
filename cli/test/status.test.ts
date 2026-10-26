@@ -243,6 +243,14 @@ describe('C-3 the next-step table', () => {
     expect(text).not.toContain('close the rc');
   });
 
+  it('this repository\'s intents 001-007 are released', () => {
+    for (const id of ['001', '002', '003', '004', '005', '006', '007']) {
+      const i = collectStatus(process.cwd()).intents.find((x) => x.id === id)!;
+      expect(i.intent).toBe('released');
+      expect(i.next).toBe('—');
+    }
+  });
+
   it('does not throw on a broken intent.md', async () => {
     const d = await project();
     put(d, '.agents/intent/001_t001/intent.md', '---\nstatus: [oops\n---\n');

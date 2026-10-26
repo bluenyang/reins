@@ -2,7 +2,7 @@
 id: "002"
 slug: metrics
 version: 0.1.0
-status: approved
+status: released
 origin: user
 approvals:
   - { role: user, at: 2026-10-25 }

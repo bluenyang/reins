@@ -129,22 +129,24 @@ T1 (`ticket-start`), T2 (`pre-commit`), T3 (`verdict`), T4 (`pre-push`) and T5 (
 
 ## Skills
 
-Three skills are the entry points for an agent; they follow the `SKILL.md` standard.
+Ten skills follow the `SKILL.md` standard: `reins-setup` bootstraps, `reins-loop` conducts, and eight stage skills each take one stage and can be called alone.
 
 | Skill | Use when |
 |---|---|
 | `reins-setup` | installing reins, or moving an existing harness onto it |
-| `reins-intent` | a new request arrives: questionnaire, approved intent, accepted spec |
-| `reins-loop` | a spec is accepted: plan, tickets, implement, verify, review, history |
+| `reins-roadmap` | updating the public roadmap and picking the target version |
+| `reins-intent` | a new request arrives: questionnaire and approved intent |
+| `reins-spec` | an intent is approved: accepted spec, plan and tickets |
+| `reins-implement` | a ticket is ready: implement it in committed units |
+| `reins-review` | a ticket is finished: verify, review and close it |
+| `reins-test` | all tickets of a version are done: scenarios and build |
+| `reins-release` | a version is tested: PR, CI, merge and rc |
+| `reins-retro` | a version is released: retrospective and knowledge proposals |
+| `reins-loop` | a spec is accepted: calls the stage skills in order |
 
 ## Roadmap
 
-| Version | Content |
-|---|---|
-| 0.1 | graph design, self-install and self-migrate of this repository, the verifier, three skills, metrics, violation scenarios. 0.1.0 published; 0.1.1 stabilisation (fixes the loop found); 0.1.2 Claude Code plugin (marketplace install) |
-| 0.2 | carve the loop and harness tiers out of the graph; generated files for Codex, Gemini and Cursor; `recall`, `doctor`, budget stops; trial migration of older harnesses |
-| 0.3 | application to Team Croffle repositories |
-| 1.0 | not scheduled: reins stays on 0.x and gains features until the maintainer considers the system settled; stabilising alone does not make it 1.0 |
+The full plan is in [docs/ROADMAP.md](docs/ROADMAP.md) ([한국어](docs/ROADMAP.ko.md)).
 
 ## Documents
 

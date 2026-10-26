@@ -1,9 +1,10 @@
 ---
 intent: "012"
-status: reviewed
+status: accepted
 approvals:
   - { role: qa-design, at: 2026-10-27, kind: first-review }
   - { role: pm, at: 2026-10-27 }
+  - { role: user, at: 2026-10-27, kind: summary }
 summary_for_user: |
   릴리스 방식을 `install.yaml`의 `release:`(워크플로·입력·승인 방식)로 정한다. deploy는 PR·merge 뒤 그 워크플로를 dispatch하고, reins의 npm staged 흐름은 설정의 한 값이다.
   게이트 탐색이 하위 디렉터리도 보고 제안만 한다. 고른 것만 기록하고, 나중엔 `reins configure gates`로 더한다.

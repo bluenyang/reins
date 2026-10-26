@@ -94,7 +94,7 @@ T1 ticket 시작 전(B1·의존·예산·바인딩·**`asks:`↔`decisions:` 대
 
 **PR 흐름.** 작업은 `type/topic` 브랜치 → PR → CI 초록 → 머지로만 기본 브랜치에 들어간다. deploy 역할이 브랜치를 push하고 PR을 열고(본문 초안은 docs) `gh pr checks --watch`로 기다린 뒤, 필수 체크가 모두 초록일 때만 `gh pr merge --rebase --delete-branch`로 머지한다. 빨간 체크가 있으면 머지하지 않고 pl에게 돌려준다(D2). pl·implementer는 머지하지 않는다. T4가 `master`/`main` 직접 push를 A4로 막는다. 브랜치 보호(PR 필수, 체크 `ci`)는 저장소 설정이라 사용자가 켠다.
 
-**rc와 stable.** 버전 `<V>`에서 T5가 통과하면 deploy 역할이 T5가 보고한 번호로 `gh workflow run publish.yml -f version=<V>-rc.<N> -f dry_run=false`를 돌리고, `.loctx/release/<V>.md`(로컬, gitignore된 장부)에 한 줄(`- rc.<N> <커밋> <stage id> <날짜>`)을 덧붙인 뒤 사용자에게 npm에서 staged 버전을 승인하라고 알린다. rc도 staged라서 승인 뒤에야 공개된다. rc 뒤 수정은 `release: stabilization` ticket이다. 다 닫히면 T5가 다시 통과하고 다음 rc를 낸다. stable `<V>`는 사용자 지시가 있을 때만 낸다(A2). publish 워크플로는 `v<V>-rc.*` 태그가 있고 그 커밋이 기본 브랜치 HEAD이거나 그 뒤가 `release: v…` 커밋뿐일 때만 진행한다(0.1.2 이하 버전은 해당 없음).
+**rc와 stable.** 버전 `<V>`에서 T5가 통과하면 deploy 역할이 T5가 보고한 번호로 `gh workflow run publish.yml -f version=<V>-rc.<N> -f dry_run=false`를 돌리고, `.loctx/release/<V>.md`(로컬, gitignore된 장부)에 한 줄(`- rc.<N> <커밋> <stage id> <날짜>`)을 덧붙인 뒤 사용자에게 npm에서 staged 버전을 승인하라고 알린다. rc도 staged라서 승인 뒤에야 공개된다. rc 뒤 수정은 `release: stabilization` ticket이다. 다 닫히면 T5가 다시 통과하고 다음 rc를 낸다. stable `<V>`는 사용자 지시가 있을 때만 낸다(A2). publish 워크플로는 `v<V>-rc.*` 태그가 있고 그 커밋이 정확히 기본 브랜치 HEAD(rc 자신의 release 커밋)일 때만 진행한다. 마지막 rc와 stable 사이에는 아무것도 들어올 수 없다.
 
 ## 5. 프로젝트 것과 툴 것의 경계 (D7·D8·D9)
 ### `AGENTS.md` 관리 블록

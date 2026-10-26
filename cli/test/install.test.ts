@@ -115,6 +115,26 @@ describe('memory draft names (012 S-11)', () => {
   });
 });
 
+describe('memory drafts after accept (012 S-11)', () => {
+  it('does not draft again once the draft was accepted', async () => {
+    const d = repo();
+    const o = {
+      tier: 'graph' as const,
+      mode: 'auto' as const,
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: onlyClaude,
+      now: new Date(2026, 9, 27, 9, 0),
+    };
+    mkdirSync(join(d, '.claude/memory'), { recursive: true });
+    writeFileSync(join(d, '.claude/memory/a.md'), 'one\n');
+    await runInstall(o);
+    expect(acceptKnowledge('memory-a', { cwd: d }).refused).toBeUndefined();
+    await runInstall(o);
+    expect(readdirSync(join(d, '.loctx/knowledge-proposals'))).toEqual([]);
+  });
+});
+
 describe('reins install graph (S5)', () => {
   it('installs into a fresh repository with Claude only, and a second run changes nothing', async () => {
     const d = repo();

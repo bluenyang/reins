@@ -14,6 +14,8 @@
 
 name: publish
 
+run-name: publish ${{ inputs.version }} (dry_run=${{ inputs.dry_run }})
+
 on:
   workflow_dispatch:
     inputs:

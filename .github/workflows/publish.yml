@@ -97,18 +97,15 @@ jobs:
           if git ls-remote --tags origin "refs/tags/v$NEXT" | grep -q .; then
             echo "::error::tag v$NEXT already exists"; exit 1
           fi
-          # a stable version needs a `v<V>-rc.*` tag whose commit is HEAD, or whose successors are only
-          # `release: v…` commits (versions up to 0.1.2 predate this rule)
-          if [[ "$NEXT" != *-* && "$(printf '%s\n%s\n' "$NEXT" 0.1.2 | sort -V | tail -1)" != 0.1.2 ]]; then
+          # a stable version needs a `v<V>-rc.*` tag on exactly HEAD (the rc's own release commit):
+          # nothing may land between the last rc and stable
+          if [[ "$NEXT" != *-* ]]; then
             RC_TAG=$(git tag -l "v$NEXT-rc.*" | sort -V | tail -1)
             if [[ -z "$RC_TAG" ]]; then
               echo "::error::stable $NEXT needs a v$NEXT-rc.* tag first"; exit 1
             fi
-            if ! git merge-base --is-ancestor "$RC_TAG" HEAD; then
-              echo "::error::$RC_TAG is not an ancestor of HEAD"; exit 1
-            fi
-            if git log --format=%s "$RC_TAG..HEAD" | grep -qv '^release: v'; then
-              echo "::error::commits other than release commits follow $RC_TAG — cut a new rc first"; exit 1
+            if [[ "$(git rev-list -n1 "$RC_TAG")" != "$(git rev-parse HEAD)" ]]; then
+              echo "::error::HEAD is not the commit of $RC_TAG — cut a new rc first"; exit 1
             fi
           fi
           # prerelease → its id as the dist-tag (0.2.0-rc.1 → rc); otherwise latest

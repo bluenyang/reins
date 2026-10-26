@@ -1,5 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -79,6 +86,32 @@ describe('memory drafts (012 S-11)', () => {
     expect(acc.refused).toBeUndefined();
     expect(readFileSync(join(d, acc.path!), 'utf8')).toMatch(/^approved:/m);
     expect(existsSync(join(d, '.claude/memory/a.md'))).toBe(true);
+  });
+});
+
+describe('memory draft names (012 S-11)', () => {
+  it('names a draft by its source: a later a.md does not collide with a.txt', async () => {
+    const d = repo();
+    const o = {
+      tier: 'graph' as const,
+      mode: 'auto' as const,
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: onlyClaude,
+      now: new Date(2026, 9, 27, 9, 0),
+    };
+    mkdirSync(join(d, '.claude/memory'), { recursive: true });
+    writeFileSync(join(d, '.claude/memory/a.txt'), 'one\n');
+    await runInstall(o);
+    const p = (n: string) => join(d, `.loctx/knowledge-proposals/${n}.md`);
+    expect(readFileSync(p('memory-a'), 'utf8')).toContain('a.txt');
+    writeFileSync(join(d, '.claude/memory/a.md'), 'two\n');
+    await runInstall(o);
+    expect(readFileSync(p('memory-a-2'), 'utf8')).toContain('source: ".claude/memory/a.md"');
+    expect(readFileSync(p('memory-a'), 'utf8')).toContain('a.txt');
+    const before = readdirSync(join(d, '.loctx/knowledge-proposals')).toSorted();
+    await runInstall(o);
+    expect(readdirSync(join(d, '.loctx/knowledge-proposals')).toSorted()).toEqual(before);
   });
 });
 

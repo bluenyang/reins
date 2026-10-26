@@ -3,6 +3,7 @@ import { basename, join } from 'node:path';
 import { parse } from 'yaml';
 import { repoRoot } from '../lib/git.js';
 import { harnessVersion, packageHarness } from '../lib/upstream.js';
+import { candidateCount } from '../lib/retro.js';
 import { driftGenerated } from '../lib/vendor-write.js';
 import { report, type Finding, type Verdict } from '../lib/verdict.js';
 import {
@@ -59,6 +60,7 @@ export interface StatusData {
   tickets: TicketStatus[];
   bus: number;
   lastHistory: string | null;
+  knowledgeCandidates: number;
 }
 
 const str = (v: unknown) => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '');
@@ -272,6 +274,7 @@ export function collectStatus(root: string): StatusData {
     tickets: open.map((t) => ticketStatus(root, t)),
     bus: safe(() => busCount(root), 0),
     lastHistory: pages.length ? basename(pages[pages.length - 1]!.path) : null,
+    knowledgeCandidates: safe(() => candidateCount(root), 0),
   };
 }
 
@@ -313,6 +316,7 @@ export function formatStatus(d: StatusData): string {
   out.push('');
   out.push(`bus: ${d.bus} file${d.bus === 1 ? '' : 's'}`);
   out.push(`last history: ${d.lastHistory ?? '—'}`);
+  out.push(`knowledge candidates: ${d.knowledgeCandidates}`);
   return `${out.join('\n')}\n`;
 }
 

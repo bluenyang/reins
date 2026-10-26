@@ -5,7 +5,7 @@ description: Entry point for the retrospective of a released version, as the pm 
 
 # reins-retro
 
-pm role. Run the CLI as `npx @bluenyang/reins@<v>` where `<v>` is `version` in `.agents/harness/install.yaml` (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
+pm role. Run the CLI as `npx @bluenyang/reins@<v>` where `<v>` is `cli` in `.agents/harness/install.yaml` (no `cli` line: installed before 0.1.3, run `npx @bluenyang/reins@latest update` once) (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
 
 1. **Check first.** `reins status`. HOLD or STOP → follow it.
 2. **Aggregate.** `reins retro --release <v>` after an rc (or with no flag, any time). It counts repeats across units (a ticket counts once): stop ids, review reasons, decisions, failed rounds (HOLD/STOP), tokens by role, and promotion candidates (a key seen in 2+ units not yet in active knowledge). `--json` for machine reading.

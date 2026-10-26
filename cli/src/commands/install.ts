@@ -19,7 +19,13 @@ import {
 import { apply, listFiles, type Applied, type Write } from '../lib/fsx.js';
 import { repoRoot } from '../lib/git.js';
 import { SKILLS_INDEX_HEADER, skillsIndex, splitFrontmatter } from '../lib/skills.js';
-import { harnessVersion, packageHarness, packageSkills, tierSkills } from '../lib/upstream.js';
+import {
+  harnessVersion,
+  packageHarness,
+  packageSkills,
+  packageVersion,
+  tierSkills,
+} from '../lib/upstream.js';
 import { generateVendorFiles } from '../lib/generate.js';
 import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
 
@@ -230,7 +236,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     );
   add(
     '.agents/harness/install.yaml',
-    `# version pin and install settings (R25) — read by reins update\n${stringify({ schema: 'reins/install@1', tier: o.tier, version, mode: o.mode, language })}`,
+    `# version pin and install settings (R25) — read by reins update\n${stringify({ schema: 'reins/install@1', tier: o.tier, version, cli: packageVersion(), mode: o.mode, language })}`,
     'version pin',
   );
 

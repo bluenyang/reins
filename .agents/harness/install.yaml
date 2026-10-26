@@ -2,5 +2,6 @@
 schema: reins/install@1
 tier: graph
 version: 0.1.2
+cli: 0.1.3-rc.2
 mode: manual
 language: ko

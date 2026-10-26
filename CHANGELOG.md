@@ -32,6 +32,9 @@ The workflow the maintainer laid out, end to end (intents 008–011). Harness 0.
 - Tests remove every temp dir they create (a run had left about 10,000 under /tmp).
 - The flaky e2e control test: one test file rebuilt `cli/dist` while others ran the CLI.
 
+### Fixed (rc.3)
+- Stage skills ran the CLI at the harness version (0.1.2, which lacks `new`, `retro`, `knowledge` and `gate --respond`). `install.yaml` now records `cli:`, the package version that wrote the install, and the skills read it.
+
 ## [0.1.2] — 2026-10-26
 
 A Claude Code plugin (intent 007).

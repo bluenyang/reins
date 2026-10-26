@@ -5,7 +5,7 @@ description: Turn an approved intent into an accepted spec, a reviewed plan and 
 
 # reins-spec
 
-The point where a person decides (design §4): **the spec summary may be vetoed by the user** (R64). Run the CLI as `npx @bluenyang/reins@<v>` where `<v>` is `version` in `.agents/harness/install.yaml` (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
+The point where a person decides (design §4): **the spec summary may be vetoed by the user** (R64). Run the CLI as `npx @bluenyang/reins@<v>` where `<v>` is `cli` in `.agents/harness/install.yaml` (no `cli` line: installed before 0.1.3, run `npx @bluenyang/reins@latest update` once) (inside the reins repository: `node cli/dist/reins.js`). Verdicts: CONTINUE (exit 0) go on · HOLD (10) ask the user, one line: reason id + what you need · STOP (20) do what `resume` says, then re-run the same check · ESCALATE (30) next role in the chain (pl → pm → advisor → user).
 
 1. **Check first.** `reins check --drift`, then read the intent's frontmatter: it must be `status: approved`. No approved intent → HOLD: ask the user, or send them to `reins-intent`.
 2. **planner:** copy `templates/spec.md`; every requirement is `S-n` with the intent sentence it comes from;

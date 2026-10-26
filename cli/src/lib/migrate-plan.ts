@@ -207,6 +207,7 @@ function planTickets(root: string, ai: string, files: string[], moves: Move[]): 
 export function planMigration(root: string, opts: PlanOptions = {}): MigratePlan {
   const moves: Move[] = [];
   const report: string[] = [];
+  const legacyDir = opts.legacy === 'committed' ? '.agents/legacy/' : '.loctx/_legacy/';
   const ai = '.ai';
   if (!existsSync(join(root, ai))) return { moves, report };
 
@@ -266,7 +267,7 @@ export function planMigration(root: string, opts: PlanOptions = {}): MigratePlan
             why: 'verification assets — review before committing',
           });
         report.push(
-          `${rel}/ (${files.length} files) kept in .loctx/_legacy/ — promote what should be committed to test/`,
+          `${rel}/ (${files.length} files) moved to ${legacyDir} — promote what should be committed to test/`,
         );
         continue;
       case 'plan':
@@ -364,7 +365,7 @@ export function planMigration(root: string, opts: PlanOptions = {}): MigratePlan
       });
     if (fs.length)
       report.push(
-        `${d}/ moved to .loctx/_legacy/ — keep any project-specific procedure as a skill in .agents/skills/`,
+        `${d}/ moved to ${legacyDir} — keep any project-specific procedure as a skill in .agents/skills/`,
       );
   }
   if (opts.legacy === 'committed') {

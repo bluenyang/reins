@@ -133,6 +133,29 @@ const CROFFLE = {
   '.ai/verify/run.sh': 'echo hi',
 };
 
+describe('reins migrate — memory (012 S-11)', () => {
+  it('leaves .claude/memory and drafts a proposal instead of moving it to knowledge', async () => {
+    const d = repo({ ...GEN4, '.claude/memory/2026-10-14_deploy.md': 'deploy on friday\n' });
+    await runMigrate({
+      tier: 'graph',
+      mode: 'auto',
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: claudeOnly,
+      now: new Date(2026, 9, 27, 9, 0),
+    });
+    expect(existsSync(join(d, '.claude/memory/2026-10-14_deploy.md'))).toBe(true);
+    expect(existsSync(join(d, '.agents/knowledge/2026-10-14_deploy.md'))).toBe(false);
+    const dr = readFileSync(
+      join(d, '.loctx/knowledge-proposals/memory-2026-10-14-deploy.md'),
+      'utf8',
+    );
+    expect(dr).toContain('deploy on friday');
+    expect(dr).not.toMatch(/^approved:/m);
+    expect(driftMatch(d)).toEqual([]);
+  });
+});
+
 describe('reins migrate — ticket ids, intent 000, legacy (012-3)', () => {
   const opts = (d: string, legacy?: 'local' | 'committed') => ({
     tier: 'graph' as const,

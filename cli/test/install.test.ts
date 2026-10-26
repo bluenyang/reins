@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { driftConvention, driftMatch } from '../src/commands/check.js';
+import { acceptKnowledge } from '../src/commands/knowledge.js';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { discoverGates } from '../src/lib/detect.js';
@@ -42,6 +43,42 @@ describe('gate discovery (design §5)', () => {
       'build=pnpm build',
     ]);
     expect(g.excluded.map((x) => x.name)).toEqual(['lint']);
+  });
+});
+
+describe('memory drafts (012 S-11)', () => {
+  const o = (d: string) => ({
+    tier: 'graph' as const,
+    mode: 'auto' as const,
+    asker: defaultsAsker,
+    cwd: d,
+    detectVendors: onlyClaude,
+    now: new Date(2026, 9, 27, 9, 0),
+  });
+  it('keeps .claude/memory, drafts it as a proposal, passes drift, and accept promotes it', async () => {
+    const d = repo();
+    mkdirSync(join(d, '.claude/memory'), { recursive: true });
+    writeFileSync(join(d, '.claude/memory/a.md'), 'remember the milk\n');
+    const r = await runInstall(o(d));
+    expect(readFileSync(join(d, '.claude/memory/a.md'), 'utf8')).toBe('remember the milk\n');
+    const draft = readFileSync(join(d, '.loctx/knowledge-proposals/memory-a.md'), 'utf8');
+    expect(draft).toContain('source: ".claude/memory/a.md"');
+    expect(draft).toContain('remember the milk');
+    expect(draft).not.toMatch(/^approved:/m);
+    expect(r.notes.join('\n')).toMatch(/memory-a/);
+    expect(driftConvention(d)).toEqual([]);
+    expect(driftMatch(d)).toEqual([]);
+    // a second run leaves an edited draft alone
+    writeFileSync(join(d, '.loctx/knowledge-proposals/memory-a.md'), draft + 'edited\n');
+    await runInstall(o(d));
+    expect(readFileSync(join(d, '.loctx/knowledge-proposals/memory-a.md'), 'utf8')).toMatch(
+      /edited/,
+    );
+    writeFileSync(join(d, '.loctx/knowledge-proposals/memory-a.md'), draft);
+    const acc = acceptKnowledge('memory-a', { cwd: d });
+    expect(acc.refused).toBeUndefined();
+    expect(readFileSync(join(d, acc.path!), 'utf8')).toMatch(/^approved:/m);
+    expect(existsSync(join(d, '.claude/memory/a.md'))).toBe(true);
   });
 });
 

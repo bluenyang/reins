@@ -28,17 +28,23 @@ export function readRelease(root: string): ReleaseWorkflow[] | null {
     const inputs: Record<string, string> = {};
     for (const [k, v] of Object.entries((w['inputs'] as Record<string, unknown> | undefined) ?? {}))
       inputs[k] = String(v);
+    const explicit = Array.isArray(w['stages']);
     const stages = Array.isArray(w['stages'])
       ? (w['stages'] as unknown[]).filter((s): s is 'rc' | 'stable' => s === 'rc' || s === 'stable')
       : [];
     out.push({
       file: w['file'],
       inputs,
-      stages: stages.length > 0 ? stages : ['rc', 'stable'],
+      stages: explicit ? stages : ['rc', 'stable'],
       approval: w['approval'] === 'npm-staged' ? 'npm-staged' : 'none',
     });
   }
   return out;
+}
+
+/** POSIX single-quote `s` unless it only has safe characters. */
+export function shq(s: string): string {
+  return /^[A-Za-z0-9_.,:/@%+=-]+$/.test(s) ? s : `'${s.split("'").join("'\\''")}'`;
 }
 
 /** The `gh workflow run` lines for one stage; `{version}` in an input value becomes `version`. */
@@ -50,9 +56,10 @@ export function dispatchLines(
   return workflows
     .filter((w) => w.stages.includes(stage))
     .map((w) => {
-      const args = Object.entries(w.inputs).map(
-        ([k, v]) => `-f ${k}=${v.split('{version}').join(version)}`,
-      );
-      return ['gh workflow run', w.file, ...args].join(' ');
+      const args = Object.entries(w.inputs).flatMap(([k, v]) => [
+        '-f',
+        shq(`${k}=${v.split('{version}').join(version)}`),
+      ]);
+      return ['gh workflow run', shq(w.file), ...args].join(' ');
     });
 }

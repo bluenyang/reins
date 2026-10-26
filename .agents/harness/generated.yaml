@@ -2,7 +2,7 @@
 schema: reins/generated@1
 files:
   .claude/agents/reins-advisor.md: a735be4b856a7bcf
-  .claude/agents/reins-deploy.md: a97fa939ed12bbce
+  .claude/agents/reins-deploy.md: 9ebc91be1a74c878
   .claude/agents/reins-docs.md: baaa26b9b7cc6790
   .claude/agents/reins-implementer.md: 5c34b645290e69dc
   .claude/agents/reins-pl.md: 57e502871b34e3b2

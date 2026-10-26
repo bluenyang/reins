@@ -33,13 +33,13 @@ The merge target is the repository's default branch (`gh repo view --json defaul
 
 1. Run `reins check --stage rc-close --release <V>`. Anything but CONTINUE (open `release: planned` or `release: stabilization` tickets, F2) means no dispatch.
 2. T5 prints the next rc (`next rc: <V>-rc.<N>`; rc.1 when `.loctx/release/<V>.md` is missing) and one `dispatch: gh workflow run <file> -f k=v …` line per workflow configured for the rc stage (also in `--json`). Or "no release settings": stop after the merge.
-3. Run each `dispatch:` line exactly as printed. If the run is refused for permissions, do not look for another way: hand the printed line to the user and wait.
-4. `gh run watch <id> --exit-status` on the dispatched run (find it with `gh run list --workflow <file> --event workflow_dispatch`, newest after the noted time). On failure: no ledger line; report to the PL.
+3. Before dispatching record the current UTC time and the expected head commit (the default-branch commit being released). Run each `dispatch:` line exactly as printed. If the run is refused for permissions, do not look for another way: hand the printed line to the user and wait.
+4. Identify the run (every approval mode): `gh run list --workflow <file> --event workflow_dispatch --json databaseId,displayTitle,headSha,createdAt`, keeping runs whose `headSha` equals the expected commit and `createdAt` >= the recorded UTC time. Exactly one match: `gh run watch <id> --exit-status`. Zero or several: stop and ask the user, never guess. On failure: no ledger line; report to the PL.
 5. On success append `- rc.<N> <commit> <date>` to `.loctx/release/<V>.md` (local ledger, not committed). Fixes after an rc are `release: stabilization` tickets; the next rc follows the next T5 pass.
 6. Stable only on the user's explicit instruction (A2): the same workflows whose `stages` include stable, with `{version}` = `<V>`. Then set the intent's `status: released` in its intent.md and commit it.
 
 ### `approval: npm-staged` (added steps, only for workflows with this value)
 
-- Step 3: note the time first; identify the dispatched run by polling `gh run list --workflow <file> --event workflow_dispatch --json databaseId,displayTitle,headSha,createdAt` (every 5 s, up to ~60 s) for a run whose `displayTitle` carries the dispatched version, `createdAt` is after the noted time and `headSha` is the default-branch commit being released. Never fall back to another run; none found means stop and report to the PL.
+- Step 4: the one matching run must also have a `displayTitle` that carries the dispatched version.
 - Step 5: read the stage id from that run's log line "staged with id …" and add it to the ledger line: `- rc.<N> <commit> <stage-id> <date>`. Then ask the user to approve the staged version on npm.
 - Step 6: the workflow requires a `v<V>-rc.*` tag exactly at the default branch HEAD; after the stable version is approved on npm, set the intent `status: released`.

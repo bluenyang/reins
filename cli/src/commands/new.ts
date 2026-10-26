@@ -172,7 +172,7 @@ export function newTicket(
 const KIND_ROUTE: Record<string, { from: string; to: string }> = {
   implement: { from: 'pl', to: 'implementer' },
   verify: { from: 'pl', to: 'verify-tool' },
-  review: { from: 'pl', to: 'reviewer' },
+  review: { from: 'pl', to: 'code-review' },
 };
 
 export function newRequest(
@@ -188,6 +188,14 @@ export function newRequest(
   const from = o.from ?? fixed?.from;
   if (!from) return fail(`${kind} needs --from`);
   const to = o.to ?? fixed?.to ?? 'pl';
+  const hd = harnessDir(root);
+  const roles = new Set(ls(hd ? join(hd, 'roles') : '').map((f) => f.replace(/\.md$/, '')));
+  for (const [flag, r] of [
+    ['--from', from],
+    ['--to', to],
+  ] as const)
+    if (!roles.has(r))
+      return fail(`${flag} "${r}" is not a harness role (${[...roles].join(', ')})`);
   const t = template(root, 'bus/request.yaml');
   if (!t) return fail('no bus request template in the harness');
   const nn = nextBusNumber(ticket, ls(join(root, '.loctx', 'bus')));

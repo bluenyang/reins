@@ -100,6 +100,12 @@ describe('reins new — files (C-1, C-3, C-12)', () => {
     expect(text).toContain('to: verify-tool');
     expect(text).toContain('intent: "012"');
     expect(newRequest(d, '012-1', 'review').code).toBe(0);
+    expect(readFileSync(join(d, '.loctx/bus/012-1_03.request.yaml'), 'utf8')).toContain(
+      'to: code-review',
+    );
+    const bad = newRequest(d, '012-1', 'question', { from: 'nobody' });
+    expect(bad.code).toBe(1);
+    expect(newRequest(d, '012-1', 'implement', { to: 'ghost' }).code).toBe(1);
     ok('bus-request', d, '.loctx/bus/012-1_03.request.yaml', true);
   });
 
@@ -120,17 +126,12 @@ describe('reins new — files (C-1, C-3, C-12)', () => {
 
   it('never overwrites an existing file', () => {
     const d = project();
-    put(d, '.agents/intent/001_a/intent.md', 'x');
-    // an intent with the same number cannot be taken; force the collision on a ticket instead
-    put(d, '.agents/intent/012_thing/plan.md', PLAN);
-    const first = newTicket(d, '012', '1', 'same');
-    expect(first.code).toBe(0);
-    const path = join(d, first.stdout.trim());
-    const before = readFileSync(path, 'utf8');
-    // the next call numbers past it, so the file is untouched; and a hand-made clash is refused
-    put(d, '.loctx/bus/012-1_01.request.yaml', 'keep');
-    expect(newRequest(d, '012-1', 'verify').stdout).toBe('.loctx/bus/012-1_02.request.yaml\n');
-    expect(readFileSync(path, 'utf8')).toBe(before);
-    expect(readFileSync(join(d, '.loctx/bus/012-1_01.request.yaml'), 'utf8')).toBe('keep');
+    put(d, '.agents/intent/012_thing/plan.md', PLAN.replace('["012-1", "012-4"]', '[]'));
+    // a file at the computed path that numbering cannot see (no valid frontmatter id)
+    put(d, '.loctx/ticket/012-1_same.md', 'keep');
+    const r = newTicket(d, '012', '1', 'same');
+    expect(r.code).toBe(1);
+    expect(r.stderr).toContain('already exists');
+    expect(readFileSync(join(d, '.loctx/ticket/012-1_same.md'), 'utf8')).toBe('keep');
   });
 });

@@ -21,8 +21,7 @@ You are the **verify-tool** role of the reins harness in this repository. Runs t
 
 ## Procedure
 
-1. Run the gates with `reins gate --ticket <id>` — the declared order, stopping at the first failure (`--all` when asked). Never run a gate through a pipe or a chain; never trim its output (C5).
-2. Evidence is the report file it writes: `.loctx/reports/<ticket>_<gate>.log` (`$ cmd`, raw output, `exit N`). Then one summary per failing gate: signature line, file:line, matching knowledge id if `reins recall` finds one.
-3. Hand back (bus response `<ticket>_<nn>.response.yaml`) with verdict pass|fail, `evidence:` the report path(s), may_proceed. Then run `reins check --stage verdict --ticket <id>` (T3): a pass without raw evidence is D5, a non-zero exit or a massaged gate is D4.
+1. Run `reins gate --ticket <id> --respond` — the declared order, stopping at the first failure (`--all` when asked). One call runs the gates, keeps each gate's raw output in `.loctx/reports/<ticket>_<gate>.log` (`$ cmd`, output untouched, `exit N`) and writes the bus response `<ticket>_<nn>.response.yaml` for the newest open `kind: verify` request (verdict pass|fail, `evidence:` the report paths, may_proceed). Never run a gate through a pipe or a chain; never trim its output (C5). Stdout is only a summary line per gate and, for a failure, its signature and file:line — judge from the report files, not from stdout. No open verify request: nothing is written and the call exits 1; report that to the PL.
+2. Run `reins check --stage verdict --ticket <id>` (T3): a pass without raw evidence is D5, a non-zero exit or a massaged gate is D4. Add matching knowledge ids from `reins recall` to the hand-back only when asked.
 
 When a stop condition in `.agents/harness/policy/stops.yaml` applies, stop and report its id. `reins check` is the verifier.

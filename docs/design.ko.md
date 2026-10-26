@@ -127,7 +127,7 @@ ticket 없는 `reins-review`(사용자가 직접 고친 범위)는 drift만 부�
 
 ## 6. 생성과 드리프트 (D10)
 원본 → 생성물: `skills/` → `.claude/skills/` **복사**(Codex·Gemini·Cursor는 `.agents/skills/` 직접) · `roles/`+bindings → `.claude/agents/<r>.md`, `.codex/agents/<r>.toml`+`config.toml` · `policy/` 권한 → `.claude/settings.json`(+SKILL `allowed-tools`), 훅 → `settings.json#hooks`(T2·T4·T6). 권한은 **금지선의 역**으로 생성. 머리말 "generated — do not edit". 1차 검증은 Claude 생성물만.
-드리프트 `reins check --drift` 3층: **형식**(`skills-ref validate`) · **일치**(재생성 diff = 0, 스킬 바이트 일치) · **규약**(스키마·tier·권한≤금지선·관리 블록·오버라이드 버전·approvals↔트레일러·bus 산문 없음·`.loctx` gitignore). 실패 = F2. 훅과 CI가 같은 스크립트.
+드리프트 `reins check --drift` 3층: **형식**(`skills-ref validate`) · **일치**(재생성 diff = 0, 스킬 바이트 일치) · **규약**(스키마·tier·권한≤금지선·관리 블록·오버라이드 버전·approvals↔트레일러·bus 산문 없음·`.loctx` gitignore). 일치 층은 tier가 설치하는 파일만 비교한다. tier가 더 이상 설치하지 않는 upstream 파일(예: `CHANGELOG.md`)은 F2 STOP이 아니라 `reins update`를 안내하는 WARN이다. `reins update`는 `.agents/harness/` 아래에서 upstream에 있고 tier 밖이며 프로젝트 소유가 아닌 파일을 지우고 목록을 출력한다(`bindings.yaml`·`gates.yaml`·`install.yaml`·`generated.yaml`과 upstream에 없는 파일은 남는다). `--dry-run`은 목록만 낸다. 실패 = F2. 훅과 CI가 같은 스크립트.
 
 ## 7. 세대 판별과 migrate (D11)
 신호(순서대로 첫 일치): 미적용 / 1세대(`.ai/`만) / 2세대(AGENTS만) / 3세대(`.claude/commands/`) / 4세대(skills 10+ & `work-cicd-to|go-flow`) / reins(마커).

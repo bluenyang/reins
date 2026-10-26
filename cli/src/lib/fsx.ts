@@ -12,10 +12,12 @@ export interface Applied {
   created: string[];
   changed: string[];
   unchanged: string[];
+  /** upstream files the tier no longer installs, deleted by update (design §6) */
+  removed: string[];
 }
 
 export function apply(root: string, writes: Write[], dryRun: boolean): Applied {
-  const out: Applied = { created: [], changed: [], unchanged: [] };
+  const out: Applied = { created: [], changed: [], unchanged: [], removed: [] };
   for (const w of writes) {
     const abs = join(root, w.path);
     const exists = existsSync(abs);

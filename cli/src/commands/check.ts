@@ -10,6 +10,7 @@ import { harnessVersion, packageHarness, packageSkills, tierSkills } from '../li
 import { listFiles, relPath } from '../lib/fsx.js';
 import { driftGenerated } from '../lib/vendor-write.js';
 import { indexReader, workTreeReader, type Reader } from '../lib/reader.js';
+import { PROJECT_OWNED, tierFiles, type Tier } from './install.js';
 import { rcClose, ticketStart, verdictCheck } from './stages.js';
 import { parse } from 'yaml';
 import { report, type Finding, type StopReport } from '../lib/verdict.js';
@@ -243,8 +244,6 @@ export function driftConvention(
 }
 
 /** Files in an installed harness that belong to the project, not upstream. */
-const PROJECT_OWNED = new Set(['bindings.yaml', 'gates.yaml', 'install.yaml', 'generated.yaml']);
-
 /** Drift, match layer — the installed `.agents/harness/` against the packaged upstream at the pinned version (design §6). */
 export function driftMatch(root: string, rd: Reader = workTreeReader(root)): Finding[] {
   const installed = '.agents/harness';
@@ -270,11 +269,24 @@ export function driftMatch(root: string, rd: Reader = workTreeReader(root)): Fin
       },
     ];
   const findings: Finding[] = [];
+  // only files this tier installs are compared; an upstream file it no longer installs (e.g. CHANGELOG.md
+  // from a 0.1.0 install) is a leftover that `reins update` removes, not a hand edit
+  const installs = new Set(tierFiles(listFiles(up), (pinned.tier ?? 'graph') as Tier));
   for (const entry of rd.list(installed)) {
     const rel = entry.slice(installed.length + 1);
     if (PROJECT_OWNED.has(rel)) continue;
     const src = join(up, rel);
     if (!existsSync(src)) continue;
+    if (!installs.has(rel)) {
+      findings.push({
+        reason: 'F2',
+        verdict: 'WARN',
+        path: `.agents/harness/${rel}`,
+        message: `upstream v${upVersion} no longer installs this file for the ${pinned.tier ?? 'graph'} tier`,
+        resume: 'run `reins update` to remove it',
+      });
+      continue;
+    }
     if (readFileSync(src, 'utf8') !== rd.read(entry))
       findings.push({
         reason: 'F2',

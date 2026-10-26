@@ -87,6 +87,7 @@ export async function runUpdate(o: UpdateOptions): Promise<UpdateResult> {
     now: o.now,
     detectVendors: o.detectVendors,
     recordAs: 'update',
+    retire: true,
   });
   return res;
 }

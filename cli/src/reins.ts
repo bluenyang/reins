@@ -177,9 +177,11 @@ program
     for (const c of r.changes) process.stdout.write(`  · ${c}\n`);
     if (a) {
       process.stdout.write(
-        `${o.dryRun ? 'would write' : 'wrote'}: ${a.created.length} new, ${a.changed.length} changed\n`,
+        `${o.dryRun ? 'would write' : 'wrote'}: ${a.created.length} new, ${a.changed.length} changed${a.removed.length ? `, ${a.removed.length} removed` : ''}\n`,
       );
       for (const p of [...a.created, ...a.changed]) process.stdout.write(`  ~ ${p}\n`);
+      for (const p of a.removed)
+        process.stdout.write(`  - ${p} (no longer installed by this tier)\n`);
     }
     for (const n of r.overrides)
       process.stdout.write(

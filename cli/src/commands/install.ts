@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync, rmdirSync, rmSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import type { Asker } from '../lib/ask.js';
 import { planMemoryProposals } from '../lib/memory.js';
@@ -48,6 +48,8 @@ export interface InstallOptions {
   overExisting?: boolean;
   /** history file label: install (default), update, migrate */
   recordAs?: string;
+  /** update: delete upstream files the tier no longer installs (spec S-13) */
+  retire?: boolean;
 }
 
 export interface InstallResult {
@@ -61,7 +63,7 @@ export interface InstallResult {
 }
 
 /** Which upstream harness files a tier installs (design §1, tier table). */
-function tierFiles(all: string[], tier: Tier): string[] {
+export function tierFiles(all: string[], tier: Tier): string[] {
   return all.filter((f) => {
     if (f.startsWith('knowledge-seeds/')) return false; // copied into knowledge/, not harness/
     if (f === 'CHANGELOG.md') return false; // read by update from the package, not installed
@@ -72,6 +74,25 @@ function tierFiles(all: string[], tier: Tier): string[] {
     if (f.startsWith('templates/')) return true;
     return tier === 'graph'; // roles/, schemas/
   });
+}
+
+/** Harness files the project owns; update and drift never touch them. */
+export const PROJECT_OWNED = new Set([
+  'bindings.yaml',
+  'gates.yaml',
+  'install.yaml',
+  'generated.yaml',
+]);
+
+/**
+ * Files installed under `.agents/harness/` that upstream still ships but this tier no longer installs
+ * (e.g. `CHANGELOG.md`): in upstream, outside `tierFiles(tier)`, not project-owned. Anything not in
+ * upstream is the project's and is never listed.
+ */
+export function retiredFiles(installed: string[], upstream: string[], tier: Tier): string[] {
+  const up = new Set(upstream);
+  const keep = new Set(tierFiles(upstream, tier));
+  return installed.filter((f) => up.has(f) && !keep.has(f) && !PROJECT_OWNED.has(f));
 }
 
 /** bindings.yaml (design §5): defaults from role files; an unavailable vendor falls back, else to pm's model. */
@@ -388,6 +409,23 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
 
   // 8. apply, then record (only when something changed)
   const applied = apply(root, writes, !!o.dryRun);
+  if (o.retire) {
+    const harnessDir = join(root, '.agents/harness');
+    const here = existsSync(harnessDir) ? listFiles(harnessDir) : [];
+    for (const f of retiredFiles(here, listFiles(up), o.tier)) {
+      applied.removed.push(`.agents/harness/${f}`);
+      if (o.dryRun) continue;
+      rmSync(join(harnessDir, f), { force: true });
+      // prune directories the removal left empty, never the harness root
+      for (let d = dirname(join(harnessDir, f)); d !== harnessDir; d = dirname(d)) {
+        try {
+          rmdirSync(d);
+        } catch {
+          break;
+        }
+      }
+    }
+  }
 
   // 9. vendor files from the installed harness (design §6) — never over a file reins did not write
   const generated = o.dryRun ? undefined : writeGenerated(root, generateVendorFiles(root), false);
@@ -398,7 +436,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     for (const r of generated.refused) notes.push(`left alone ${r.path}: ${r.why}`);
   }
   let history: string | undefined;
-  const changedAny = applied.created.length + applied.changed.length > 0;
+  const changedAny = applied.created.length + applied.changed.length + applied.removed.length > 0;
   if (changedAny && !o.dryRun && o.tier !== 'harness') {
     const now = o.now ?? new Date();
     // local time, like every other history file name (<YYYY-MM-DD-HHmm>)
@@ -411,9 +449,10 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
       `# reins install ${o.tier} (${o.mode}) — v${version}`,
       '',
       `- generation before: ${gen}`,
-      `- created: ${applied.created.length} · changed: ${applied.changed.length} · unchanged: ${applied.unchanged.length}`,
+      `- created: ${applied.created.length} · changed: ${applied.changed.length} · unchanged: ${applied.unchanged.length} · removed: ${applied.removed.length}`,
       ...applied.created.map((p) => `  - + ${p}`),
       ...applied.changed.map((p) => `  - ~ ${p}`),
+      ...applied.removed.map((p) => `  - - ${p}`),
       '',
       '## notes',
       ...notes.map((n) => `- ${n}`),

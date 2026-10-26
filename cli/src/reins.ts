@@ -8,6 +8,7 @@ import { runStatus } from './commands/status.js';
 import { runUpdate } from './commands/update.js';
 import { configureBindings } from './commands/configure.js';
 import { runGates } from './commands/gate.js';
+import { newIntent, newRequest, newTicket, type NewResult } from './commands/new.js';
 import {
   collectMetrics,
   formatMetrics,
@@ -236,6 +237,49 @@ program
         );
     process.exit(r.refused ? 2 : r.runs.every((g) => g.exit === 0) ? 0 : 1);
   });
+
+const done = (r: NewResult) => {
+  process.stdout.write(r.stdout);
+  process.stderr.write(r.stderr);
+  process.exit(r.code);
+};
+
+const nw = program
+  .command('new')
+  .description(
+    'create an intent, ticket or bus request from the templates (no prompts, never overwrites)',
+  );
+nw.command('intent')
+  .argument('<slug>')
+  .option('--version <v>', 'target version')
+  .option('--origin <o>', 'user | agent | incident')
+  .action((slug: string, o: { version?: string; origin?: string }) =>
+    done(newIntent(process.cwd(), slug, o)),
+  );
+nw.command('ticket')
+  .argument('<intent>')
+  .argument('<step>', "the plan's order-of-work step")
+  .argument('<slug>')
+  .option('--title <t>')
+  .option('--depends <ids>', 'comma separated ticket ids')
+  .option('--role <r>')
+  .option('--release <r>', 'planned | stabilization')
+  .action(
+    (
+      intent: string,
+      step: string,
+      slug: string,
+      o: { title?: string; depends?: string; role?: string; release?: string },
+    ) => done(newTicket(process.cwd(), intent, step, slug, o)),
+  );
+nw.command('request')
+  .argument('<ticket>')
+  .argument('<kind>', 'implement | verify | review | question | stop-report')
+  .option('--from <r>')
+  .option('--to <r>')
+  .action((ticket: string, kind: string, o: { from?: string; to?: string }) =>
+    done(newRequest(process.cwd(), ticket, kind, o)),
+  );
 
 program
   .command('status')

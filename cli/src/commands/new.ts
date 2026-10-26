@@ -134,11 +134,11 @@ export function newTicket(
   const idir = intentDir(root, intent);
   if (!idir) return fail(`no intent ${intent} in .agents/intent/`);
   const plan = intentFile(root, intent, 'plan');
-  if (plan) {
-    const max = planStepCount(plan.body);
-    if (max !== null && Number(step) > max)
-      return fail(`step ${step} is outside the plan's order of work (1..${max})`);
-  }
+  if (!plan) return fail(`intent ${intent} has no plan.md; write the plan before its tickets`);
+  const max = planStepCount(plan.body);
+  if (max === null) return fail(`plan.md of intent ${intent} has no readable order of work`);
+  if (Number(step) > max)
+    return fail(`step ${step} is outside the plan's order of work (1..${max})`);
   const t = template(root, 'ticket.md');
   if (!t) return fail('no ticket template in the harness');
   const planned = Array.isArray(plan?.data['tickets'])
@@ -151,7 +151,7 @@ export function newTicket(
     .pop()!
     .replace(/^\d{3}_/, '');
   const branch =
-    typeof plan?.data['branch'] === 'string' ? plan.data['branch'] : `feat/${intent}-${iSlug}`;
+    typeof plan.data['branch'] === 'string' ? plan.data['branch'] : `feat/${intent}-${iSlug}`;
   const depends = (o.depends ?? '')
     .split(',')
     .map((s) => s.trim())

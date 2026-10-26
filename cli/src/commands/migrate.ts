@@ -152,6 +152,7 @@ export async function runMigrate(o: MigrateOptions): Promise<MigrateResult> {
           m.n ?? 1,
           m.idMap,
           m.dropped,
+          m.group,
         ),
       );
       unlinkSync(from);

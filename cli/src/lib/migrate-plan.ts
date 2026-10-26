@@ -24,6 +24,8 @@ export interface Move {
   existing?: boolean;
   /** ticket moves: dependencies that could not be remapped, recorded in `asks:` */
   dropped?: string[];
+  /** ticket moves: folder and version the item belongs to, kept in the ticket for later runs */
+  group?: string;
 }
 
 export interface PlanOptions {
@@ -91,9 +93,21 @@ function workItem(root: string, path: string, dir: string): WorkItem {
   };
 }
 
-/** `migrated_from` → ticket path, and the highest `000-<n>` in use, among tickets already written. */
-function existingTickets(root: string): { byFrom: Map<string, string>; max: number } {
-  const byFrom = new Map<string, string>();
+interface PriorTicket {
+  path: string;
+  id: string; // 000-<n>
+  from: string; // migrated_from
+  origId: string; // migrated_id
+  group: string;
+}
+
+/** Tickets an earlier run wrote (by `migrated_from`), and the highest `000-<n>` in use. */
+function existingTickets(root: string): {
+  list: PriorTicket[];
+  byFrom: Map<string, PriorTicket>;
+  max: number;
+} {
+  const list: PriorTicket[] = [];
   let max = 0;
   const dir = '.loctx/ticket';
   for (const f of existsSync(join(root, dir)) ? readdirSync(join(root, dir)) : []) {
@@ -101,13 +115,34 @@ function existingTickets(root: string): { byFrom: Map<string, string>; max: numb
     if (!m) continue;
     max = Math.max(max, Number(m[1]));
     const { data } = splitFrontmatter(readFileSync(join(root, dir, f), 'utf8'));
-    if (data?.['migrated_from']) byFrom.set(String(data['migrated_from']), `${dir}/${f}`);
+    if (!data?.['migrated_from']) continue;
+    const from = String(data['migrated_from']);
+    const slash = from.lastIndexOf('/');
+    const name = basename(from, '.md');
+    list.push({
+      path: `${dir}/${f}`,
+      id: `000-${m[1]}`,
+      from,
+      origId: data['migrated_id'] == null ? '' : String(data['migrated_id']),
+      // tickets from before migrated_group: folder plus the filename's version prefix
+      group:
+        data['migrated_group'] == null
+          ? `${slash < 0 ? '' : from.slice(0, slash)}|${name.includes('_') ? name.split('_')[0] : ''}`
+          : String(data['migrated_group']),
+    });
   }
-  return { byFrom, max };
+  return { list, byFrom: new Map(list.map((t) => [t.from, t])), max };
 }
 
-/** Open work items become `000-1…000-N` in path order; `depends` is remapped only where one open item in the same folder and version carries the id. */
+/** Open work items become `000-1…000-N` in path order; `depends` is remapped only where exactly one item in the same folder and version carries the id, counting tickets from earlier runs. */
 function planTickets(root: string, ai: string, files: string[], moves: Move[]): void {
+  for (const f of files.filter((x) => !x.endsWith('.md')))
+    moves.push({
+      from: f,
+      to: `.loctx/history/work/${f.slice(`${ai}/work/`.length)}`,
+      action: 'move',
+      why: 'closed work item',
+    });
   const items = files
     .filter((f) => f.endsWith('.md'))
     .toSorted(natural)
@@ -129,9 +164,16 @@ function planTickets(root: string, ai: string, files: string[], moves: Move[]): 
     }
     const was = prior.byFrom.get(sub);
     const m: Move = was
-      ? { from: it.path, to: was, action: 'ticket', existing: true, why: 'already migrated' }
-      : { from: it.path, to: '', action: 'ticket', why: 'open work item → ticket' };
-    if (!was) {
+      ? { from: it.path, to: was.path, action: 'ticket', existing: true, why: 'already migrated' }
+      : {
+          from: it.path,
+          to: '',
+          action: 'ticket',
+          why: 'open work item → ticket',
+          group: it.group,
+        };
+    if (was) numberOf.set(it.path, was.id);
+    else {
       next += 1;
       m.n = next;
       m.to = `.loctx/ticket/000-${next}_${slugOf(it.path)}.md`;
@@ -140,17 +182,22 @@ function planTickets(root: string, ai: string, files: string[], moves: Move[]): 
     moves.push(m);
     pending.push({ move: m, item: it });
   }
+  const here = new Set(items.map((i) => i.path.slice(`${ai}/work/`.length)));
   for (const { move, item } of pending) {
     if (move.existing) continue;
-    const peers = items.filter((p) => p.group === item.group);
     const idMap: Record<string, string> = {};
     const dropped: string[] = [];
     for (const d of item.deps) {
-      const same = peers.filter((p) => p.id === d);
-      const target = same.length === 1 && same[0]?.open ? numberOf.get(same[0].path) : undefined;
-      if (target) idMap[d] = target;
-      else if (same.length === 1 && !same[0]?.open) continue; // finished — nothing to wait for
-      else dropped.push(d);
+      const same = items.filter((p) => p.group === item.group && p.id === d);
+      const old = prior.list.filter(
+        (t) => t.group === item.group && t.origId === d && !here.has(t.from),
+      );
+      if (same.length + old.length !== 1) dropped.push(d);
+      else if (old[0]) idMap[d] = old[0].id;
+      else if (same[0]?.open) {
+        const target = numberOf.get(same[0].path);
+        if (target) idMap[d] = target;
+      } // finished — nothing to wait for
     }
     move.idMap = idMap;
     move.dropped = dropped;
@@ -361,6 +408,7 @@ export function convertWorkToTicket(
   n: number,
   idMap: Record<string, string> = {},
   dropped: string[] = [],
+  group = '',
 ): string {
   const { data, body } = splitFrontmatter(text);
   const fm = data ?? {};
@@ -389,6 +437,7 @@ export function convertWorkToTicket(
     ...(fm['branch'] ? { branch: fm['branch'] } : {}),
     migrated_from: fileName,
     ...(origId ? { migrated_id: origId } : {}),
+    ...(group ? { migrated_group: group } : {}),
   };
   const yaml = Object.entries(ticket)
     .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)

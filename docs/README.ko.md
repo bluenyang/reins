@@ -129,22 +129,24 @@ T1(`ticket-start`), T2(`pre-commit`), T3(`verdict`), T4(`pre-push`), T5(`rc-clos
 
 ## 스킬
 
-에이전트가 쓰는 진입점 스킬이 세 개 있고 `SKILL.md` 표준을 따릅니다.
+스킬 열 개가 `SKILL.md` 표준을 따릅니다. `reins-setup`은 설치, `reins-loop`는 지휘를 맡고, 나머지 단계 스킬 여덟 개는 단계 하나씩을 맡아 단독으로도 부를 수 있습니다.
 
 | 스킬 | 쓸 때 |
 |---|---|
 | `reins-setup` | reins를 설치하거나 기존 하네스를 옮길 때 |
-| `reins-intent` | 새 요청이 들어올 때: 질문지, 승인된 intent, 수락된 spec |
-| `reins-loop` | spec이 수락됐을 때: plan, ticket, 구현, 검증, 리뷰, history |
+| `reins-roadmap` | 공개 로드맵을 고치고 대상 버전을 정할 때 |
+| `reins-intent` | 새 요청이 들어올 때: 질문지와 승인된 intent |
+| `reins-spec` | intent가 승인됐을 때: 수락된 spec, plan, ticket |
+| `reins-implement` | ticket이 준비됐을 때: 커밋 단위로 구현 |
+| `reins-review` | ticket이 끝났을 때: 검증, 리뷰, 닫기 |
+| `reins-test` | 버전의 ticket이 모두 끝났을 때: 시나리오와 빌드 |
+| `reins-release` | 버전 테스트가 끝났을 때: PR, CI, merge, rc |
+| `reins-retro` | 버전이 릴리스됐을 때: 회고와 knowledge 제안 |
+| `reins-loop` | spec이 수락됐을 때: 단계 스킬을 순서대로 호출 |
 
 ## 로드맵
 
-| 버전 | 내용 |
-|---|---|
-| 0.1 | graph 설계, 이 저장소의 자기 설치·자기 이전, 검증기, 스킬 세 개, metrics, 위반 시나리오. 0.1.0 배포됨, 0.1.1 안정화(루프가 찾은 문제 수정), 0.1.2 Claude Code 플러그인(마켓플레이스 설치) |
-| 0.2 | graph에서 loop·harness 깎기, Codex·Gemini·Cursor 생성물, `recall`·`doctor`·예산 정지, 이전 세대 하네스 시험 이전 |
-| 0.3 | Team Croffle 저장소에 적용 |
-| 1.0 | 정해진 일정은 없습니다. 0.x에서 기능을 더해 가다가 메인테이너가 체계가 잡혔다고 판단할 때 1.0이 됩니다. 안정화만으로 1.0이 되지는 않습니다 |
+전체 계획은 [docs/ROADMAP.ko.md](ROADMAP.ko.md)에 있습니다([English](ROADMAP.md)).
 
 ## 문서
 

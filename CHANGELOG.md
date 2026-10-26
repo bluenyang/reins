@@ -26,9 +26,11 @@ The workflow the maintainer laid out, end to end (intents 008–011). Harness 0.
 - Intent status `released`; 001–007 marked released; status shows no next action for them.
 - sync-version changes only the version string; the publish summary no longer calls `npm stage list`.
 
-### Known issues
-- `reins new ticket` numbers past ids the plan already reserved (use the plan's ids by hand until fixed).
-- `reins status` keeps listing retro candidates that were judged not to be lessons (no dismiss yet).
+### Fixed (rc.2)
+- `reins new ticket` takes the ids the plan reserved before numbering past them.
+- `reins knowledge dismiss <key> --reason` records a candidate that is not a lesson; retro and status stop counting it until it repeats further.
+- Tests remove every temp dir they create (a run had left about 10,000 under /tmp).
+- The flaky e2e control test: one test file rebuilt `cli/dist` while others ran the CLI.
 
 ## [0.1.2] — 2026-10-26
 

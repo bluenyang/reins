@@ -1,9 +1,16 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
 import { repoRoot } from '../lib/git.js';
 import { harnessDir } from '../lib/harness.js';
 import { localIso } from '../lib/metrics.js';
-import { bareKey, collectRetro } from '../lib/retro.js';
+import { bareKey, collectRetro, DISMISSED } from '../lib/retro.js';
 import { loadSchemas, validateFile } from '../lib/schema.js';
 
 export const PROPOSALS = '.loctx/knowledge-proposals';
@@ -99,4 +106,23 @@ export function acceptKnowledge(name: string, o: { cwd?: string } = {}): Knowled
   writeFileSync(join(root, rel), t);
   rmSync(draft);
   return { path: rel };
+}
+
+/**
+ * `reins knowledge dismiss <key> --reason <text>`: the pm judged a current candidate not to be a
+ * lesson. retro and status stop counting it until it shows up in more units than it had then.
+ */
+export function dismissKnowledge(
+  key: string,
+  o: { reason?: string; cwd?: string } = {},
+): KnowledgeResult {
+  const root = repoRoot(o.cwd ?? process.cwd());
+  const reason = o.reason?.trim();
+  if (!reason) return { refused: '--reason is required: say why it is not a lesson' };
+  const c = collectRetro(root).candidates.find((k) => k.key === key);
+  if (!c) return { refused: `"${key}" is not a current candidate (reins retro lists them)` };
+  mkdirSync(join(root, PROPOSALS), { recursive: true });
+  const line = { key, units: c.units.length, at: today(), reason };
+  appendFileSync(join(root, DISMISSED), `${JSON.stringify(line)}\n`);
+  return { path: DISMISSED };
 }

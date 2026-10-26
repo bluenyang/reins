@@ -23,6 +23,33 @@ export interface Retro {
   tokens: Summary['tokens'];
   keys: RetroKey[];
   candidates: RetroKey[];
+  /** Repeated keys the pm dismissed as not a lesson; they return once seen in more units. */
+  dismissed: RetroKey[];
+}
+
+/** One line per dismissal: the key, how many units it had then, when and why. */
+export const DISMISSED = '.loctx/knowledge-proposals/dismissed.jsonl';
+export interface Dismissal {
+  key: string;
+  units: number;
+  at: string;
+  reason: string;
+}
+
+/** The latest dismissal of each key; unreadable lines are skipped. */
+export function readDismissals(root: string): Map<string, Dismissal> {
+  const out = new Map<string, Dismissal>();
+  const f = join(root, DISMISSED);
+  if (!existsSync(f)) return out;
+  for (const line of readFileSync(f, 'utf8').split('\n')) {
+    try {
+      const d = JSON.parse(line) as Dismissal;
+      if (typeof d.key === 'string' && typeof d.units === 'number') out.set(d.key, d);
+    } catch {
+      // a blank or broken line dismisses nothing
+    }
+  }
+  return out;
 }
 
 /** `stop:F2` → `F2`; a bare slug stays as it is. */
@@ -125,7 +152,11 @@ export function collectRetro(root: string, opts: { release?: string } = {}): Ret
     }))
     .toSorted((a, b) => b.units.length - a.units.length || a.key.localeCompare(b.key));
   const done = promotedSlugs(root);
-  const candidates = keys.filter((k) => k.units.length >= 2 && !done.has(bareKey(k.key)));
+  const dismissals = readDismissals(root);
+  const isDismissed = (k: RetroKey) => k.units.length <= (dismissals.get(k.key)?.units ?? 0);
+  const repeated = keys.filter((k) => k.units.length >= 2 && !done.has(bareKey(k.key)));
+  const candidates = repeated.filter((k) => !isDismissed(k));
+  const dismissed = repeated.filter(isDismissed);
   return {
     release,
     stops: Object.fromEntries(Object.entries(stops).toSorted(([a], [b]) => a.localeCompare(b))),
@@ -133,6 +164,7 @@ export function collectRetro(root: string, opts: { release?: string } = {}): Ret
     tokens: summarize(records).tokens,
     keys,
     candidates,
+    dismissed,
   };
 }
 
@@ -157,9 +189,12 @@ export function formatRetro(r: Retro): string {
     if (!rows.length) out.push('  —');
     for (const k of rows) {
       const cand = r.candidates.some((c) => c.key === k.key);
+      const dism = r.dismissed.some((c) => c.key === k.key);
       const shown =
         k.units.slice(0, 4).join(', ') + (k.units.length > 4 ? `, +${k.units.length - 4}` : '');
-      out.push(`  ${k.key} ×${k.units.length} (${shown})${cand ? '' : ' — promoted'}`);
+      out.push(
+        `  ${k.key} ×${k.units.length} (${shown})${cand ? '' : dism ? ' — dismissed' : ' — promoted'}`,
+      );
     }
   }
   out.push(`knowledge candidates: ${r.candidates.length}`);

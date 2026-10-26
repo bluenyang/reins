@@ -27,7 +27,13 @@ export function planMemoryProposals(
   const taken = new Set<string>();
   const drafted = new Set<string>();
   const srcOf = (file: string) => {
-    const m = /^source:\s*(.+)$/m.exec(readFileSync(file, 'utf8'));
+    let text: string;
+    try {
+      text = readFileSync(file, 'utf8');
+    } catch {
+      return null; // a directory or an unreadable entry names no source; its name stays taken
+    }
+    const m = /^source:\s*(.+)$/m.exec(text);
     return m ? m[1]!.trim().replace(/^"(.*)"$/, '$1') : null;
   };
   // an accepted entry keeps the source: its draft had, so accepting does not cause a re-draft

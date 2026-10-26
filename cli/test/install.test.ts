@@ -133,6 +133,24 @@ describe('memory drafts after accept (012 S-11)', () => {
     await runInstall(o);
     expect(readdirSync(join(d, '.loctx/knowledge-proposals'))).toEqual([]);
   });
+
+  it('an entry that cannot be read does not stop the install and keeps its name', async () => {
+    const d = repo();
+    mkdirSync(join(d, '.claude/memory'), { recursive: true });
+    writeFileSync(join(d, '.claude/memory/a.md'), 'one\n');
+    mkdirSync(join(d, '.loctx/knowledge-proposals/memory-a.md'), { recursive: true });
+    mkdirSync(join(d, '.agents/knowledge/odd.md'), { recursive: true });
+    await runInstall({
+      tier: 'graph',
+      mode: 'auto',
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: onlyClaude,
+      now: new Date(2026, 9, 27, 9, 0),
+    });
+    const p = join(d, '.loctx/knowledge-proposals/memory-a-2.md');
+    expect(readFileSync(p, 'utf8')).toContain('source: ".claude/memory/a.md"');
+  });
 });
 
 describe('reins install graph (S5)', () => {

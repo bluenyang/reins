@@ -1,6 +1,6 @@
 # version pin and install settings (R25) — read by reins update
 schema: reins/install@1
 tier: graph
-version: 0.1.1
+version: 0.1.2
 mode: manual
 language: ko

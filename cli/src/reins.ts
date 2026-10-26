@@ -172,10 +172,12 @@ program
     }
     const a = r.install?.applied;
     process.stdout.write(
-      `reins update — harness v${r.from} → v${r.to}${o.dryRun ? ' (dry run)' : ''}\n`,
+      `reins update — cli ${r.cliFrom === 'none' ? 'none' : `v${r.cliFrom}`} → v${r.cliTo}, harness v${r.from} → v${r.to}${o.dryRun ? ' (dry run)' : ''}\n`,
     );
     for (const c of r.changes) process.stdout.write(`  · ${c}\n`);
-    if (a) {
+    if (a && a.created.length + a.changed.length + a.removed.length === 0)
+      process.stdout.write('already up to date\n');
+    else if (a) {
       process.stdout.write(
         `${o.dryRun ? 'would write' : 'wrote'}: ${a.created.length} new, ${a.changed.length} changed${a.removed.length ? `, ${a.removed.length} removed` : ''}\n`,
       );

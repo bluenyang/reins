@@ -100,8 +100,9 @@ describe('C-1 harness line', () => {
     expect(s.harness.drift.ok).toBe(true);
     const line = formatStatus(s).split('\n')[0]!;
     expect(line).toContain('graph');
-    expect(line).toContain(`installed v${s.harness.installedVersion}`);
-    expect(line).toContain(`package v${s.harness.packageVersion}`);
+    expect(line).toContain(`graph v${s.harness.installedVersion}`);
+    expect(line).toContain(`(package harness v${s.harness.packageVersion})`);
+    expect(line).toContain(`cli ${s.harness.cliInstalled} (running ${s.harness.cliPackage})`);
     expect(line).toContain('drift: ok');
   });
 
@@ -198,7 +199,7 @@ describe('C-3 the next-step table', () => {
     put(d, '.agents/intent/001_t001/plan.md', PLAN('active'));
     put(d, '.loctx/ticket/001-1_a.md', TICKET('001-1', 'doing'));
     put(d, '.loctx/history/2026-10-25-0100_a.md', '001-1 mentioned\n');
-    expect(one(d, '001').next).toBe('—');
+    expect(one(d, '001').next).toBe('implementer: 001-1 (reins-implement)');
   });
 
   it.each(['reviewed', 'active'])(
@@ -208,7 +209,7 @@ describe('C-3 the next-step table', () => {
       intent(d, '001', 'approved', 'accepted', null);
       put(d, '.agents/intent/001_t001/plan.md', PLAN(plan, '["001-1", "001-2"]'));
       put(d, '.loctx/ticket/001-1_a.md', TICKET('001-1', 'doing'));
-      expect(one(d, '001').next).toBe('—');
+      expect(one(d, '001').next).toBe('implementer: 001-1 (reins-implement)');
     },
   );
 
@@ -223,6 +224,29 @@ describe('C-3 the next-step table', () => {
     const d = await project();
     intent(d, '001', 'draft', 'accepted', 'reviewed');
     expect(one(d, '001').next).toBe('user: approve the intent');
+  });
+
+  it.each([
+    ['done', 'reins-review: close 001-1'],
+    ['blocked', 'pl: unblock 001-1'],
+    ['todo', 'implementer: 001-1 (reins-implement)'],
+    ['doing', 'implementer: 001-1 (reins-implement)'],
+  ])('with the first open ticket %s the next action is %s', (status, want) => {
+    const s = {
+      intent: 'approved',
+      spec: 'accepted',
+      plan: 'active',
+      open: 2,
+      openIds: ['001-2', '001-1'],
+      openTickets: [
+        { id: '001-2', status: 'todo' },
+        { id: '001-1', status },
+      ],
+      planned: ['001-1', '001-2'],
+      history: [],
+      broken: [],
+    };
+    expect(nextForIntent(s)).toBe(want);
   });
 
   it('falls back to "—", or names a broken file, when no row matches', () => {

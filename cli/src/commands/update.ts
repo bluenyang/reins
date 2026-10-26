@@ -5,7 +5,7 @@ import { defaultsAsker } from '../lib/ask.js';
 import { overrides } from '../lib/blocks.js';
 import type { Vendor } from '../lib/detect.js';
 import { repoRoot } from '../lib/git.js';
-import { harnessVersion, packageHarness } from '../lib/upstream.js';
+import { harnessVersion, packageHarness, packageVersion } from '../lib/upstream.js';
 import { runInstall, type InstallResult, type Tier } from './install.js';
 
 export interface UpdateOptions {
@@ -20,6 +20,10 @@ export interface UpdateResult {
   refused?: string;
   from?: string;
   to?: string;
+  /** `cli` in install.yaml before the update, or 'none'. */
+  cliFrom?: string;
+  /** The running package version. */
+  cliTo?: string;
   changes: string[]; // changelog entries newer than the pin
   needsSkill: boolean; // some entry asks for /reins-update
   overrides: string[];
@@ -66,11 +70,14 @@ export async function runUpdate(o: UpdateOptions): Promise<UpdateResult> {
   const pin = parse(readFileSync(pinPath, 'utf8')) as {
     tier: Tier;
     version: string;
+    cli?: string;
     mode: 'manual' | 'auto';
   };
   const up = packageHarness();
   res.from = pin.version;
   res.to = harnessVersion(up);
+  res.cliFrom = pin.cli ? String(pin.cli) : 'none';
+  res.cliTo = packageVersion();
   const cl = join(up, 'CHANGELOG.md');
   if (existsSync(cl) && newer(res.to, res.from)) {
     res.changes = changesBetween(readFileSync(cl, 'utf8'), res.from, res.to);

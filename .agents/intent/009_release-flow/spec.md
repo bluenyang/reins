@@ -1,9 +1,10 @@
 ---
 intent: "009"
-status: reviewed
+status: accepted
 approvals:
   - { role: qa-design, at: 2026-10-26, kind: first-review }
   - { role: pm, at: 2026-10-26 }
+  - { role: user, at: 2026-10-26, kind: summary }
 summary_for_user: |
   master에는 브랜치 → PR → CI 초록 → deploy 역할의 rebase 머지로만 들어간다. 이 레포도 같다. T4는 master 직접 push를 막는다(publish 워크플로의 release 커밋만 예외).
   계획분 ticket이 다 닫히고 T5(`rc-close --release <V>`)가 통과하면 deploy가 publish를 `version: <V>-rc.1`로 돌린다. staged라서 사용자가 npm에서 승인해야 dist-tag `rc`로 공개된다.

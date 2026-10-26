@@ -1,9 +1,10 @@
 ---
 intent: "010"
-status: reviewed
+status: accepted
 approvals:
   - { role: qa-design, at: 2026-10-26, kind: first-review }
   - { role: pm, at: 2026-10-26 }
+  - { role: user, at: 2026-10-26, kind: summary }
 summary_for_user: |
   rc를 낸 뒤(또는 아무 때나) `reins retro`가 정지 사유·리뷰 지적·실패 라운드·토큰을 버전별로 모아 보여 준다.
   같은 키(정지 사유 id, history의 `reasons:`·`decisions:` 슬러그)가 서로 다른 티켓·기록에서 두 번 이상 나오면 승격 후보로 센다. `reins status`에 후보 수가 나온다.

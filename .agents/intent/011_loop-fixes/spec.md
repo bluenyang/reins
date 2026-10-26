@@ -1,9 +1,10 @@
 ---
 intent: "011"
-status: reviewed
+status: accepted
 approvals:
   - { role: qa-design, at: 2026-10-26, kind: first-review }
   - { role: pm, at: 2026-10-26 }
+  - { role: user, at: 2026-10-26, kind: summary }
 summary_for_user: |
   `reins new intent|ticket|request`가 템플릿에서 번호를 매겨 스키마를 통과하는 파일을 만들고, 이미 있는 파일은 덮어쓰지 않는다. 스킬은 역할 실행마다 `reins metrics record`를 한 줄 부른다.
   intent 상태에 `released`를 추가한다. 009의 릴리스 흐름이 이 값을 쓰고, 001~007은 이번에 한 번 손으로 바꾼다. status는 이런 intent를 released로 표시하고 할 일을 띄우지 않는다.

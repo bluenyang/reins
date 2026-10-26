@@ -10,9 +10,29 @@ This file is about the package. The harness that `reins update` re-applies to in
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md); an entry there tagged `[skill]`
 needs the `/reins-update` skill.
 
-## [Unreleased]
+## [Unreleased] — 0.1.3
 
-0.1.2 — a Claude Code plugin (intent 007).
+The workflow the maintainer laid out, end to end (intents 008–011). Harness 0.1.2.
+
+### Added
+- Stage skills: reins-roadmap, reins-intent, reins-spec, reins-implement, reins-review (ticket and ticketless modes), reins-test, reins-release, reins-retro; reins-loop conducts them. Each runs its stage check first and pins the CLI to the installed version.
+- Release flow: master only through PR → CI → rebase merge (T4 holds direct pushes, A4); when a version's plan is done and T5 passes, the deploy role stages `<V>-rc.N` automatically; stable only on the maintainer's instruction and only from the last rc tag commit.
+- `reins new intent|ticket|request` scaffolds schema-valid files; `reins gate --respond` runs every declared gate and writes the bus response (verification in one call).
+- `reins retro` counts repeated reasons and decisions; `reins knowledge propose|accept` promotes lessons only after the user approves; an unapproved knowledge entry stops the verifier. First five lessons promoted.
+- Public roadmap `docs/ROADMAP.md` (+ .ko); a stage-skills line in every role.
+- Repository workflows: labeler, trufflehog, CODEOWNERS, issue forms, a PR template; staged npm publishing.
+
+### Changed
+- Intent status `released`; 001–007 marked released; status shows no next action for them.
+- sync-version changes only the version string; the publish summary no longer calls `npm stage list`.
+
+### Known issues
+- `reins new ticket` numbers past ids the plan already reserved (use the plan's ids by hand until fixed).
+- `reins status` keeps listing retro candidates that were judged not to be lessons (no dismiss yet).
+
+## [0.1.2] — 2026-10-26
+
+A Claude Code plugin (intent 007).
 
 ### Added
 - The repository is a Claude Code plugin and marketplace: `/plugin marketplace add bluenyang/reins`, `/plugin install reins@bluenyang`, then `/reins:reins-setup`.
@@ -91,5 +111,6 @@ Published to npm while the rc was still under verification; fixes go to 0.1.1.
 - `recall`, `doctor` and `configure budget|gates|language` are not implemented.
 
 [Unreleased]: https://github.com/bluenyang/reins/commits/master
+[0.1.2]: https://www.npmjs.com/package/@bluenyang/reins/v/0.1.2
 [0.1.1]: https://www.npmjs.com/package/@bluenyang/reins/v/0.1.1
 [0.1.0]: https://www.npmjs.com/package/@bluenyang/reins/v/0.1.0

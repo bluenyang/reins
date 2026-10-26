@@ -94,10 +94,20 @@ program
   .description('move an existing harness or .ai/ workspace onto the reins layout')
   .argument('<tier>', 'harness | loop | graph')
   .option('--mode <mode>', 'manual | auto', 'manual')
+  .option('--legacy <where>', 'local (.loctx/_legacy/) | committed (.agents/legacy/)', 'local')
   .option('--dry-run', 'show the moves without touching anything')
   .option('--json')
   .action(
-    async (tier: string, o: { mode: 'manual' | 'auto'; dryRun?: boolean; json?: boolean }) => {
+    async (
+      tier: string,
+      o: { mode: 'manual' | 'auto'; legacy: string; dryRun?: boolean; json?: boolean },
+    ) => {
+      if (!['local', 'committed'].includes(o.legacy)) {
+        process.stderr.write(
+          `reins migrate: --legacy must be local or committed (got "${o.legacy}")\n`,
+        );
+        process.exit(2);
+      }
       if (!['harness', 'loop', 'graph'].includes(tier)) {
         process.stderr.write(
           `reins migrate: tier must be harness, loop or graph (got "${tier}")\n`,
@@ -105,7 +115,13 @@ program
         process.exit(2);
       }
       const asker = o.mode === 'auto' || o.dryRun ? defaultsAsker : await stdinAsker();
-      const r = await runMigrate({ tier: tier as Tier, mode: o.mode, dryRun: o.dryRun, asker });
+      const r = await runMigrate({
+        tier: tier as Tier,
+        mode: o.mode,
+        dryRun: o.dryRun,
+        legacy: o.legacy as 'local' | 'committed',
+        asker,
+      });
       asker.close();
       if (o.json) {
         process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);

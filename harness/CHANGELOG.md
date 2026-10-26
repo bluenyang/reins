@@ -4,6 +4,10 @@ Read by `reins update`: it lists the entries newer than a project's pinned versi
 `[skill]` needs the project's own sections touched — `reins update` then points to `/reins-update`,
 where the PM proposes those changes for the user to approve.
 
+## 0.1.2
+- Intent status gains `released` (set once a stable version of the intent is out); `reins status` folds such an intent into one line with no next action. Additive: existing values are unchanged.
+- `reins gate --ticket <id> --respond` writes the bus response for the open verify request; verify-tool is now that call plus `reins check --stage verdict`.
+
 ## 0.1.1
 - qa-design default binding is now gemini-4-argon-high and qa-run gemini-3.8-flash-medium (fallbacks unchanged).
 - Generated settings deny `Bash(git commit -n *)` alongside `--no-verify`.

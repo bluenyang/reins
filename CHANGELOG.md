@@ -19,6 +19,7 @@ Readiness for large repositories (intent 012, planned).
 - `migrate` numbers open work `000-1…000-N` in path order (no more repeated `000-1`), remaps `depends` inside a version and records the rest in `asks:`, writes intent 000 as a draft, and takes `--legacy committed` (secret-pattern files stay in `.loctx/_legacy/`).
 - `install` and `migrate` no longer touch `.claude/memory/*`; each file gets a draft `.loctx/knowledge-proposals/memory-<name>.md` to accept with `reins knowledge accept`. `*.env` joins the C4 secret patterns (`*.example*` and `*.sample` stay allowed).
 - `update` deletes harness files the tier no longer installs (e.g. `.agents/harness/CHANGELOG.md` from a 0.1.0 install) and lists them; `--dry-run` only lists. Drift compares only the files the tier installs and warns about such leftovers instead of stopping with F2.
+- `status` names the CLI version next to the harness version (`cli <pinned> (running <package>)`, JSON `cliInstalled`/`cliPackage`) and its next action for an intent with open tickets follows the first ticket (`implementer: <id>`, `reins-review: close <id>`, `pl: unblock <id>`); `update` opens with `cli vA → vB, harness vX → vY` and says `already up to date` when nothing changed.
 
 ## [0.1.3] — 2026-10-27
 

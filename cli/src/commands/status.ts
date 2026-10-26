@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { parse } from 'yaml';
 import { repoRoot } from '../lib/git.js';
-import { harnessVersion, packageHarness } from '../lib/upstream.js';
+import { harnessVersion, packageHarness, packageVersion } from '../lib/upstream.js';
 import { candidateCount } from '../lib/retro.js';
 import { driftGenerated } from '../lib/vendor-write.js';
 import { report, type Finding, type Verdict } from '../lib/verdict.js';
@@ -24,6 +24,10 @@ export interface HarnessStatus {
   tier: string | null;
   installedVersion: string | null;
   packageVersion: string | null;
+  /** `cli` pinned in install.yaml (the package version that wrote the install). */
+  cliInstalled: string | null;
+  /** The running package version. */
+  cliPackage: string | null;
   /** Every drift finding (the same functions `reins check --drift` runs); `reasons` are the distinct ids. */
   drift: { ok: boolean; reasons: string[]; findings: Finding[] };
 }
@@ -90,6 +94,8 @@ function harnessStatus(root: string): HarnessStatus {
       tier: null,
       installedVersion: null,
       packageVersion: null,
+      cliInstalled: null,
+      cliPackage: null,
       drift: none,
     };
   const y = safe(
@@ -104,6 +110,8 @@ function harnessStatus(root: string): HarnessStatus {
     tier: str(y['tier']) || null,
     installedVersion: str(y['version']) || null,
     packageVersion: safe(() => harnessVersion(packageHarness()), null),
+    cliInstalled: str(y['cli']) || null,
+    cliPackage: safe(() => packageVersion(), null),
     drift: {
       ok: findings.length === 0,
       reasons: distinct(findings.map((f) => f.reason)),
@@ -121,6 +129,8 @@ export function nextForIntent(s: {
   open: number;
   /** ids of the ticket files that are still open */
   openIds: string[];
+  /** this intent's open tickets with their status, in id order */
+  openTickets?: { id: string; status: string | null }[];
   planned: string[];
   history: string[];
   broken: string[];
@@ -143,6 +153,15 @@ export function nextForIntent(s: {
     s.planned.some((t) => closed(t) && !recorded(t))
   )
     return 'pl: create tickets';
+  const first = [...(s.openTickets ?? [])].sort((a, b) =>
+    a.id.localeCompare(b.id, 'en', { numeric: true }),
+  )[0];
+  if (s.open > 0 && first) {
+    if (first.status === 'done') return `reins-review: close ${first.id}`;
+    if (first.status === 'blocked') return `pl: unblock ${first.id}`;
+    if (first.status === 'todo' || first.status === 'doing')
+      return `implementer: ${first.id} (reins-implement)`;
+  }
   if (s.broken.length > 0) return `invalid frontmatter (F2): ${s.broken.join(', ')}`;
   return '—';
 }
@@ -184,6 +203,7 @@ function intentsStatus(
         plan: statusOf(plan),
         open,
         openIds: tickets.map(ticketId),
+        openTickets: mine.map((t) => ({ id: ticketId(t), status: str(t.data['status']) || null })),
         planned,
         history,
         broken: [i, spec, plan].filter((f): f is WorkFile => !!f?.error).map((f) => f.path),
@@ -285,7 +305,7 @@ export function formatStatus(d: StatusData): string {
   if (!h.installed) out.push('harness: not installed — run reins install');
   else
     out.push(
-      `harness: ${h.tier ?? '?'} · installed v${h.installedVersion ?? '?'} · package v${h.packageVersion ?? '?'} · drift: ${
+      `harness: ${h.tier ?? '?'} v${h.installedVersion ?? '?'} (package harness v${h.packageVersion ?? '?'}) · cli ${h.cliInstalled ?? 'none'} (running ${h.cliPackage ?? '?'}) · drift: ${
         h.drift.ok ? 'ok' : h.drift.reasons.join(', ')
       }${h.drift.ok ? '' : ' (reins check --drift)'}`,
     );

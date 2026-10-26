@@ -49,6 +49,8 @@ describe('reins update', () => {
 
     const r = await runUpdate({ cwd: d, detectVendors: claude, now: new Date(2026, 9, 25, 14, 0) });
     expect(r.from).toBe('0.0.9');
+    expect(r.cliTo).toBe(JSON.parse(readFileSync('package.json', 'utf8')).version);
+    expect(r.cliFrom).toMatch(/^\d|^none$/);
     expect(r.changes.length).toBeGreaterThan(0);
     expect(readFileSync(role, 'utf8')).not.toContain('old text');
     expect(readFileSync(b, 'utf8')).toContain('model: claude-fable-5-1');

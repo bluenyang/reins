@@ -54,8 +54,11 @@ The hooks run `reins check --stage pre-commit` and `--stage pre-push`. Never byp
 ## Pull requests
 
 Describe the intent or issue it serves, what changed, and how it was verified (paste the gate
-output, do not summarise it). Merging and releases are the maintainer's call; a stable release is
-always an explicit decision (A2).
+output, do not summarise it). Work reaches `master` only through a `type/topic` branch and a PR; a direct push
+to `master` is held by T4 (A4). The deploy role opens the PR, waits for `gh pr checks --watch`, and
+merges with `gh pr merge --rebase --delete-branch` only when every required check is green. A red
+check is not merged. Releases are the maintainer's call; a stable release is always an explicit
+decision (A2).
 
 ## Releases
 

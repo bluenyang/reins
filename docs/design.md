@@ -66,7 +66,7 @@ Of these, the surveyed repositories had only A, B1, D1 and D2 — everything els
 project default (install, `policy/budget`) < version (PM, plan.md) < **user-defined scopes** (shipped: ticket · rc · session · role; `configure budget`). Unit: tokens. Without defaults, measure on first use.
 
 ### The verifier = `reins check` — six transition points
-T1 before a ticket starts (B1 · dependencies · budget · bindings · **`asks:` against `decisions:` to stop the same question recurring**) · T2 before commit (P2·C10·F2·C4·C5) · T3 at judgement (D1–D5 · evidence) · T4 before leaving the machine (A · C6 · loop stage) · T5 at rc close (E3 · zero open tickets · history written · plan-agreement S7) · T6 always (G1·F1).
+T1 before a ticket starts (B1 · dependencies · budget · bindings · **`asks:` against `decisions:` to stop the same question recurring**) · T2 before commit (P2·C10·F2·C4·C5) · T3 at judgement (D1–D5 · evidence) · T4 before leaving the machine (A · C6 · loop stage · **a push to the default branch is A4 HOLD**, except the publish workflow's `release: v…` commits under `GITHUB_ACTIONS=true`) · T5 at rc close (E3 · zero open tickets · history written · plan-agreement S7) · T6 always (G1·F1).
 Stage names for `reins check --stage`: `ticket-start --ticket <id>` (T1) · `pre-commit` (T2, hook) · `verdict --ticket <id>` (T3) · `pre-push` (T4, hook) · `rc-close --release <version>` (T5). Checks without their own id (dependencies, plan agreement, history written) report as F2.
 Verdicts CONTINUE / HOLD / STOP / ESCALATE → bus `stop-report` (reason · resume info · one line in the user's language). Exit codes 0/10/20/30.
 Loop tier: fewer roles, same T and conditions. Harness tier: T2·T4·T6 only.
@@ -87,6 +87,8 @@ State transitions: T1 passes only when intent is `approved` ∧ spec `accepted` 
 
 ### Version and rc convention (maintainer)
 A version is a bundle of intents. **rc.1 = everything planned is complete.** rc.N = stabilisation only (bugs, adjustments, small additional intents). An rc is the pre-release stage for human verification. Keep versions small. Ticket `release:` says planned or stabilisation.
+
+**PR flow.** Work reaches the default branch only through a `type/topic` branch → PR → green CI → merge. The deploy role pushes the branch and opens the PR (body drafted by docs), waits with `gh pr checks --watch`, and merges with `gh pr merge --rebase --delete-branch` only when every required check is green; a red check is not merged but returned to the PL (D2). The PL and implementers never merge. T4 enforces this by holding a direct push to `master`/`main` (A4); branch protection (PR required, check `ci`) is a repository setting the user turns on.
 
 ## 5. The boundary between the project's files and the tool's (D7·D8·D9)
 ### `AGENTS.md` managed blocks

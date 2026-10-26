@@ -44,7 +44,7 @@ vendor → record nothing, never guess. `reins check` and `reins gate` log thems
 ## Release
 9. When every planned ticket is done: **T5** `reins check --stage rc-close --release <version>`. Report to
    the user. Push, PR and release happen only on the user's instruction, in the deploy role (T4 runs in the
-   pre-push hook); a stable release is always the user's explicit call (A2).
+   pre-push hook and holds a direct push to master): branch → PR → `gh pr checks --watch` → `gh pr merge --rebase --delete-branch` on green only (design §4 PR flow); a stable release is always the user's explicit call (A2).
 
 On an interruption (G1) write where you are — ticket, step, last commit, open bus files, next command — to
 the ticket, so the same command resumes.

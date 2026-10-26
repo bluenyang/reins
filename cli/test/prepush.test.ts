@@ -59,4 +59,11 @@ describe('T4 push to the default branch (A4)', () => {
     vi.stubEnv('GITHUB_ACTIONS', 'true');
     expect(prePush(d, [line(mixed, 'refs/heads/master')]).map((x) => x.reason)).toEqual(['A4']);
   });
+  it('holds creating master even under CI with a release-prefixed tip', () => {
+    vi.stubEnv('GITHUB_ACTIONS', 'true');
+    const zero = '0'.repeat(40);
+    expect(prePush(d, [line(mixed, 'refs/heads/master', zero)]).map((x) => x.reason)).toEqual([
+      'A4',
+    ]);
+  });
 });

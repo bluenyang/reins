@@ -98,7 +98,11 @@ export function prePush(root: string, refs: string[]): Finding[] {
     if (!localSha || !remoteSha || !remoteRef) continue;
     if (/^refs\/heads\/(master|main)$/.test(remoteRef)) {
       // design §3 T4: work reaches the default branch by PR only; the publish workflow's version commit is the one exception
-      const subjects = ZERO.test(localSha) ? [] : pushedSubjects(remoteSha, localSha, root);
+      // creating or deleting the ref has no range to judge: always held
+      const subjects =
+        ZERO.test(localSha) || ZERO.test(remoteSha)
+          ? []
+          : pushedSubjects(remoteSha, localSha, root);
       const releaseOnly =
         process.env.GITHUB_ACTIONS === 'true' &&
         subjects.length > 0 &&

@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, join, relative, resolve } from 'node:path';
 import { repoRoot } from '../lib/git.js';
 import { harnessDir } from '../lib/harness.js';
 import { localIso } from '../lib/metrics.js';
@@ -38,11 +38,27 @@ export function proposeKnowledge(
   if (!tpl || !existsSync(tpl)) return { refused: 'no knowledge template — run reins install' };
   const dest = join(root, PROPOSALS, `${slug}.md`);
   if (existsSync(dest)) return { refused: `${PROPOSALS}/${slug}.md already exists` };
-  let from = o.from ?? [];
+  const hist = resolve(root, '.loctx', 'history');
+  const from: string[] = [];
+  for (const f of o.from ?? []) {
+    const abs = resolve(root, f.includes('/') ? f : join('.loctx', 'history', f));
+    const rel = relative(hist, abs);
+    if (rel.startsWith('..') || rel.includes('/') || !existsSync(abs))
+      return { refused: `--from ${f}: not a page under .loctx/history/` };
+    const text = readFileSync(abs, 'utf8');
+    const lines = [...text.matchAll(/^(?:decisions|reasons):\s*(.+)$/gm)].flatMap((m) =>
+      m[1]!.split(',').map((x) => x.trim()),
+    );
+    const has = key.startsWith('stop:') ? text.includes(slug) : lines.includes(slug);
+    if (!has) return { refused: `--from ${f}: does not contain "${slug}"` };
+    from.push(`.loctx/history/${rel}`);
+  }
   if (from.length === 0)
-    from = collectRetro(root)
-      .keys.filter((k) => bareKey(k.key) === slug)
-      .flatMap((k) => k.pages);
+    from.push(
+      ...collectRetro(root)
+        .keys.filter((k) => bareKey(k.key) === slug)
+        .flatMap((k) => k.pages),
+    );
   if (from.length === 0) return { refused: `no record of "${slug}"; pass --from <history>…` };
   const asSymptom = /^(stop|reason):/.test(key);
   let t = readFileSync(tpl, 'utf8');

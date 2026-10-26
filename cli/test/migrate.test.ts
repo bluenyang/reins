@@ -235,6 +235,32 @@ describe('reins migrate — ticket ids, intent 000, legacy (012-3)', () => {
     expect(rep).toMatch(/review before committing/);
   });
 
+  it('remaps depends onto a ticket from an earlier run', async () => {
+    const d = repo(CROFFLE);
+    await runMigrate(opts(d));
+    const first = tickets(d).find((n) =>
+      read(d, `.loctx/ticket/${n}`).includes('migrated_from: "1.3.1_1.md"'),
+    )!;
+    const id = first.split('_')[0];
+    mkdirSync(join(d, '.ai/work'), { recursive: true });
+    writeFileSync(join(d, '.ai/work/1.3.1_4.md'), work(4, '1.3.1', 'todo', [1]));
+    await runMigrate(opts(d));
+    const added = tickets(d).find((n) =>
+      read(d, `.loctx/ticket/${n}`).includes('migrated_from: "1.3.1_4.md"'),
+    )!;
+    const text = read(d, `.loctx/ticket/${added}`);
+    expect(text).toContain(`depends: ["${id}"]`);
+    expect(text).toMatch(/asks: \[\]/);
+  });
+
+  it('keeps non-Markdown files under .ai/work/ moving to history/work/', async () => {
+    const d = repo({ ...CROFFLE, '.ai/work/notes/diagram.png': 'png', '.ai/work/data.json': '{}' });
+    await runMigrate(opts(d));
+    expect(existsSync(join(d, '.loctx/history/work/notes/diagram.png'))).toBe(true);
+    expect(existsSync(join(d, '.loctx/history/work/data.json'))).toBe(true);
+    expect(existsSync(join(d, '.ai'))).toBe(false);
+  });
+
   it('--legacy local (default) keeps everything in .loctx/_legacy/', async () => {
     const d = repo(CROFFLE);
     await runMigrate(opts(d));

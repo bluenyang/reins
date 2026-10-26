@@ -232,6 +232,17 @@ describe('C-3 the next-step table', () => {
     expect(nextForIntent({ ...s, spec: '?', broken: ['x/spec.md'] })).toContain('x/spec.md');
   });
 
+  it('a released intent has no next action and is folded into one line', async () => {
+    const d = await project();
+    intent(d, '001', 'released', 'accepted', 'active');
+    put(d, '.agents/intent/001_t001/plan.md', PLAN('active', '["001-1"]'));
+    put(d, '.loctx/history/001-1.md', '# 001-1 done\n');
+    expect(one(d, '001').next).toBe('—');
+    const text = formatStatus(collectStatus(d));
+    expect(text).toMatch(/001 t001 .*— released\n/);
+    expect(text).not.toContain('close the rc');
+  });
+
   it('does not throw on a broken intent.md', async () => {
     const d = await project();
     put(d, '.agents/intent/001_t001/intent.md', '---\nstatus: [oops\n---\n');

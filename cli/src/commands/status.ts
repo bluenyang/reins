@@ -123,6 +123,7 @@ export function nextForIntent(s: {
   history: string[];
   broken: string[];
 }): string {
+  if (s.intent === 'released') return '—';
   if (s.intent === 'draft') return 'user: approve the intent';
   if (s.intent === 'approved' && s.spec === null) return 'planner: write spec.md';
   if (s.spec === 'draft') return 'pm + qa-design: review the spec';
@@ -289,6 +290,10 @@ export function formatStatus(d: StatusData): string {
   out.push('intents:');
   if (d.intents.length === 0) out.push('  none');
   for (const i of d.intents) {
+    if (i.intent === 'released') {
+      out.push(`  ${i.id} ${i.slug}${i.version ? ` v${i.version}` : ''} — released`);
+      continue;
+    }
     out.push(
       `  ${i.id} ${i.slug}${i.version ? ` v${i.version}` : ''} — intent: ${i.intent ?? '—'} · spec: ${i.spec ?? '—'} · plan: ${i.plan ?? '—'} · tickets: ${i.tickets.open} open / ${i.tickets.planned} planned`,
     );

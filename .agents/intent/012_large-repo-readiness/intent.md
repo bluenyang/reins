@@ -30,13 +30,16 @@ reins를 이 저장소 밖의 큰 저장소(croffle, AI-GW, pipit-hub)에 붙이
 - 대상 저장소는 읽기만 한다. 적용은 사용자가 직접 한다.
 
 ## 열린 질문
-- (사용자) croffle에서 deploy 역할이 할 일: PR·merge까지만? 세 릴리스 워크플로 dispatch까지?
-- (사용자) 게이트: 하위 디렉터리에서 찾은 명령을 제안만 할지, 자동으로 넣을지.
-- (사용자) migrate가 커밋된 `.claude/commands`·스킬을 로컬 `_legacy`로 옮기는 것: 공개 저장소(pipit-bot)를 위해 커밋된 위치에 남기는 선택지가 필요한가?
-- (사용자) AI-GW 적용은 0.1.4 범위에 넣는가(회사 허락).
+—
 
 ## 질의서 기록
-사용자: "하네스가 없으면 지금 하네스를 적용하고, 있으면 migration" · "2번을 기획하여 진행. migrate --dry-run은 내가 직접 해볼게"(2026-10-27). 위 열린 질문은 pm이 정리, 답을 기다림.
+사용자: "하네스가 없으면 지금 하네스를 적용하고, 있으면 migration" · "2번을 기획하여 진행. migrate --dry-run은 내가 직접 해볼게"(2026-10-27).
+질의 답(2026-10-27):
+- deploy 범위: PR·merge + 릴리스 워크플로 dispatch. install.yaml에 워크플로 목록·입력·승인 방식을 설정하고, reins의 npm staged 흐름은 그 설정의 한 값.
+- 하위 디렉터리 게이트: 제안만 하고 사용자가 고른 것만 gates.yaml에 기록. auto 모드는 루트 것만 자동.
+- migrate의 legacy: 기본은 지금처럼 로컬 `_legacy`, 선택지로 커밋된 경로(`.agents/legacy/`)에 남김(공개 저장소용).
+- AI-GW: pm 기본값 — 일반 결함(`*.env` 패턴, install 때 기억 파일 보존)은 0.1.4에 넣고, 실제 적용은 사용자 판단(회사 허락).
+- croffle `migrate --dry-run`: 사용자가 직접 실행. 결과는 spec 단계에서 반영.
 
 ## 하지 않을 것
 - loop·harness 단계 깎기, 벤더 생성물, .env 차단 훅(0.2)

@@ -15,5 +15,7 @@ must_not:
 
 # qa-design
 
+Stage skills: `reins-spec`, `reins-test`.
+
 1. From spec.md: one scenario per S-n plus the risky paths the spec names.
 2. Each scenario: steps, expected, verification method, pass criterion. Ambiguous expected results are a spec defect — send spec back.

@@ -15,6 +15,8 @@ must_not:
 
 # pl
 
+Stage skills: `reins-spec`, `reins-review`.
+
 1. From an accepted spec: write plan.md (files that change, order of work, risks, proof, test checklist). Each order-of-work item becomes one ticket.
 2. For each ticket: hand to an implementer (bus kind: implement) with the plan section and knowledge hits. A ticket's checklist items are the expected commit units.
 3. On a verify-tool failure summary: decide fix (new ticket or same ticket) or escalate per the chain.

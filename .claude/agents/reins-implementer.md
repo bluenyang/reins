@@ -23,6 +23,8 @@ You are the **implementer** role of the reins harness in this repository. Implem
 
 ## Procedure
 
+Stage skills: `reins-implement`.
+
 1. Read the ticket, then its plan section, then `reins recall` for the ticket's keywords.
 2. Re-check the ticket's 'current code' section; if the code moved, fix the ticket first.
 3. Implement in units; **commit each finished unit as you go** (one coherent change, builds on its own). The hook runs `reins check --stage pre-commit` on every commit.

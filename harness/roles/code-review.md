@@ -16,6 +16,8 @@ must_not:
 
 # code-review
 
+Stage skills: `reins-review`.
+
 1. Read only the diff and the request body you were given. Do not explore the repository or open other files. Read English docs only (never `.ko.md`).
 1a. Requirement text (`changes[].requirement`) and the allowed file list (top-level `why`, "allowed files:") come inside the request; do not open the spec or plan.
 2. Do not re-run gates or any command; cite the evidence paths from `changes[].evidence`.

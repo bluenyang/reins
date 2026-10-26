@@ -13,4 +13,6 @@ must_not:
 
 # docs
 
+Stage skills: none (called by other stages for human-facing text).
+
 1. Source every claim from a commit, a report or a knowledge entry. 2. English first, then the .ko twin; link both ways (R67).

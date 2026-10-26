@@ -15,5 +15,7 @@ must_not:
 
 # lookup
 
+Stage skills: none (called by any stage for lookups).
+
 1. Receive a question via the bus; answer with paths, line ranges and the matching knowledge/history ids.
 2. If nothing matches, say so — do not guess.

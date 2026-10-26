@@ -471,5 +471,37 @@ export function rcClose(root: string, release: string | undefined): Finding[] {
           resume: 'add it to plan.md (departure log) or close it',
         });
   }
+  if (findings.length === 0) findings.push(...nextRc(root, release));
   return findings;
+}
+
+/**
+ * The next rc number from the local ledger `.loctx/release/<V>.md` (one `- rc.N …` line per rc):
+ * rc.1 when there is no ledger, else the last recorded rc + 1. A number already recorded is F2.
+ */
+function nextRc(root: string, release: string): Finding[] {
+  const path = join(root, '.loctx', 'release', `${release}.md`);
+  const recorded = existsSync(path)
+    ? [...readFileSync(path, 'utf8').matchAll(/^\s*[-*]\s*rc\.(\d+)\b/gm)].map((m) => Number(m[1]))
+    : [];
+  const next = (recorded.at(-1) ?? 0) + 1;
+  if (recorded.includes(next))
+    return [
+      {
+        reason: 'F2',
+        verdict: 'STOP',
+        path,
+        message: `${release}-rc.${next} is already recorded`,
+        resume:
+          'a version number is never reused; fix the ledger order or record the later rc last',
+      },
+    ];
+  return [
+    {
+      reason: 'F2',
+      verdict: 'WARN',
+      path: existsSync(path) ? path : undefined,
+      message: `next rc: ${release}-rc.${next}`,
+    },
+  ];
 }

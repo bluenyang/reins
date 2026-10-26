@@ -172,6 +172,15 @@ describe('T5 rc-close', () => {
     ]);
     rmSync(join(d, '.loctx/ticket/001-1_cli.md'));
     put(d, '.loctx/history/2026-10-26-1000_001.md', '# 001\n- 001-1 done\n- 001-2 done\n');
-    expect(rcClose(d, '0.2.0')).toEqual([]);
+    const msgs = (r: string) => rcClose(d, r).map((x) => `${x.verdict} ${x.message}`);
+    expect(msgs('0.2.0')).toEqual(['WARN next rc: 0.2.0-rc.1']);
+    put(
+      d,
+      '.loctx/release/0.2.0.md',
+      '- rc.1 abc123 stage-1 2026-10-26\n- rc.2 def456 stage-2 2026-10-27\n',
+    );
+    expect(msgs('0.2.0')).toEqual(['WARN next rc: 0.2.0-rc.3']);
+    put(d, '.loctx/release/0.2.0.md', '- rc.2 def456 s 2026-10-27\n- rc.1 abc123 s 2026-10-26\n');
+    expect(msgs('0.2.0')).toEqual(['STOP 0.2.0-rc.2 is already recorded']);
   });
 });

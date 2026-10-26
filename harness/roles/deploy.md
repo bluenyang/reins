@@ -28,8 +28,8 @@ must_not:
 
 1. Run `reins check --stage rc-close --release <V>`. Anything but CONTINUE (open `release: planned` or `release: stabilization` tickets, F2) means no dispatch.
 2. Take the rc number T5 reports (`next rc: <V>-rc.<N>`; rc.1 when `.loctx/release/<V>.md` is missing).
-3. `gh workflow run publish.yml -f version=<V>-rc.<N> -f dry_run=false`.
-4. Find that run (`gh run list --workflow publish.yml --limit 1`, right after the dispatch), then `gh run watch <id> --exit-status`. On failure: no ledger line; report to the PL.
+3. Note the time, then `gh workflow run publish.yml -f version=<V>-rc.<N> -f dry_run=false`.
+4. Identify the dispatched run: poll `gh run list --workflow publish.yml --event workflow_dispatch --json databaseId,displayTitle,headSha,createdAt` (every 5 s, up to ~60 s) for a run whose `displayTitle` is exactly `publish <V>-rc.<N> (dry_run=false)`, `createdAt` is after the noted time and `headSha` is the master commit being released. Never fall back to another run; none found means stop and report to the PL. Then `gh run watch <id> --exit-status`. On failure: no ledger line; report to the PL.
 5. Only on success: read the stage id from the log line "staged with id …" and the release commit/tag, then append `- rc.<N> <commit> <stage-id> <date>` to `.loctx/release/<V>.md` (local ledger, not committed).
 6. Ask the user to approve the staged version on npm. Fixes after an rc are `release: stabilization` tickets; the next rc follows the next T5 pass.
 7. Stable (`version=<V>`) only on the user's explicit instruction; the workflow requires a `v<V>-rc.*` tag at master HEAD.

@@ -258,6 +258,13 @@ describe('reins migrate — ticket ids, intent 000, legacy (012-3)', () => {
     expect(rep).toMatch(/review before committing/);
   });
 
+  it('--legacy committed keeps an x.env file local', async () => {
+    const d = repo({ ...CROFFLE, '.ai/test/x.env': 'X=1' });
+    await runMigrate(opts(d, 'committed'));
+    expect(existsSync(join(d, '.loctx/_legacy/test/x.env'))).toBe(true);
+    expect(existsSync(join(d, '.agents/legacy/test/x.env'))).toBe(false);
+  });
+
   it('remaps depends onto a ticket from an earlier run', async () => {
     const d = repo(CROFFLE);
     await runMigrate(opts(d));

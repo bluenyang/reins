@@ -16,6 +16,8 @@
       "Edit(**/.env.staging)",
       "Read(**/.env.test)",
       "Edit(**/.env.test)",
+      "Read(**/*.env)",
+      "Edit(**/*.env)",
       "Read(**/secrets/**)",
       "Edit(**/secrets/**)",
       "Read(**/*.key)",

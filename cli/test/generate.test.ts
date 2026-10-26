@@ -64,6 +64,7 @@ describe('Claude Code generator (design §6)', () => {
       }
     ).permissions.deny;
     expect(deny).toContain('Read(**/.env)');
+    expect(deny).toContain('Read(**/*.env)');
     expect(deny).toContain('Read(**/.env.*.local)');
     expect(deny).not.toContain('Read(**/.env.*)'); // would hide .env.example
     expect(deny).toContain('Bash(git push --force *)');

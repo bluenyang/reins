@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -88,6 +88,19 @@ describe('reins new — files (C-1, C-3, C-12)', () => {
     expect(bad.code).toBe(1);
     expect(bad.stderr).toContain('outside');
     expect(newTicket(d, '099', '1', 'x').code).toBe(1);
+  });
+
+  it('ticket: refuses without a plan or a readable order of work, writing nothing', () => {
+    const d = project();
+    put(d, '.agents/intent/012_thing/intent.md', 'x');
+    const none = newTicket(d, '012', '1', 'a');
+    expect(none.code).toBe(1);
+    expect(none.stderr).toContain('no plan.md');
+    put(d, '.agents/intent/012_thing/plan.md', PLAN.replace('## 작업 순서', '## 순서'));
+    const unreadable = newTicket(d, '012', '1', 'a');
+    expect(unreadable.code).toBe(1);
+    expect(unreadable.stderr).toContain('no readable order of work');
+    expect(existsSync(join(d, '.loctx/ticket'))).toBe(false);
   });
 
   it('request: defaults by kind, next bus number, schema-valid', () => {

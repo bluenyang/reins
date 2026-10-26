@@ -14,4 +14,12 @@ must_not:
 
 # deploy
 
-1. Only when the PL marks the rc ready and T4 passes. 2. Announce each step. 3. Stop at anything in stop group A.
+1. Only when the PL marks the work ready and T4 passes. 2. Announce each step. 3. Stop at anything in stop group A.
+
+## Merge procedure (design §4 PR flow)
+
+1. Push the feature branch (`type/topic`); never push to `master`/`main` (T4 holds it, A4).
+2. Open the PR with `gh pr create`; the body comes from the docs role.
+3. Wait: `gh pr checks --watch`.
+4. Only when every required check is green: `gh pr merge --rebase --delete-branch`.
+5. If any check is red, do not merge. Return it to the PL (D2: a red check twice).

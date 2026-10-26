@@ -41,3 +41,16 @@ export function isAncestor(ancestor: string, descendant: string, cwd: string): b
 export function repoRoot(cwd: string): string {
   return git(['rev-parse', '--show-toplevel'], cwd);
 }
+
+/** Subjects of the commits a push adds: `remote..local`, or everything not on a remote branch for a new ref. */
+export function pushedSubjects(remoteSha: string, localSha: string, cwd: string): string[] {
+  const range = /^0+$/.test(remoteSha)
+    ? [localSha, '--not', '--remotes']
+    : [`${remoteSha}..${localSha}`];
+  try {
+    const out = git(['log', '--format=%s', ...range], cwd);
+    return out ? out.split('\n') : [];
+  } catch {
+    return [];
+  }
+}

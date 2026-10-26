@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { hasOwnSection, overrides, parseBlocks } from '../lib/blocks.js';
-import { currentBranch, isAncestor, repoRoot, stagedFiles } from '../lib/git.js';
+import { currentBranch, isAncestor, pushedSubjects, repoRoot, stagedFiles } from '../lib/git.js';
 import { harnessRel, secretPolicy } from '../lib/harness.js';
 import { loadSchemasFrom, schemaFor, validateFile } from '../lib/schema.js';
 import { DEFAULT_ALLOWED, DEFAULT_SECRET_PATTERNS, isSecretPath } from '../lib/secrets.js';
@@ -96,6 +96,23 @@ export function prePush(root: string, refs: string[]): Finding[] {
   for (const line of refs) {
     const [localRef, localSha, remoteRef, remoteSha] = line.trim().split(/\s+/);
     if (!localSha || !remoteSha || !remoteRef) continue;
+    if (/^refs\/heads\/(master|main)$/.test(remoteRef)) {
+      // design §3 T4: work reaches the default branch by PR only; the publish workflow's version commit is the one exception
+      const subjects = ZERO.test(localSha) ? [] : pushedSubjects(remoteSha, localSha, root);
+      const releaseOnly =
+        process.env.GITHUB_ACTIONS === 'true' &&
+        subjects.length > 0 &&
+        subjects.every((m) => m.startsWith('release: v'));
+      if (!releaseOnly)
+        findings.push({
+          reason: 'A4',
+          verdict: 'HOLD',
+          path: remoteRef,
+          message: `push to ${remoteRef.slice('refs/heads/'.length)} outside the PR flow`,
+          resume:
+            'push a type/topic branch and open a PR; the deploy role merges it when checks are green',
+        });
+    }
     if (ZERO.test(localSha) && remoteRef.startsWith('refs/tags/')) {
       findings.push({
         reason: 'A1',

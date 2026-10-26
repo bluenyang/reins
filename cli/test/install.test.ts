@@ -7,6 +7,7 @@ import { driftConvention, driftMatch } from '../src/commands/check.js';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { discoverGates } from '../src/lib/detect.js';
+import { tierSkills } from '../src/lib/upstream.js';
 
 function repo(): string {
   const d = mkdtempSync(join(tmpdir(), 'reins-install-'));
@@ -170,12 +171,12 @@ describe('skill entry points (design §6)', () => {
       detectVendors: onlyClaude,
     };
     await runInstall(opts);
-    for (const s of ['reins-setup', 'reins-intent', 'reins-loop']) {
+    for (const s of tierSkills('graph')) {
       const src = readFileSync(join(d, `.agents/skills/${s}/SKILL.md`), 'utf8');
       expect(readFileSync(join(d, `.claude/skills/${s}/SKILL.md`), 'utf8')).toBe(src);
     }
     const index = readFileSync(join(d, '.agents/SKILLS.md'), 'utf8');
-    expect(index.match(/^\| `reins-/gm)).toHaveLength(3);
+    expect(index.match(/^\| `reins-/gm)).toHaveLength(10);
     expect(driftMatch(d)).toEqual([]);
     // a project's own skill is indexed and copied too
     mkdirSync(join(d, '.agents/skills/deploy-docs'), { recursive: true });

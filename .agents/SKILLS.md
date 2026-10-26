@@ -3,6 +3,13 @@
 
 | skill | does |
 |---|---|
-| `reins-intent` | Turn a request into an approved intent and an accepted spec |
-| `reins-loop` | Run an accepted spec through the reins loop |
+| `reins-implement` | Implement one ticket as the implementer role |
+| `reins-intent` | Turn a request into an approved intent |
+| `reins-loop` | Conduct an accepted spec through the reins loop by calling the stage skills in order |
+| `reins-release` | Release a finished version as the deploy role |
+| `reins-retro` | Entry point for the retrospective of a released version, as the pm role |
+| `reins-review` | Verify and review a finished ticket |
+| `reins-roadmap` | Update the public roadmap (docs/ROADMAP.md and docs/ROADMAP.ko.md) and pick the target version of the next work, as the pm role. |
 | `reins-setup` | Install reins in this repository, or move an existing harness onto it |
+| `reins-spec` | Turn an approved intent into an accepted spec, a reviewed plan and ticket files |
+| `reins-test` | Test a version before release |

@@ -11,8 +11,8 @@ codex exec -m <model> -s read-only --ephemeral -C <repo> -o <response.yaml> - < 
 
 - Read-only sandbox (`-s read-only`), no session kept (`--ephemeral`); the answer is written to `-o`.
 - `prompt.md` = the role's `must_not` + its procedure (the body of code-review.md) + the bus request + the COMPLETE
-  `git diff <range>` inlined (all files, not filtered to `changes[]` paths; only `.agents/` and `.claude/` installed
-  copies may be excluded by path) + "do not run commands, do not re-run checks".
+  `git diff <range> -- . ":!.agents/harness" ":!.agents/skills" ":!.agents/SKILLS.md" ":!.claude"` inlined (all other files, not filtered to `changes[]` paths) followed by `git diff --stat <range> -- .agents/harness .agents/skills .agents/SKILLS.md .claude`; installed copies
+  are always allowed to change) + "do not run commands, do not re-run checks".
 - Output lands in the `-o` file.
 - Re-review: inline only the fix commit's diff.
 - Tokens: the line after `tokens used` in the output.

@@ -10,6 +10,7 @@ import {
   nextBusNumber,
   nextIntentId,
   nextTicketNumber,
+  ticketNumber,
   planStepCount,
 } from '../src/commands/new.js';
 import { loadSchemas, validateFile } from '../src/lib/schema.js';
@@ -39,6 +40,14 @@ describe('reins new — numbering (C-2)', () => {
     expect(nextTicketNumber('012')).toBe(1);
     expect(nextTicketNumber('012', ['012-1'], [], ['012-3'])).toBe(4);
     expect(nextTicketNumber('012', ['013-9'], ['012-7'], [])).toBe(8);
+  });
+
+  it("ticket ids: the plan's reserved ids first, in plan order, then the next free number", () => {
+    expect(ticketNumber('012', ['012-1', '012-2'], [])).toBe(1);
+    expect(ticketNumber('012', ['012-1', '012-2'], ['012-1'])).toBe(2);
+    expect(ticketNumber('012', ['012-3', '012-1'], [])).toBe(3);
+    expect(ticketNumber('012', ['012-1', '012-2'], ['012-1', '012-2', '012-5'])).toBe(6);
+    expect(ticketNumber('012', ['013-1'], [])).toBe(1);
   });
   it('bus numbers follow the ticket only', () => {
     expect(nextBusNumber('012-1', [])).toBe('01');
@@ -70,10 +79,13 @@ describe('reins new — files (C-1, C-3, C-12)', () => {
     expect(newIntent(d, 'x', { origin: 'nobody' }).code).toBe(1);
   });
 
-  it('ticket: plan_step, history number, schema-valid; out-of-range step exits 1', () => {
+  it('ticket: reserved id, then history number; schema-valid; out-of-range step exits 1', () => {
     const d = project();
     put(d, '.agents/intent/012_thing/plan.md', PLAN);
     put(d, '.loctx/history/2026-10-26-1000_012-5-done.md', '# 012-5 — done\n');
+    // the plan reserves 012-1 and 012-4: those come first, then past the history's 012-5
+    expect(newTicket(d, '012', '1', 'first').stdout).toBe('.loctx/ticket/012-1_first.md\n');
+    expect(newTicket(d, '012', '3', 'third').stdout).toBe('.loctx/ticket/012-4_third.md\n');
     const r = newTicket(d, '012', '2', 'second', {
       depends: '012-1,012-4',
       release: 'stabilization',

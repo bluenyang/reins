@@ -144,6 +144,9 @@ describe('noise', () => {
     expect(keys).not.toContain('decision:update-graph');
     expect(keys).not.toContain('decision:marked');
     expect(keys).not.toContain('stop:Z9');
+    put(d, '.loctx/history/2026-10-26-1300_003-1-t.md', 'decisions: tk\nsource: tool\n');
+    put(d, '.loctx/history/2026-10-26-1301_004-1-t.md', 'decisions: tk\nsource: tool\n');
+    expect(runRetro({ cwd: d }).candidates.map((c) => c.key)).not.toContain('decision:tk');
     expect(runRetro({ cwd: d }).stops).toEqual({ Z9: 2 });
   });
 });
@@ -168,8 +171,24 @@ describe('reins knowledge', () => {
   it('refuses without records or twice', async () => {
     const d = await fixture();
     expect(proposeKnowledge('nothing-here', { cwd: d }).refused).toMatch(/no record/);
-    expect(proposeKnowledge('given', { cwd: d, from: ['h.md'] }).path).toBeDefined();
-    expect(proposeKnowledge('given', { cwd: d, from: ['h.md'] }).refused).toMatch(/exists/);
+    const ok = '2026-10-26-1000_001-1-x.md';
+    expect(proposeKnowledge('quote-values', { cwd: d, from: ['h.md'] }).refused).toMatch(
+      /not a page/,
+    );
+    expect(proposeKnowledge('quote-values', { cwd: d, from: ['../../x.md'] }).refused).toMatch(
+      /not a page/,
+    );
+    expect(
+      proposeKnowledge('slow-gate', { cwd: d, from: [ok, '2026-10-26-1001_001-1-y.md'] }).refused,
+    ).toMatch(/does not contain/);
+    expect(existsSync(join(d, '.loctx/knowledge-proposals'))).toBe(false);
+    const p = proposeKnowledge('quote-values', {
+      cwd: d,
+      from: [ok, '.loctx/history/2026-10-26-1100_002-1-z.md'],
+    });
+    expect(p.path).toBeDefined();
+    expect(readFileSync(join(d, p.path!), 'utf8')).toMatch(/1100_002-1-z\.md/);
+    expect(proposeKnowledge('quote-values', { cwd: d, from: [ok] }).refused).toMatch(/exists/);
     expect(acceptKnowledge('absent', { cwd: d }).refused).toMatch(/no draft/);
   });
 

@@ -57,9 +57,8 @@ export function promotedSlugs(root: string): Set<string> {
 
 /** Pages the tool wrote itself (install, update, migrate): marked `source: tool`, or named so before the marker existed. */
 export const toolPage = (h: { path: string; text: string }) =>
-  !ticketOfPage(h.path) &&
-  (/^source:\s*tool\s*$/m.test(h.text) ||
-    /_(install|update|migrate)-(harness|loop|graph)\.md$/.test(h.path));
+  /^source:\s*tool\s*$/m.test(h.text) ||
+  (!ticketOfPage(h.path) && /_(install|update|migrate)-(harness|loop|graph)\.md$/.test(h.path));
 
 const ticketOfPage = (path: string) => /_(\d{3}-\d+)(?:-|\.|$)/.exec(path)?.[1];
 

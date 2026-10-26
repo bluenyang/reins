@@ -389,7 +389,7 @@ const knowledge = program
 const knowledgeDone = (verb: string, r: { path?: string; refused?: string }) => {
   if (r.refused) {
     process.stderr.write(`reins knowledge ${verb}: ${r.refused}\n`);
-    process.exit(2);
+    process.exit(1);
   }
   process.stdout.write(`${r.path}\n`);
 };

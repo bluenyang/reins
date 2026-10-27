@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { configureBindings } from '../src/commands/configure.js';
 import { runInstall } from '../src/commands/install.js';
 import { runStatus } from '../src/commands/status.js';
@@ -155,6 +155,69 @@ describe('two-layer bindings (013-3)', () => {
     expect(cr.content).toContain('model: claude-sonnet-5-5');
     expect(cr.content).toContain('fallback for openai');
     expect(existsSync(join(d, '.claude/agents'))).toBe(true);
+  });
+
+  const bindPm = (d: string, extra = '') => {
+    const bp = join(d, '.agents/harness/bindings.yaml');
+    writeFileSync(
+      bp,
+      readFileSync(bp, 'utf8')
+        .replace(/(\n  pm:\n\s+vendor: )claude(\n\s+model: )\S+/, '$1openai$2gpt-6.1-sol')
+        .replace(
+          /(lookup:\n\s+vendor: )claude(\n\s+model: )\S+/,
+          '$1cursor$2cursor-grok-4.5-high-fast',
+        ),
+    );
+    if (extra) {
+      const rp = join(d, '.agents/harness/roles/pm.md');
+      writeFileSync(
+        rp,
+        readFileSync(rp, 'utf8').replace(/^(default_binding:.*)$/m, `$1\n${extra}`),
+      );
+    }
+  };
+
+  it('pm is resolved first: an unavailable pm uses its fallback, and others fall to that (review fix)', async () => {
+    const d = await repo(['claude']);
+    bindPm(d, 'fallback_binding: "claude-sonnet-5-5"');
+    const t = resolveBindings(d, detect(['claude']));
+    expect(find(t, 'pm')).toMatchObject({ model: 'claude-sonnet-5-5', source: 'fallback' });
+    expect(find(t, 'lookup')).toMatchObject({ model: 'claude-sonnet-5-5', source: 'pm' });
+  });
+
+  it('pm with nothing usable ends on the claude default, and a local pm override wins', async () => {
+    const d = await repo(['claude']);
+    bindPm(d);
+    const t = resolveBindings(d, detect(['claude']));
+    expect(find(t, 'pm')).toMatchObject({
+      vendor: 'claude',
+      model: 'claude-opus-5-5',
+      source: 'default',
+    });
+    expect(find(t, 'lookup')).toMatchObject({ model: 'claude-opus-5-5', source: 'pm' });
+    writeFileSync(
+      join(d, '.loctx/bindings.local.yaml'),
+      'schema: reins/bindings-local@1\nroles:\n  pm: {model: claude-fable-5-1}\n',
+    );
+    const u = resolveBindings(d, detect(['claude']));
+    expect(find(u, 'pm')).toMatchObject({ model: 'claude-fable-5-1', source: 'local' });
+    expect(find(u, 'lookup')).toMatchObject({ model: 'claude-fable-5-1', source: 'pm' });
+  });
+
+  it('an invalid local file warns and is ignored', async () => {
+    const d = await repo(['claude']);
+    writeFileSync(
+      join(d, '.loctx/bindings.local.yaml'),
+      'schema: reins/bindings-local@1\nroles:\n  pm: {model: 7}\n',
+    );
+    const warn = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      expect(readLocal(d).roles).toEqual({});
+      expect(resolveBindings(d, detect(['claude'])).length).toBe(12);
+      expect(String(warn.mock.calls[0]?.[0])).toMatch(/bindings\.local\.yaml is invalid/);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('the loop skill and vendor-cli reference point at reins status --json (C-7)', () => {

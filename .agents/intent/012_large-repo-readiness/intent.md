@@ -2,7 +2,7 @@
 id: "012"
 slug: large-repo-readiness
 version: "0.1.4"
-status: approved
+status: released
 origin: user
 approvals:
   - { role: user, at: 2026-10-27 }

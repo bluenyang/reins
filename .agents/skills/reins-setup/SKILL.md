@@ -6,7 +6,7 @@ description: Install reins in this repository, or move an existing harness onto 
 # reins-setup
 
 You act as the **pm** role (`.agents/harness/roles/pm.md` once installed). The CLI does the work; you collect
-the answers only the user can give and report what happened. Run the CLI as `npx @bluenyang/reins@0.1.4 …`
+the answers only the user can give and report what happened. Run the CLI as `npx @bluenyang/reins@0.1.5-rc.1 …`
 (the version is pinned to this skill's release; inside the reins repository itself: `node cli/dist/reins.js …`).
 
 Defaults from the plugin settings: language `${user_config.language}`, install mode `${user_config.default_mode}`.

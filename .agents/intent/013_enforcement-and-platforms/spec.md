@@ -1,9 +1,10 @@
 ---
 intent: "013"
-status: reviewed
+status: accepted
 approvals:
   - { role: qa-design, at: 2026-10-27, kind: first-review }
   - { role: pm, at: 2026-10-27 }
+  - { role: user, at: 2026-10-27, kind: summary }
 summary_for_user: |
   규칙마다 지키는 방식(차단·검사·권고)을 `harness/policy/enforcement.yaml` 한 곳에 적는다. README 양판과 설계서 표는 테스트가 이 파일에 맞춘다. 권고로 남은 것은 0.2 로드맵으로 넘긴다.
   모델 할당은 두 층이 된다. 커밋되는 `bindings.yaml`(팀 기본값)과 gitignore된 `.loctx/bindings.local.yaml`(사용자 덮어쓰기·감지 결과)로 나누고, 역할이 실제로 쓸 모델은 `reins status`가 보여 준다.

@@ -24,7 +24,7 @@ intent와 ticket이 어디까지 왔는지는 `reins status`로 봅니다. 에�
 
 ## 준비
 
-Node 20 이상과 pnpm이 필요합니다.
+Node 22 이상과 pnpm이 필요합니다. 개발(vitest 5)에는 Node 22.12 이상이 필요하고, CLI 자체는 Node 22 어디서든 돌아갑니다.
 
 ```sh
 pnpm install     # husky 훅도 함께 설치됩니다
@@ -39,7 +39,7 @@ pnpm build       # cli/src → cli/dist
 
 - **설계가 먼저입니다.** 기준은 `docs/design.md`입니다. 코드가 설계와 달라져야 하면 같은 커밋에서
   `docs/design.ko.md`와 `docs/design.md`를 먼저 고칩니다(R45).
-- **스크립트는 TypeScript만** 씁니다. Python은 쓰지 않습니다(R65). ESM, Node 20 이상입니다.
+- **스크립트는 TypeScript만** 씁니다. Python은 쓰지 않습니다(R65). ESM, Node 22 이상입니다.
 - **브랜치**는 `master`에서 `type/topic`으로 따고, rebase한 뒤 fast-forward로 병합합니다.
   `master`에 직접 커밋하지 않습니다.
 - **커밋**은 끝난 단위마다 하나씩 하고, 커밋마다 `pnpm check`를 통과해야 합니다. 메시지는

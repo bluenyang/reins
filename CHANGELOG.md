@@ -10,9 +10,13 @@ This file is about the package. The harness that `reins update` re-applies to in
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md); an entry there tagged `[skill]`
 needs the `/reins-update` skill.
 
-## [Unreleased] — 0.1.5
+## [Unreleased] — 0.2.0
 
-Enforced versus advised, per-user binding overrides, documents with every rc, CI on more platforms (planned).
+Planned; see the roadmap.
+
+## [0.1.5] — 2026-10-27
+
+Enforced versus advised, per-user binding overrides, documents with every rc, CI on more platforms.
 
 - `harness/policy/enforcement.yaml` says how each rule is held (blocked, checked or advised), and the README and design tables are rendered from it (`pnpm docs:enforcement`) (intent 013).
 - Node ≥ 22 (commander 14), `.gitattributes` with LF endings, and CI on Ubuntu, Windows and macOS with Node 22 and 24 (intent 013).

@@ -1,6 +1,6 @@
 ---
 intent: "013"
-status: reviewed
+status: done
 approvals:
   - { role: qa-design, at: 2026-10-27, kind: light-review }
 agents:

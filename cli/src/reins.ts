@@ -29,6 +29,12 @@ const VERSION = (
   }
 ).version;
 
+// every command: a reader that went away (`| head`) ends the run quietly with the exit code already set
+process.stdout.on('error', (e: NodeJS.ErrnoException) => {
+  if (e.code === 'EPIPE') process.exit(process.exitCode ?? 0);
+  throw e;
+});
+
 const program = new Command()
   .name('reins')
   .description('agent harness — install, migrate, update; check keeps agents inside their roles')

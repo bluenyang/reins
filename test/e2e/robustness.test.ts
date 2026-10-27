@@ -73,4 +73,24 @@ describe('robustness of the built cli', () => {
     expect(stderr).toBe('');
     expect(code).toBe(open.status);
   });
+
+  it('a closed stdout ends any command quietly, not only check (install, update)', async () => {
+    const d = repo();
+    for (const args of [
+      ['install', 'graph', '--mode', 'auto', '--dry-run'],
+      ['install', 'graph', '--mode', 'auto'],
+      ['update', '--dry-run'],
+    ]) {
+      const spawned = spawn(process.execPath, [CLI, ...args], {
+        cwd: d,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      spawned.stdout.destroy();
+      let stderr = '';
+      spawned.stderr.on('data', (c: Buffer) => (stderr += c.toString()));
+      const code = await new Promise<number | null>((res) => spawned.on('close', res));
+      expect(stderr, args.join(' ')).not.toMatch(/EPIPE|Unhandled/);
+      expect(code, args.join(' ')).toBe(0);
+    }
+  });
 });

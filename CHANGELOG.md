@@ -21,6 +21,7 @@ Enforced versus advised, per-user binding overrides, documents with every rc, CI
 - `reins check --stage rc-close --release <V> --stable` prints the stable dispatch lines (user's instruction only) and warns when no rc is recorded; without it T5 only hints at `--stable` (intent 013).
 
 ### rc.2
+- Every command, not only `check`, ends quietly when its output is cut (`reins update | head`); before, it crashed with EPIPE.
 
 - `reins update` moves `vendors.<v>.detected` (and its timestamp) from a 0.1.4-style `bindings.yaml` into `.loctx/bindings.local.yaml`, keeping comments and every other key; a vendor the local file already has is kept (intent 013).
 

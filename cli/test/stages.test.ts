@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { driftConvention } from '../src/commands/check.js';
-import { dispatchLines, readRelease } from '../src/lib/release.js';
+import { checkDoc, dispatchLines, readRelease } from '../src/lib/release.js';
 import { rcClose, ticketStart, verdictCheck } from '../src/commands/stages.js';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker } from '../src/lib/ask.js';
@@ -232,6 +232,75 @@ describe('T5 rc-close', () => {
       expect(d).toContain('release:');
       expect(d).toContain('npm-staged');
     }
+  });
+});
+
+describe('release.docs (C-8, C-9)', () => {
+  const docsYaml =
+    'release:\n  docs:\n' +
+    '    - { file: docs/ROADMAP.md, check: roadmap-row }\n' +
+    '    - { file: CHANGELOG.md, check: changelog-section }\n' +
+    '    - { file: README.md, check: mentions-version }\n';
+  async function ready() {
+    const d = await project();
+    approved(d);
+    put(d, '.loctx/history/2026-10-26-1000_001.md', '# 001\n- 001-1 done\n- 001-2 done\n');
+    const pin = join(d, '.agents/harness/install.yaml');
+    writeFileSync(pin, readFileSync(pin, 'utf8') + docsYaml);
+    return d;
+  }
+  const warns = (d: string) =>
+    rcClose(d, '0.2.0')
+      .filter((x) => x.message.startsWith('docs:'))
+      .map((x) => `${x.verdict} ${x.message}`);
+
+  it('warns once per stale document and never stops (C-8)', async () => {
+    const d = await ready();
+    put(d, 'docs/ROADMAP.md', '| Version | State |\n|---|---|\n| 0.2.0 | planned |\n');
+    put(d, 'CHANGELOG.md', '## [0.1.0] — 2026-01-01\n');
+    put(d, 'README.md', 'Version 0.1.0 is out.\n');
+    expect(warns(d)).toEqual([
+      'WARN docs: docs/ROADMAP.md still describes the previous state (roadmap-row)',
+      'WARN docs: CHANGELOG.md still describes the previous state (changelog-section)',
+      'WARN docs: README.md still describes the previous state (mentions-version)',
+    ]);
+    expect(rcClose(d, '0.2.0').every((x) => x.verdict === 'WARN')).toBe(true);
+  });
+  it('is silent when every document is current, and without release.docs (C-8)', async () => {
+    const d = await ready();
+    put(d, 'docs/ROADMAP.md', '| 0.2.0 | rc |\n');
+    put(d, 'CHANGELOG.md', '## [Unreleased] — 0.2.0\n');
+    put(d, 'README.md', 'Version 0.2.0 is out.\n');
+    expect(warns(d)).toEqual([]);
+    const pin = join(d, '.agents/harness/install.yaml');
+    writeFileSync(pin, readFileSync(pin, 'utf8').replace(docsYaml, ''));
+    put(d, 'README.md', 'nothing\n');
+    expect(warns(d)).toEqual([]);
+  });
+  it('checks each kind (C-8)', () => {
+    const row = (state: string) => `| Version | State |\n|---|---|\n| 0.2.0 | ${state} |\n`;
+    expect(checkDoc(row('planned'), 'roadmap-row', '0.2.0', 'rc')).toBe(false);
+    expect(checkDoc(row('계획'), 'roadmap-row', '0.2.0', 'rc')).toBe(false);
+    expect(checkDoc(row('published'), 'roadmap-row', '0.2.0', 'rc')).toBe(true);
+    expect(checkDoc(row('rc'), 'roadmap-row', '0.2.1', 'rc')).toBe(false);
+    const unreleased = '## [Unreleased] — 0.2.0\n';
+    expect(checkDoc(unreleased, 'changelog-section', '0.2.0', 'rc')).toBe(true);
+    expect(checkDoc(unreleased, 'changelog-section', '0.2.0', 'stable')).toBe(false);
+    expect(checkDoc('## [0.2.0] — 2026-11-01\n', 'changelog-section', '0.2.0', 'stable')).toBe(
+      true,
+    );
+    expect(checkDoc('## [0.2.0] — 2026-11-01\n', 'changelog-section', '0.2.0', 'rc')).toBe(true);
+    expect(checkDoc('Version 0.2.0 is out', 'mentions-version', '0.2.0', 'rc')).toBe(true);
+    expect(checkDoc('Version 0.2.01 and 10.2.0', 'mentions-version', '0.2.0', 'rc')).toBe(false);
+    expect(checkDoc('Version 0.2.0.', 'mentions-version', '0.2.0', 'rc')).toBe(true);
+  });
+  it('deploy role and release skill put the docs step before T5 (C-9)', () => {
+    const deploy = readFileSync('harness/roles/deploy.md', 'utf8');
+    const skill = readFileSync('skills/reins-release/SKILL.md', 'utf8');
+    expect(deploy).toContain('release.docs');
+    expect(deploy.indexOf('Release documents')).toBeLessThan(deploy.indexOf('## rc procedure'));
+    expect(skill).toContain('release.docs');
+    expect(skill.indexOf('release.docs')).toBeLessThan(skill.indexOf('(T5)'));
   });
 });
 

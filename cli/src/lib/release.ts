@@ -139,3 +139,66 @@ export function releaseDraftNotes(drafts: ReleaseDraft[]): string[] {
         .join(', ')}}, approval: ${d.approval}}`,
   );
 }
+
+/** The checks `release.docs` may name (design §4). */
+export const DOC_CHECKS = ['roadmap-row', 'changelog-section', 'mentions-version'] as const;
+export type DocCheck = (typeof DOC_CHECKS)[number];
+
+/** One entry of `release.docs` in install.yaml: a file the release must leave up to date. */
+export interface ReleaseDoc {
+  file: string;
+  check: DocCheck;
+}
+
+/** Reads `release.docs`; [] when the file, the key or an entry is missing or malformed. */
+export function readReleaseDocs(root: string): ReleaseDoc[] {
+  const p = join(root, '.agents/harness/install.yaml');
+  if (!existsSync(p)) return [];
+  let doc: unknown;
+  try {
+    doc = parse(readFileSync(p, 'utf8'));
+  } catch {
+    return [];
+  }
+  const list = (doc as { release?: { docs?: unknown } } | null)?.release?.docs;
+  if (!Array.isArray(list)) return [];
+  const out: ReleaseDoc[] = [];
+  for (const d of list as Record<string, unknown>[]) {
+    const check = d?.['check'];
+    if (typeof d?.['file'] === 'string' && DOC_CHECKS.includes(check as DocCheck))
+      out.push({ file: d['file'], check: check as DocCheck });
+  }
+  return out;
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, (c) => `\\${c}`);
+
+/**
+ * Whether `text` is up to date for version `v` (pure). `roadmap-row`: a table row whose first
+ * cell is `v` and whose state cell is not planned/계획. `changelog-section`: rc `## [Unreleased] — v`
+ * or `## [v]`; stable only `## [v]`. `mentions-version`: `v` as a token of its own.
+ */
+export function checkDoc(
+  text: string,
+  check: DocCheck,
+  v: string,
+  stage: 'rc' | 'stable',
+): boolean {
+  const e = escapeRe(v);
+  if (check === 'roadmap-row')
+    return text.split(/\r?\n/).some((line) => {
+      const cells = line.split('|').map((c) => c.trim());
+      return (
+        line.trimStart().startsWith('|') &&
+        cells[1] === v &&
+        cells[2] !== undefined &&
+        cells[2] !== '' &&
+        !/^(planned|계획)$/i.test(cells[2])
+      );
+    });
+  if (check === 'changelog-section')
+    return stage === 'stable'
+      ? new RegExp(`^## \\[${e}\\]`, 'm').test(text)
+      : new RegExp(`^## (\\[Unreleased\\] — ${e}(?![\\w.])|\\[${e}\\])`, 'm').test(text);
+  return new RegExp(`(?<![\\w.])${e}(?![\\w]|\\.\\d)`).test(text);
+}

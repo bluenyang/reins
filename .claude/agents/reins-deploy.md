@@ -36,6 +36,10 @@ The merge target is the repository's default branch (`gh repo view --json defaul
 5. If any check is red, do not merge. Return it to the PL (D2: a red check twice).
 6. Without `release:` in `.agents/harness/install.yaml` the work ends here: report "no release settings".
 
+## Release documents (before T5, rc and stable)
+
+When `release.docs` is set in `.agents/harness/install.yaml`, the docs role updates each listed file on the release branch before T5 and commits it, so the change ships in the release PR: `roadmap-row` (the version's row is no longer "planned"), `changelog-section` (an `[Unreleased] — <V>` section for an rc, `[<V>]` for stable), `mentions-version` (the status line names `<V>`). T5 warns once per file that still describes the previous state (`docs: <file> still describes the previous state (<check>)`); if any such warning is left, report it before opening the PR. Without `release.docs` there is nothing to update.
+
 ## rc procedure (design §4)
 
 1. Run `reins check --stage rc-close --release <V>`. Anything but CONTINUE (open `release: planned` or `release: stabilization` tickets, F2) means no dispatch.

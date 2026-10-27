@@ -12,3 +12,14 @@ release:
         version: "{version}"
         dry_run: "false"
       approval: npm-staged
+  docs:
+    - file: docs/ROADMAP.md
+      check: roadmap-row
+    - file: docs/ROADMAP.ko.md
+      check: roadmap-row
+    - file: CHANGELOG.md
+      check: changelog-section
+    - file: README.md
+      check: mentions-version
+    - file: docs/README.ko.md
+      check: mentions-version

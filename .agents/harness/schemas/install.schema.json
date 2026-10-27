@@ -9,8 +9,18 @@
     "language": { "type": "string" },
     "release": {
       "type": "object",
-      "required": ["workflows"],
       "properties": {
+        "docs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["file", "check"],
+            "properties": {
+              "file": { "type": "string", "minLength": 1 },
+              "check": { "enum": ["roadmap-row", "changelog-section", "mentions-version"] }
+            }
+          }
+        },
         "workflows": {
           "type": "array",
           "items": {

@@ -17,7 +17,9 @@ BlueNyang과 Team Croffle의 저장소 열두 곳이 같은 하네스 계보를 
 0.1.4가 npm에 있습니다: `npx @bluenyang/reins <command>`. 계획의 1차(round one)로, graph 단계이며
 생성되는 벤더 파일은 Claude Code만 검증했습니다. loop와 harness 단계는 0.2에서 graph로부터 깎아
 냅니다. 0.1.3에서 루프를 단계 스킬로 나누고 PR → CI → rc 릴리스 흐름을 넣었고, 0.1.4에서 큰 저장소
-적용을 준비했습니다(릴리스 설정, 모노레포 게이트, migrate 수정). 버전마다 바뀐 것은
+적용을 준비했습니다(릴리스 설정, 모노레포 게이트, migrate 수정). rc 단계인 0.1.5는 어떤 규칙이 강제되고
+어떤 규칙이 권고인지 밝히고, 모델 할당을 팀과 사용자 두 층으로 나누며, CI를 Ubuntu·Windows·macOS와
+Node 22·24에서 돌립니다. 버전마다 바뀐 것은
 [CHANGELOG.md](../CHANGELOG.md)에, 다음 계획은 로드맵에 있습니다.
 
 reins는 자기 루프로 자기 자신을 개발합니다. intent 001(`reins status`), 002(`reins metrics`),

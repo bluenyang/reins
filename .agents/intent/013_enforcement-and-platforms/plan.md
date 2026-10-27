@@ -9,7 +9,7 @@ agents:
   review: [code-review]
 budget: {}
 branch: feat/013-enforcement-and-platforms
-tickets: ["013-1", "013-2", "013-3", "013-4", "013-5"]
+tickets: ["013-1", "013-2", "013-3", "013-4", "013-5", "013-6"]
 ---
 ## 바뀌는 파일
 - 013-1: `package.json`(engines `>=22`, commander `^14`), lockfile, `.gitattributes`(새), `.github/workflows/ci.yml`(matrix), Windows·macOS에서 드러난 실패 수정(테스트·`split('\n')` 파서·임시 폴더 삭제 재시도·realpath), README·CONTRIBUTING·AGENTS.md 양판의 Node 문구, `docs/design*.md` §9, 테스트(engines·matrix)
@@ -39,4 +39,4 @@ tickets: ["013-1", "013-2", "013-3", "013-4", "013-5"]
 - [ ] PR CI matrix 녹색
 - [ ] npm rc 스모크
 ## 이탈 기록
-—
+- 2026-10-27 (pl, 013-1 PR CI matrix): Windows 2칸에서 테스트 파일 6개 실패(경로 `new URL().pathname` → `/D:/…`, 템플릿·출력 비교 등), macOS Node 22에서 e2e 2개가 5초 제한 초과 → 위험 항목대로 ticket 013-6 "Windows·macOS CI 실패 수정"으로 분리.

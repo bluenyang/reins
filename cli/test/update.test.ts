@@ -200,6 +200,25 @@ describe('reins update', () => {
       expect(resolveBindings(d, noDetect).map((x) => x.model)).toEqual(before.map((x) => x.model));
     });
 
+    it('leaves timestamp-only and non-boolean records untouched', async () => {
+      const { d, b } = await setup();
+      const t = readFileSync(b, 'utf8')
+        .replace(
+          '    detected: false\n    at: "2026-10-01T00:00:00.000Z"\n',
+          '    at: "2026-10-01T00:00:00.000Z"\n',
+        )
+        .replace(
+          '    detected: true\n    available: true\n  openai',
+          '    detected: yes\n    available: true\n  openai',
+        );
+      writeFileSync(b, t);
+      const r = await runUpdate({ cwd: d, detectVendors: claude });
+      expect(r.bindingsMoved).toEqual(['google']);
+      const after = readFileSync(b, 'utf8');
+      expect(after).toContain('at: "2026-10-01T00:00:00.000Z"');
+      expect(after).toContain('detected: yes');
+    });
+
     it('dry run lists the move and writes nothing', async () => {
       const { d, b, local } = await setup();
       const t = readFileSync(b, 'utf8');

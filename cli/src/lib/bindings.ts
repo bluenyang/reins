@@ -239,11 +239,11 @@ export function migrateDetected(root: string, dryRun = false): string[] {
     const at = ['at', 'detected_at', 'detectedAt', 'checked_at', 'checkedAt']
       .map(val)
       .find((x) => typeof x === 'string' || x instanceof Date);
-    if (typeof det === 'boolean')
-      found[name] = {
-        detected: det,
-        ...(at === undefined ? {} : { at: at instanceof Date ? at.toISOString() : String(at) }),
-      };
+    if (typeof det !== 'boolean') continue; // only a well-formed record is migrated
+    found[name] = {
+      detected: det,
+      ...(at === undefined ? {} : { at: at instanceof Date ? at.toISOString() : String(at) }),
+    };
     touched.push(name);
   }
   if (touched.length === 0) return [];

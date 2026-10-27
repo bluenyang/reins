@@ -9,15 +9,20 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: check
-    runs-on: ubuntu-latest
+  check-matrix:
+    name: check (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [22, 24]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4 # version from package.json#packageManager
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # lint, format check, typecheck, tests — the same gate the hooks run
@@ -25,5 +30,18 @@ jobs:
       - run: pnpm build
       # the harness verifier on the repository itself: skills format, schemas, installed harness = upstream, generated files untouched (S2)
       - run: node cli/dist/reins.js check --drift
-      # the repository is a Claude Code plugin and marketplace (not --strict: CLAUDE.md and icon warnings are accepted)
-      - run: npx -y @anthropic-ai/claude-code@latest plugin validate .
+      # the repository is a Claude Code plugin and marketplace (not --strict: CLAUDE.md and icon warnings are accepted); once, not per leg
+      - if: matrix.os == 'ubuntu-latest' && matrix.node == 24
+        run: npx -y @anthropic-ai/claude-code@latest plugin validate .
+
+  # The branch ruleset requires a status check named exactly "check". The matrix legs are named
+  # per OS and Node, so this job aggregates them and keeps that name.
+  check:
+    name: check
+    needs: check-matrix
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "matrix result: ${{ needs.check-matrix.result }}"
+          test "${{ needs.check-matrix.result }}" = "success"

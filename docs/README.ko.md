@@ -89,7 +89,7 @@ Claude Code에서는 플러그인을 설치하면 저장소 설정까지 맡길 
 /reins:reins-setup
 ```
 
-Codex, Antigravity, Cursor나 터미널에서는 CLI를 씁니다. Node 20 이상이 필요합니다. 설치하려는 저장소의 루트에서 실행하며, 저장소에 커밋이 하나 이상 있어야
+Codex, Antigravity, Cursor나 터미널에서는 CLI를 씁니다. Node 22 이상이 필요합니다. 설치하려는 저장소의 루트에서 실행하며, 저장소에 커밋이 하나 이상 있어야
 합니다(0.1.0의 `check`는 커밋이 없는 저장소에서 실패합니다).
 
 ```sh

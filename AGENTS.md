@@ -26,7 +26,7 @@ of this repository.
 
 ### Stack and commands
 
-- Node ≥ 20, pnpm, TypeScript (ESM). Lint/format: oxlint, oxfmt. Tests: vitest. Hooks: husky.
+- Node ≥ 22, pnpm, TypeScript (ESM). Lint/format: oxlint, oxfmt. Tests: vitest. Hooks: husky.
 - `pnpm check` — lint, format check, typecheck, tests. Run before reporting done.
 - `pnpm build` — `cli/src` → `cli/dist` (the `reins` bin).
 - `node cli/dist/reins.js check --stage <stage>` — the harness verifier: `ticket-start --ticket <id>` (T1),

@@ -89,7 +89,7 @@ In Claude Code, install the plugin and let it set the repository up:
 /reins:reins-setup
 ```
 
-For Codex, Antigravity, Cursor or a plain terminal, use the CLI. It requires Node 20 or later. Run it from the root of the repository you want to set up; the repository
+For Codex, Antigravity, Cursor or a plain terminal, use the CLI. It requires Node 22 or later. Run it from the root of the repository you want to set up; the repository
 needs at least one commit (`check` fails on an empty history in 0.1.0):
 
 ```sh

@@ -1,6 +1,6 @@
 {
   "name": "reins",
-  "version": "0.1.5-rc.1",
+  "version": "0.1.5-rc.2",
   "description": "Installs, migrates and updates the reins agent harness; exposes /reins:reins-setup.",
   "author": {
     "name": "BlueNyang"

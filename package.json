@@ -7,6 +7,9 @@
     "type": "git",
     "url": "git+https://github.com/bluenyang/reins.git"
   },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
   "type": "module",
   "bin": {
     "reins": "cli/dist/reins.js"

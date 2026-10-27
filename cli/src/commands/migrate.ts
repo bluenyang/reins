@@ -110,7 +110,7 @@ export async function runMigrate(o: MigrateOptions): Promise<MigrateResult> {
     return { ...res, refused: 'no existing harness or workspace here — use `reins install`' };
 
   // 1. make sure the target layout exists (install is idempotent)
-  if (!o.dryRun) {
+  {
     const inst = await runInstall({
       tier: o.tier,
       mode: o.mode,
@@ -119,6 +119,7 @@ export async function runMigrate(o: MigrateOptions): Promise<MigrateResult> {
       detectVendors: o.detectVendors,
       now: o.now,
       overExisting: true,
+      dryRun: o.dryRun, // plans only: gate proposals and memory drafts show up as notes
     });
     if (inst.refused) return { ...res, refused: inst.refused };
     res.report.push(

@@ -103,6 +103,30 @@ describe('reins migrate (S1)', () => {
     expect(existsSync(join(d, '.agents'))).toBe(false);
   });
 
+  it('dry run lists the subdirectory gate proposals and memory drafts, and writes nothing', async () => {
+    const d = repo({
+      ...GEN4,
+      'apps/web/package.json': JSON.stringify({ scripts: { typecheck: 'tsc --noEmit' } }),
+      '.claude/memory/a.md': 'keep this\n',
+    });
+    const before = readdirSync(d).sort();
+    const r = await runMigrate({
+      tier: 'graph',
+      mode: 'auto',
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: claudeOnly,
+      dryRun: true,
+    });
+    expect(
+      r.report.some((n) => n.includes('apps-web-typecheck=npm --prefix apps/web run typecheck')),
+    ).toBe(true);
+    expect(r.report.some((n) => n.includes('.loctx/knowledge-proposals/memory-a.md'))).toBe(true);
+    expect(readdirSync(d).sort()).toEqual(before);
+    expect(existsSync(join(d, '.loctx'))).toBe(false);
+    expect(existsSync(join(d, '.agents'))).toBe(false);
+  });
+
   it('refuses where there is nothing to migrate', async () => {
     const d = repo({ 'README.md': '' });
     expect(

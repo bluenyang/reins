@@ -266,6 +266,17 @@ describe('release.docs (C-8, C-9)', () => {
     ]);
     expect(rcClose(d, '0.2.0').every((x) => x.verdict === 'WARN')).toBe(true);
   });
+  it('a document that cannot be read warns and the others are still checked', async () => {
+    const d = await ready();
+    mkdirSync(join(d, 'docs/ROADMAP.md'), { recursive: true }); // a directory where a file is configured
+    put(d, 'CHANGELOG.md', '## [Unreleased] — 0.2.0\n');
+    put(d, 'README.md', 'Version 0.1.0 is out.\n');
+    expect(warns(d)).toEqual([
+      'WARN docs: docs/ROADMAP.md still describes the previous state (roadmap-row)',
+      'WARN docs: README.md still describes the previous state (mentions-version)',
+    ]);
+  });
+
   it('is silent when every document is current, and without release.docs (C-8)', async () => {
     const d = await ready();
     put(d, 'docs/ROADMAP.md', '| 0.2.0 | rc |\n');

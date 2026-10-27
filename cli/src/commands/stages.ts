@@ -484,8 +484,13 @@ export function rcClose(root: string, release: string | undefined, stable = fals
 export function docsFindings(root: string, release: string, stage: 'rc' | 'stable'): Finding[] {
   const out: Finding[] = [];
   for (const d of readReleaseDocs(root)) {
-    const p = join(root, d.file);
-    if (existsSync(p) && checkDoc(readFileSync(p, 'utf8'), d.check, release, stage)) continue;
+    let text: string | null = null;
+    try {
+      text = readFileSync(join(root, d.file), 'utf8');
+    } catch {
+      // missing, a directory or unreadable: the same advisory warning, and the other documents are still checked
+    }
+    if (text !== null && checkDoc(text, d.check, release, stage)) continue;
     out.push({
       reason: 'F2',
       verdict: 'WARN',

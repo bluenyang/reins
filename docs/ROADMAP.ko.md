@@ -40,6 +40,7 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 - 예산 정지와 아직 검출하지 못하는 위반.
 - 0.1.5에서 권고로 분류한([표](README.ko.md#강제와-권고), 원천 [`enforcement.yaml`](../harness/policy/enforcement.yaml)) 규칙 중 스크립트나 훅으로 막을 수 있는 것(역할 권한, 작업 범위, 예산)을 강제로 바꿉니다. `.env` 읽기 차단부터 시작합니다.
 - 이전 세대 하네스 시험 이전. 읽기 전용 리허설을 먼저 합니다.
+- stable도 merge 전에 문서를 갱신합니다. 문서만 바꾸는 stable PR(intent `released`, 날짜가 붙은 CHANGELOG `[V]`, 로드맵 행, README 상태 줄)을 먼저 merge하고 stable을 배포합니다. publish 워크플로는 HEAD가 마지막 rc 태그와 같아야 한다는 조건 대신, 그 태그 이후 바뀐 것이 `release.docs` 파일과 해당 버전 intent의 상태뿐이면 stable을 받습니다.
 
 ## 0.3 — 적용
 

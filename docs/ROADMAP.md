@@ -40,6 +40,7 @@ Input: the metrics recorded in 0.1.
 - Budget stops and the remaining undetected violations.
 - Turning the advised rules from 0.1.5 (the [table](../README.md#enforced-versus-advised), source [`enforcement.yaml`](../harness/policy/enforcement.yaml)) into enforced ones where a script or hook can hold them (role permissions, change scope, budgets), starting with the `.env` read block.
 - Trial migration of older harness generations, read-only rehearsal first.
+- Release documents before the merge, also for stable: a docs-only stable PR (intent `released`, CHANGELOG `[V]` with its date, roadmap row, README status line) is merged before the stable dispatch. The publish workflow accepts stable when everything changed since the last rc tag is a `release.docs` file or the version's intent status, instead of requiring HEAD to be that tag.
 
 ## 0.3 — rollout
 

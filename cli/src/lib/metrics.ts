@@ -152,7 +152,7 @@ export function readMetrics(root: string): { records: Metric[]; broken: number }
   } catch {
     return { records, broken };
   }
-  for (const line of text.split('\n')) {
+  for (const line of text.split(/\r?\n/)) {
     if (!line.trim()) continue;
     try {
       const o: unknown = JSON.parse(line);

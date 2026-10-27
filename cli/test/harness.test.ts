@@ -76,7 +76,7 @@ describe('harness sources match the design (docs/design.md)', () => {
         if (existsSync(join(ROOT, d))) cpSync(join(ROOT, d), join(tmp, d), { recursive: true });
       expect(driftConvention(tmp)).toEqual([]);
     } finally {
-      rmSync(tmp, { recursive: true, force: true });
+      rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
 });

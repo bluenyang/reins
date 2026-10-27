@@ -41,7 +41,7 @@ export function readDismissals(root: string): Map<string, Dismissal> {
   const out = new Map<string, Dismissal>();
   const f = join(root, DISMISSED);
   if (!existsSync(f)) return out;
-  for (const line of readFileSync(f, 'utf8').split('\n')) {
+  for (const line of readFileSync(f, 'utf8').split(/\r?\n/)) {
     try {
       const d = JSON.parse(line) as Dismissal;
       if (typeof d.key === 'string' && typeof d.units === 'number') out.set(d.key, d);

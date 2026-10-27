@@ -75,7 +75,8 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  for (const d of [template, ...copies]) if (d) rmSync(d, { recursive: true, force: true });
+  for (const d of [template, ...copies])
+    if (d) rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 function fresh(): string {
@@ -356,7 +357,7 @@ const SCENARIOS: Scenario[] = [
     violation: 'generated settings.json denies secret reads, force pushes and --no-verify',
     run: (d) => {
       // generate it here, through the built CLI, rather than reading what the template happens to hold
-      rmSync(join(d, '.claude'), { recursive: true, force: true });
+      rmSync(join(d, '.claude'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       const r = reins(d, ['install', 'graph', '--mode', 'auto']);
       expect(r.code, r.stderr).toBe(0);
       const settings = JSON.parse(readFileSync(join(d, '.claude/settings.json'), 'utf8')) as {

@@ -58,7 +58,7 @@ function historyTicketIds(root: string, intent: string): string[] {
   for (const f of ls(dir).filter((e) => e.endsWith('.md'))) {
     const head =
       readFileSync(join(dir, f), 'utf8')
-        .split('\n')
+        .split(/\r?\n/)
         .find((l) => l.startsWith('# ')) ?? '';
     for (const m of `${f}\n${head}`.matchAll(re)) out.push(m[1]!);
   }

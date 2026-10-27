@@ -10,5 +10,5 @@ export default function setup(): () => void {
   const root = mkdtempSync(join(tmpdir(), 'reins-test-'));
   // workers and spawned processes inherit these; os.tmpdir() reads TMPDIR (TEMP/TMP on Windows)
   for (const k of ['TMPDIR', 'TEMP', 'TMP']) process.env[k] = root;
-  return () => rmSync(root, { recursive: true, force: true });
+  return () => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }

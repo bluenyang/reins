@@ -10,7 +10,7 @@ function git(args: string[], cwd: string): string {
 
 export function stagedFiles(cwd: string): string[] {
   const out = git(['diff', '--cached', '--name-only', '--diff-filter=ACMR'], cwd);
-  return out ? out.split('\n') : [];
+  return out ? out.split(/\r?\n/) : [];
 }
 
 /** The checked-out branch; on a repository without commits `rev-parse` fails, so ask for the symbolic ref instead. */
@@ -46,7 +46,7 @@ export function repoRoot(cwd: string): string {
 export function pushedSubjects(remoteSha: string, localSha: string, cwd: string): string[] {
   try {
     const out = git(['log', '--format=%s', `${remoteSha}..${localSha}`], cwd);
-    return out ? out.split('\n') : [];
+    return out ? out.split(/\r?\n/) : [];
   } catch {
     return [];
   }

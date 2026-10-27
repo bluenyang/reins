@@ -24,6 +24,7 @@ Readiness for large repositories (intent 012, planned).
 ### rc.2
 - `publish.yml` pushes the release commit and tag with the `PUBLISH_DEPLOY_KEY` deploy key when the secret is set, so the default branch can require PRs with deploy keys as the only bypass.
 - `reins migrate --dry-run` also lists the subdirectory gate proposals and `.claude/memory` drafts the install step would produce (it used to skip that step).
+- `install` and `migrate` propose a `release:` draft (printed in the notes, never written) from `.github/workflows` files that have a `workflow_dispatch` trigger, when `install.yaml` has no `release:` key.
 
 ## [0.1.3] — 2026-10-27
 

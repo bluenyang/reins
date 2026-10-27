@@ -1,6 +1,6 @@
 {
   "name": "@bluenyang/reins",
-  "version": "0.1.4-rc.1",
+  "version": "0.1.4-rc.2",
   "description": "Installs, migrates and updates an agent harness (harness → loop → graph) that keeps coding agents inside their permitted roles.",
   "license": "MIT",
   "repository": {

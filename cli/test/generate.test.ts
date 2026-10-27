@@ -32,8 +32,11 @@ describe('Claude Code generator (design §6)', () => {
     const g = generateVendorFiles(await installed(['claude', 'openai', 'google']));
     const paths = g.writes.map((w) => w.path);
     expect(paths).toContain('.claude/agents/reins-pm.md');
-    expect(paths).not.toContain('.claude/agents/reins-code-review.md'); // bound to openai
-    expect(g.skipped.join()).toMatch(/code-review → openai/);
+    // bound to openai: a Claude file on the fallback model, so a user without openai can run it
+    const cr = g.writes.find((w) => w.path === '.claude/agents/reins-code-review.md')!;
+    expect(cr.content).toMatch(/model: claude-sonnet-5-5/);
+    expect(cr.content).toContain('fallback for openai');
+    expect(g.skipped).toEqual([]);
     const pm = g.writes.find((w) => w.path.endsWith('reins-pm.md'))!.content;
     const { data, body } = splitFrontmatter(pm);
     expect(data).toMatchObject({ name: 'reins-pm', model: 'claude-opus-5-5' });

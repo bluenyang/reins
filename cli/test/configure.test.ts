@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -32,7 +32,10 @@ async function repo(on: string[]): Promise<string> {
 describe('reins configure bindings (R57–R59)', () => {
   it('binds any role to any model, and the vendor files follow', async () => {
     const d = await repo(['claude', 'openai']);
-    expect(existsSync(join(d, '.claude/agents/reins-code-review.md'))).toBe(false); // on GPT
+    // on GPT: the Claude file is the fallback one
+    expect(readFileSync(join(d, '.claude/agents/reins-code-review.md'), 'utf8')).toContain(
+      'fallback for openai',
+    );
     const r = await configureBindings({
       cwd: d,
       set: ['pm=claude-fable-5-1', 'code-review=claude-opus-5-5'],
@@ -41,7 +44,9 @@ describe('reins configure bindings (R57–R59)', () => {
     expect(readFileSync(join(d, '.claude/agents/reins-pm.md'), 'utf8')).toMatch(
       /model: claude-fable-5-1/,
     );
-    expect(existsSync(join(d, '.claude/agents/reins-code-review.md'))).toBe(true);
+    expect(readFileSync(join(d, '.claude/agents/reins-code-review.md'), 'utf8')).not.toContain(
+      'fallback for',
+    );
     expect(driftGenerated(d)).toEqual([]);
   });
 
@@ -56,7 +61,9 @@ describe('reins configure bindings (R57–R59)', () => {
       vendor: 'openai',
       model: 'gpt-6.1-sol',
     });
-    expect(existsSync(join(d, '.claude/agents/reins-code-review.md'))).toBe(false); // removed: now on GPT
+    expect(readFileSync(join(d, '.claude/agents/reins-code-review.md'), 'utf8')).toContain(
+      'fallback for openai',
+    ); // now on GPT
   });
 
   it('refuses an unknown role or a malformed pair, and changes nothing', async () => {

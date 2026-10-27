@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { parse } from 'yaml';
+import { resolveBindings, type ResolvedBinding } from '../lib/bindings.js';
 import { repoRoot } from '../lib/git.js';
 import { harnessVersion, packageHarness, packageVersion } from '../lib/upstream.js';
 import { candidateCount } from '../lib/retro.js';
@@ -65,6 +66,8 @@ export interface StatusData {
   bus: number;
   lastHistory: string | null;
   knowledgeCandidates: number;
+  /** what each role actually runs on: local override → team → fallback → pm (empty without a bindings.yaml) */
+  bindings: ResolvedBinding[];
 }
 
 const str = (v: unknown) => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '');
@@ -295,6 +298,10 @@ export function collectStatus(root: string): StatusData {
     bus: safe(() => busCount(root), 0),
     lastHistory: pages.length ? basename(pages[pages.length - 1]!.path) : null,
     knowledgeCandidates: safe(() => candidateCount(root), 0),
+    bindings: safe(
+      () => (existsSync(join(root, '.agents/harness/bindings.yaml')) ? resolveBindings(root) : []),
+      [] as ResolvedBinding[],
+    ),
   };
 }
 
@@ -337,6 +344,12 @@ export function formatStatus(d: StatusData): string {
   out.push(`bus: ${d.bus} file${d.bus === 1 ? '' : 's'}`);
   out.push(`last history: ${d.lastHistory ?? '—'}`);
   out.push(`knowledge candidates: ${d.knowledgeCandidates}`);
+  if (d.bindings.length) {
+    out.push('');
+    out.push('bindings (resolved):');
+    for (const b of d.bindings)
+      out.push(`  ${b.role.padEnd(12)} ${b.vendor.padEnd(7)} ${b.model} (${b.source})`);
+  }
   return `${out.join('\n')}\n`;
 }
 

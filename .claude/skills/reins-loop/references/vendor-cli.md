@@ -1,6 +1,7 @@
 # Vendor CLI recipes
 
 How to call each role through its vendor CLI: read-only mode, output location, token source.
+Take `<model>` and the vendor from `reins status --json` (`bindings`), not from `bindings.yaml`: the resolved entry already applies your local override and the fallback.
 Report tokens with `reins metrics record --role <r> --tokens <n> --ticket <id>`; no count, no record.
 
 ## code-review — codex

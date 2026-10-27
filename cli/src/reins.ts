@@ -175,6 +175,10 @@ program
       `reins update — cli ${r.cliFrom === 'none' ? 'none' : `v${r.cliFrom}`} → v${r.cliTo}, harness v${r.from} → v${r.to}${o.dryRun ? ' (dry run)' : ''}\n`,
     );
     for (const c of r.changes) process.stdout.write(`  · ${c}\n`);
+    if (r.bindingsMoved)
+      process.stdout.write(
+        `bindings: ${o.dryRun ? 'would move' : 'moved'} detected vendors (${r.bindingsMoved.join(', ')}) to .loctx/bindings.local.yaml\n`,
+      );
     if (a && a.created.length + a.changed.length + a.removed.length === 0)
       process.stdout.write('already up to date\n');
     else if (a) {

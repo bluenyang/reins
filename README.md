@@ -47,10 +47,12 @@ separation is not model separation: every role can run on one model, and `bindin
 vendor and model per role. By design, a role bound to a vendor that is not detected falls back to its
 fallback, else to the pm model, so all twelve roles can run on Claude alone.
 
-**Red lines.** Ten rules (C1–C10) apply to every role and are enforced by the verifier, for
+**Red lines.** Ten rules (C1–C10) apply to every role, for
 example: no implementing "to pass" (C1), no editing managed blocks, policy or roles (C2), no
 editing one's own permission file (C3), no reading secrets (C4), no bypassing hooks (C5), and no
-push, PR, merge or release outside the deploy role (C6). The list is in [docs/design.md](docs/design.md) section 2.
+push, PR, merge or release outside the deploy role (C6). The list is in [docs/design.md](docs/design.md) section 2. How
+each rule is actually held is in [Enforced versus advised](#enforced-versus-advised) below: some are blocked, some are checked at a
+transition, and some are only written in a role or skill.
 
 **The verifier.** `reins check` runs at transition points and prints one verdict. It does not call
 a model; roles write their judgement to a handoff file and the verifier applies it.
@@ -78,6 +80,79 @@ reviewed by roles. Verification output is pasted as produced; a bare "passed" is
 | `.agents/` | yes | `intent/`, `knowledge/`, `harness/` (roles, policy, schemas, templates, `bindings.yaml`, `gates.yaml`), `skills/` |
 | `.claude/` | yes | generated from `.agents/`; do not edit |
 | `.loctx/` | no (gitignored) | tickets, reports, handoff `bus/`, `history/`, local roadmap |
+
+## Enforced versus advised
+
+Not every rule is enforced. Each one is held in one of three ways, and `harness/policy/enforcement.yaml` says which, one line per rule.
+
+- **blocked**: a script, hook or permission deny stops the action before it happens.
+- **checked**: a transition check, the drift check or CI catches it afterwards.
+- **advised**: it is written in a role or skill only; nothing in code catches it.
+
+The grade is the strongest part that really holds, and the `gap` column says what is left open. Hooks apply only when they are installed, and deny rules and agent tool limits exist for Claude Code only. Rule ids are in [docs/design.md](docs/design.md) sections 2 and 3, and the evidence is in [docs/violations.md](docs/violations.md). The advised rules are the input for [0.2](docs/ROADMAP.md).
+
+<!-- enforcement:begin -->
+| id | held | by | gap |
+|---|---|---|---|
+| C1 | advised | `role` | judged by reviewers only; nothing detects a hard-coded pass |
+| C2 | blocked | `hook:pre-commit`, `check:drift` | only when the hook is installed; the edit itself is not prevented |
+| C3 | blocked | `hook:pre-commit`, `check:drift` | only when the hook is installed; no deny rule covers .claude/settings.json itself |
+| C4 | blocked | `deny`, `hook:pre-commit` | Claude Code only; .env.* is a finite list, so names such as .env.custom have no deny rule; the hook sees staged paths, not reads |
+| C5 | blocked | `deny`, `gate`, `check:verdict` | combined or later-position forms such as git commit -nm are not denied |
+| C6 | advised | `role` | pre-push holds pushes to the default branch (A4) and the deny rules stop force and --no-verify pushes; any other push, PR, merge, release or tag is not blocked |
+| C7 | advised | `role` | — |
+| C8 | advised | `role` | — |
+| C9 | advised | `role` | — |
+| C10 | advised | `role` | T2 lists it but the pre-commit check does not compare the diff with plan.md |
+| A1 | blocked | `deny`, `hook:pre-push` | moving a published tag forward to a descendant passes the ancestry test |
+| A2 | advised | `role` | — |
+| A3 | advised | `role` | — |
+| A4 | blocked | `hook:pre-push` | only a push to the default branch is held; other ways of leaving the machine are not detected |
+| B1 | checked | `check:ticket-start` | — |
+| B2 | advised | `role` | — |
+| B3 | advised | `role`, `check:ticket-start` | the scope conflict is a role's judgement; ticket-start checks only the approval chain |
+| B4 | advised | `role` | — |
+| B5 | advised | `role` | — |
+| P1 | advised | `role` | — |
+| P2 | checked | `check:ticket-start`, `check:rc-close` | only ticket-in-plan; a diff is not compared with plan.md |
+| D1 | checked | `check:verdict` | does not tell a ticket before rc.1 from an rc after |
+| D2 | advised | `role` | no memory across runs |
+| D3 | advised | `role` | no alone-versus-full-run comparison |
+| D4 | blocked | `gate`, `check:verdict` | an empty gate output is only a WARN |
+| D5 | checked | `check:verdict` | — |
+| E1 | advised | `role` | nothing reads a budget or a token count |
+| E2 | advised | `role` | nothing reads a budget or a token count |
+| E3 | advised | `role` | T5 lists it but nothing reads a budget or a token count |
+| F1 | advised | `role` | the deny rules stop some attempts in Claude Code, but no stop is recorded |
+| F2 | blocked | `hook:pre-commit`, `check:drift`, `check:ticket-start`, `check:rc-close` | — |
+| F3 | advised | `role` | — |
+| G1 | advised | `role` | no signal handler and no resume record on an interrupt |
+| G2 | advised | `role` | — |
+| T1 | checked | `check:ticket-start` | budget-left is not implemented |
+| T2 | blocked | `hook:pre-commit` | only when the hook is installed; the P2 and C10 diff checks do not exist |
+| T3 | checked | `check:verdict` | — |
+| T4 | blocked | `hook:pre-push` | implements A1 and the default-branch push (A4); A2, A3, C6 and the loop-step check do not exist |
+| T5 | checked | `check:rc-close` | E3 is not implemented |
+| T6 | advised | `role` | no code runs on an interrupt or a violation signal |
+
+| role | blocked | checked | advised | blocked items |
+|---|---|---|---|---|
+| advisor | 0 | 0 | 2 | — |
+| code-review | 1 | 0 | 2 | edit code |
+| deploy | 1 | 0 | 2 | force-push, delete or move tags, rewrite main |
+| docs | 0 | 0 | 3 | — |
+| implementer | 0 | 0 | 5 | — |
+| lookup | 3 | 0 | 0 | write any file; produce reports or context files; run gates or tests |
+| planner | 0 | 0 | 3 | — |
+| pl | 0 | 0 | 3 | — |
+| pm | 0 | 1 | 2 | — |
+| qa-design | 0 | 0 | 3 | — |
+| qa-run | 0 | 0 | 2 | — |
+| verify-tool | 0 | 2 | 1 | — |
+| budget scopes | 0 | 0 | 6 | — |
+<!-- enforcement:end -->
+
+The tables are rendered by `pnpm docs:enforcement` and a test keeps them equal to the YAML.
 
 ## Quick start
 

@@ -47,10 +47,11 @@ qa-run, deploy, docs, advisor. 역할 파일마다 해서는 안 되는 일이 �
 모델을 정합니다. 설계상 감지되지 않은 벤더에 묶인 역할은 fallback으로, 그것도 없으면 pm의 모델로
 돌아가므로 열두 역할 모두 Claude만으로 돌 수 있습니다.
 
-**레드라인.** 모든 역할에 적용되고 검증기가 강제하는 규칙이 열 개(C1–C10) 있습니다. 몇 가지를 들면
+**레드라인.** 모든 역할에 적용되는 규칙이 열 개(C1–C10) 있습니다. 몇 가지를 들면
 이렇습니다. 통과만 시키는 구현 금지(C1), 관리 블록·정책·역할 파일 수정 금지(C2), 자기 권한 파일 수정
 금지(C3), 시크릿 읽기 금지(C4), 훅 우회 금지(C5), deploy 역할 밖의 push·PR·merge·릴리스 금지(C6).
-전체 목록은 [design.ko.md](design.ko.md) 2절에 있습니다.
+전체 목록은 [design.ko.md](design.ko.md) 2절에 있습니다. 규칙마다 실제로 어떻게 지켜지는지는 아래
+[강제와 권고](#강제와-권고)에 있습니다. 막는 것, 전이 지점에서 검사하는 것, 역할과 스킬에 적혀만 있는 것이 섞여 있습니다.
 
 **검증기.** `reins check`는 전환 지점마다 돌아 판정을 하나 출력합니다. 모델을 호출하지 않습니다.
 역할이 판단을 인수인계 파일에 쓰면 검증기가 그것을 적용할 뿐입니다.
@@ -78,6 +79,79 @@ qa-run, deploy, docs, advisor. 역할 파일마다 해서는 안 되는 일이 �
 | `.agents/` | 합니다 | `intent/`, `knowledge/`, `harness/`(역할, 정책, 스키마, 템플릿, `bindings.yaml`, `gates.yaml`), `skills/` |
 | `.claude/` | 합니다 | `.agents/`에서 생성한 파일, 직접 고치지 않습니다 |
 | `.loctx/` | 안 합니다 (gitignore) | ticket, 보고서, 인수인계 `bus/`, `history/`, 로컬 로드맵 |
+
+## 강제와 권고
+
+모든 규칙이 강제되는 것은 아닙니다. 규칙은 세 가지 중 하나로 지켜지고, `harness/policy/enforcement.yaml`이 규칙마다 한 줄로 어느 쪽인지 적습니다.
+
+- **차단**(blocked): 스크립트·훅·권한 deny가 실행 전에 막습니다.
+- **검사**(checked): 전이 지점 검사, drift 검사, CI가 사후에 잡습니다.
+- **권고**(advised): 역할이나 스킬 문서에만 적혀 있습니다. 코드로는 잡히지 않습니다.
+
+등급은 실제로 지켜지는 부분 가운데 가장 강한 것으로 매기고, 빈 곳은 `빈틈` 열에 적습니다. 훅은 설치했을 때만 적용되고, deny 규칙과 에이전트 도구 제한은 Claude Code에만 있습니다. 규칙 id는 [design.ko.md](design.ko.md) 2·3절에, 근거는 [violations.ko.md](violations.ko.md)에 있습니다. 권고에 머문 규칙은 [0.2](ROADMAP.ko.md)의 입력입니다. 표의 `빈틈` 열은 영어 원문 그대로입니다.
+
+<!-- enforcement:begin -->
+| id | 지킴 | 수단 | 빈틈 |
+|---|---|---|---|
+| C1 | 권고 | `role` | judged by reviewers only; nothing detects a hard-coded pass |
+| C2 | 차단 | `hook:pre-commit`, `check:drift` | only when the hook is installed; the edit itself is not prevented |
+| C3 | 차단 | `hook:pre-commit`, `check:drift` | only when the hook is installed; no deny rule covers .claude/settings.json itself |
+| C4 | 차단 | `deny`, `hook:pre-commit` | Claude Code only; .env.* is a finite list, so names such as .env.custom have no deny rule; the hook sees staged paths, not reads |
+| C5 | 차단 | `deny`, `gate`, `check:verdict` | combined or later-position forms such as git commit -nm are not denied |
+| C6 | 권고 | `role` | pre-push holds pushes to the default branch (A4) and the deny rules stop force and --no-verify pushes; any other push, PR, merge, release or tag is not blocked |
+| C7 | 권고 | `role` | — |
+| C8 | 권고 | `role` | — |
+| C9 | 권고 | `role` | — |
+| C10 | 권고 | `role` | T2 lists it but the pre-commit check does not compare the diff with plan.md |
+| A1 | 차단 | `deny`, `hook:pre-push` | moving a published tag forward to a descendant passes the ancestry test |
+| A2 | 권고 | `role` | — |
+| A3 | 권고 | `role` | — |
+| A4 | 차단 | `hook:pre-push` | only a push to the default branch is held; other ways of leaving the machine are not detected |
+| B1 | 검사 | `check:ticket-start` | — |
+| B2 | 권고 | `role` | — |
+| B3 | 권고 | `role`, `check:ticket-start` | the scope conflict is a role's judgement; ticket-start checks only the approval chain |
+| B4 | 권고 | `role` | — |
+| B5 | 권고 | `role` | — |
+| P1 | 권고 | `role` | — |
+| P2 | 검사 | `check:ticket-start`, `check:rc-close` | only ticket-in-plan; a diff is not compared with plan.md |
+| D1 | 검사 | `check:verdict` | does not tell a ticket before rc.1 from an rc after |
+| D2 | 권고 | `role` | no memory across runs |
+| D3 | 권고 | `role` | no alone-versus-full-run comparison |
+| D4 | 차단 | `gate`, `check:verdict` | an empty gate output is only a WARN |
+| D5 | 검사 | `check:verdict` | — |
+| E1 | 권고 | `role` | nothing reads a budget or a token count |
+| E2 | 권고 | `role` | nothing reads a budget or a token count |
+| E3 | 권고 | `role` | T5 lists it but nothing reads a budget or a token count |
+| F1 | 권고 | `role` | the deny rules stop some attempts in Claude Code, but no stop is recorded |
+| F2 | 차단 | `hook:pre-commit`, `check:drift`, `check:ticket-start`, `check:rc-close` | — |
+| F3 | 권고 | `role` | — |
+| G1 | 권고 | `role` | no signal handler and no resume record on an interrupt |
+| G2 | 권고 | `role` | — |
+| T1 | 검사 | `check:ticket-start` | budget-left is not implemented |
+| T2 | 차단 | `hook:pre-commit` | only when the hook is installed; the P2 and C10 diff checks do not exist |
+| T3 | 검사 | `check:verdict` | — |
+| T4 | 차단 | `hook:pre-push` | implements A1 and the default-branch push (A4); A2, A3, C6 and the loop-step check do not exist |
+| T5 | 검사 | `check:rc-close` | E3 is not implemented |
+| T6 | 권고 | `role` | no code runs on an interrupt or a violation signal |
+
+| 역할 | 차단 | 검사 | 권고 | 차단되는 항목 |
+|---|---|---|---|---|
+| advisor | 0 | 0 | 2 | — |
+| code-review | 1 | 0 | 2 | edit code |
+| deploy | 1 | 0 | 2 | force-push, delete or move tags, rewrite main |
+| docs | 0 | 0 | 3 | — |
+| implementer | 0 | 0 | 5 | — |
+| lookup | 3 | 0 | 0 | write any file; produce reports or context files; run gates or tests |
+| planner | 0 | 0 | 3 | — |
+| pl | 0 | 0 | 3 | — |
+| pm | 0 | 1 | 2 | — |
+| qa-design | 0 | 0 | 3 | — |
+| qa-run | 0 | 0 | 2 | — |
+| verify-tool | 0 | 2 | 1 | — |
+| 예산 범위 | 0 | 0 | 6 | — |
+<!-- enforcement:end -->
+
+표는 `pnpm docs:enforcement`로 만들고, 테스트가 YAML과 같은지 확인합니다.
 
 ## 시작하기
 

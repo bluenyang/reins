@@ -14,6 +14,7 @@ needs the `/reins-update` skill.
 
 Enforced versus advised, per-user binding overrides, documents with every rc, CI on more platforms (planned).
 
+- `harness/policy/enforcement.yaml` says how each rule is held (blocked, checked or advised), and the README and design tables are rendered from it (`pnpm docs:enforcement`) (intent 013).
 - Node ≥ 22 (commander 14), `.gitattributes` with LF endings, and CI on Ubuntu, Windows and macOS with Node 22 and 24 (intent 013).
 
 ## [0.1.4] — 2026-10-27

@@ -27,8 +27,25 @@
 노하우(`.loctx/history/`)는 사람마다 달라 로컬, 거기서 걸러낸 명시지(`knowledge/`)만 커밋(R54).
 
 ## 2. 역할과 금지선 (D1)
-### 공통 금지선 C1~C10 — 전 역할, 검증기가 집행
+### 공통 금지선 C1~C10 — 전 역할
 C1 "통과하기 위한" 구현(하드코딩·보이기만) · C2 `AGENTS.md` 관리 블록·`policy/`·`roles/` 수정(PM·update만) · C3 자기 권한 파일·생성물 수정 · C4 비밀값 읽기 · C5 훅 우회·게이트 출력 가공(`| tail`) · C6 push/PR/머지/릴리스/태그(배포 역할만) · C7 사용자 확인 없이 과거 결정 뒤집기 · C8 거절된 제안 재제시 · C9 운영 서버·클러스터 조작 · C10 intent·plan 밖 변경(새 ticket으로)
+
+지키는 방식(`held`): **차단**(blocked) 스크립트·훅·deny가 실행 전에 막음 · **검사**(checked) 전이 지점이나 drift 검사가 사후에 잡음 · **권고**(advised) 역할·스킬 문서에만 있음. 원천은 `policy/enforcement.yaml`이고(규칙마다 한 줄: C1–C10, A1–G2, T1–T6, 역할 `must_not` 항목 전부를 `<role>#<n>`으로, 예산 범위), 등급은 실제로 지켜지는 부분 중 가장 강한 것이며 `gap`에 빈 곳을 적는다. 표는 이 파일에서 만든다. 세부 근거는 [`violations.ko.md`](violations.ko.md).
+
+<!-- enforcement:begin redlines -->
+| id | 지킴 | 수단 | 빈틈 |
+|---|---|---|---|
+| C1 | 권고 | `role` | judged by reviewers only; nothing detects a hard-coded pass |
+| C2 | 차단 | `hook:pre-commit`, `check:drift` | only when the hook is installed; the edit itself is not prevented |
+| C3 | 차단 | `hook:pre-commit`, `check:drift` | only when the hook is installed; no deny rule covers .claude/settings.json itself |
+| C4 | 차단 | `deny`, `hook:pre-commit` | Claude Code only; .env.* is a finite list, so names such as .env.custom have no deny rule; the hook sees staged paths, not reads |
+| C5 | 차단 | `deny`, `gate`, `check:verdict` | combined or later-position forms such as git commit -nm are not denied |
+| C6 | 권고 | `role` | pre-push holds pushes to the default branch (A4) and the deny rules stop force and --no-verify pushes; any other push, PR, merge, release or tag is not blocked |
+| C7 | 권고 | `role` | — |
+| C8 | 권고 | `role` | — |
+| C9 | 권고 | `role` | — |
+| C10 | 권고 | `role` | T2 lists it but the pre-commit check does not compare the diff with plan.md |
+<!-- enforcement:end -->
 
 ### 역할 12 — 기본 바인딩은 참고값
 | 역할 | 기본 | 하는 것 | 절대 못 하는 것 |
@@ -65,6 +82,44 @@ C1 "통과하기 위한" 구현(하드코딩·보이기만) · C2 `AGENTS.md` �
 `kind` = spike에서 살린 구분: **intent**(사람 몫, 자동화 않음) / **knowledge**(배워서 줄어듦). 지표: 항목당 knowledge stop 수. 카운터(D1·D2)는 통과하면 리셋.
 수치: 단계 스킬은 역할 실행이 끝날 때마다 `reins metrics record --role <role> --tokens <n> --intent <id> [--ticket <id>] --vendor <v> --model <m>`을 한 줄 부르고, 벤더가 토큰 수를 주지 않으면 기록하지 않는다. `reins check`와 `reins gate`는 실행할 때마다 `reins/metric@1` 한 줄을 `.loctx/reports/metrics.jsonl`에 덧붙인다. 토큰 사용량은 호출한 쪽이 `reins metrics record`로 남긴다. `reins metrics`는 토큰을 역할·벤더·ticket·intent별로, knowledge stop을 ticket별로 요약한다.
 조사 레포에 있던 것은 A·B1·D1·D2뿐 — 나머지는 전부 새로 생긴다.
+
+### 조건별로 지키는 방식
+위 금지선 표와 같은 원천·열이다(`held`: 차단·검사·권고). 정지 조건과 전환 지점 여섯 개를 다룬다. `stops.yaml`의 `detect:`가 `verifier`여도 여기서는 `advised`일 수 있다. `held`는 설계 의도가 아니라 지금 코드가 하는 일을 적기 때문이다.
+
+<!-- enforcement:begin stops -->
+| id | 지킴 | 수단 | 빈틈 |
+|---|---|---|---|
+| A1 | 차단 | `deny`, `hook:pre-push` | moving a published tag forward to a descendant passes the ancestry test |
+| A2 | 권고 | `role` | — |
+| A3 | 권고 | `role` | — |
+| A4 | 차단 | `hook:pre-push` | only a push to the default branch is held; other ways of leaving the machine are not detected |
+| B1 | 검사 | `check:ticket-start` | — |
+| B2 | 권고 | `role` | — |
+| B3 | 권고 | `role`, `check:ticket-start` | the scope conflict is a role's judgement; ticket-start checks only the approval chain |
+| B4 | 권고 | `role` | — |
+| B5 | 권고 | `role` | — |
+| P1 | 권고 | `role` | — |
+| P2 | 검사 | `check:ticket-start`, `check:rc-close` | only ticket-in-plan; a diff is not compared with plan.md |
+| D1 | 검사 | `check:verdict` | does not tell a ticket before rc.1 from an rc after |
+| D2 | 권고 | `role` | no memory across runs |
+| D3 | 권고 | `role` | no alone-versus-full-run comparison |
+| D4 | 차단 | `gate`, `check:verdict` | an empty gate output is only a WARN |
+| D5 | 검사 | `check:verdict` | — |
+| E1 | 권고 | `role` | nothing reads a budget or a token count |
+| E2 | 권고 | `role` | nothing reads a budget or a token count |
+| E3 | 권고 | `role` | T5 lists it but nothing reads a budget or a token count |
+| F1 | 권고 | `role` | the deny rules stop some attempts in Claude Code, but no stop is recorded |
+| F2 | 차단 | `hook:pre-commit`, `check:drift`, `check:ticket-start`, `check:rc-close` | — |
+| F3 | 권고 | `role` | — |
+| G1 | 권고 | `role` | no signal handler and no resume record on an interrupt |
+| G2 | 권고 | `role` | — |
+| T1 | 검사 | `check:ticket-start` | budget-left is not implemented |
+| T2 | 차단 | `hook:pre-commit` | only when the hook is installed; the P2 and C10 diff checks do not exist |
+| T3 | 검사 | `check:verdict` | — |
+| T4 | 차단 | `hook:pre-push` | implements A1 and the default-branch push (A4); A2, A3, C6 and the loop-step check do not exist |
+| T5 | 검사 | `check:rc-close` | E3 is not implemented |
+| T6 | 권고 | `role` | no code runs on an interrupt or a violation signal |
+<!-- enforcement:end -->
 
 ### 비용 범위 — 좁은 범위가 이김
 프로젝트 기본값(install, `policy/budget`) < 버전(PM, plan.md) < **사용자 정의 범위**(기본 제공: ticket·rc·세션·역할; `configure budget`). 단위 토큰. 기본값 없으면 첫 적용 때 측정.

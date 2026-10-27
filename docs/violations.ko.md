@@ -26,7 +26,7 @@
 | A1 | 공유 브랜치 force push, 공개 태그 이동·삭제, main 재작성 | verifier, settings deny | `check --stage pre-push`(원격 커밋이 푸시할 커밋의 조상이 아님, 태그를 포함한 모든 ref 쌍). `.claude/settings.json`이 `git push --force`·`-f`·`--force-with-lease`를 막음. 태그를 삭제하는 push(`refs/tags/` 아래 로컬 해시 0)는 HOLD이고, 브랜치 삭제와 새 ref는 통과합니다. 조상 관계가 유지되는 태그의 전진 이동: none (gap) | V8, V18, V25 |
 | A2 | 정식(rc가 아닌) 릴리스 | none (gap) | — | — |
 | A3 | 되돌릴 수 없는 데이터 변경, 운영 서버·클러스터 접촉 | none (gap) | — | — |
-| A4 | pre-release 루프 밖에서 로컬을 떠나는 모든 것 | none (gap) | — | — |
+| A4 | pre-release 루프 밖에서 로컬을 떠나는 모든 것 | verifier | `check --stage pre-push`가 PR 흐름 밖의 기본 브랜치 push를 HOLD로 막습니다(publish workflow의 `release: v…` 커밋은 예외). 로컬을 떠나는 그 밖의 방법은 none (gap) | — |
 | B1 | 열린 `asks:`가 있는 ticket | verifier | `check --stage ticket-start` | V10 |
 | B2 | 기록된 결정 없이 설계 불변식이 바뀜 | none (gap) | — | — |
 | B3 | 변경이 intent나 spec과 충돌 | role, verifier | 범위 충돌 자체는 역할의 판단. `check --stage ticket-start`는 승인 사슬(`Approved-by:` 커밋이 있는 승인된 intent, 수락된 spec)만 확인 | V9 |
@@ -58,9 +58,9 @@
 - **C5**: deny 규칙은 `git commit --no-verify *`, `git commit -n *`, `git push --no-verify *`에 대응합니다. 합친 형태(`-nm`)나 뒤쪽 위치의 줄임 형태는 막지 못합니다.
 - **C7, C8, C9**: 금지 내용은 `common-red-lines.yaml`에 있고, 생성된 모든 Claude 에이전트에 "`common-red-lines.yaml`의 공통 금지선을 어기지 않는다"는 줄이 들어갑니다. 개별 역할의 `must_not` 목록에는 없으며, 이를 확인하는 검사도 없습니다. F3은 `stops.yaml`에도 `detect: role`로 있습니다.
 - **C10**: `code-review.md`의 1단계는 `plan.md` 밖의 diff를 C10으로 보고, `implementer.md`는 `must_not`에 둡니다. 역할이 사람 손으로 하는 검토입니다. T2는 C10을 검증기 검사로 나열하지만 `preCommit`에는 diff와 plan을 비교하는 코드가 없습니다.
-- **C6**: deny 규칙은 force push와 `--no-verify` push만 막습니다. 일반 `git push`, PR, merge, release, tag는 아무것도 막지 않습니다. `pre-push`는 원격 커밋이 조상인지(A1)만 봅니다.
+- **C6**: deny 규칙은 force push와 `--no-verify` push만 막습니다. 기본 브랜치가 아닌 곳으로의 일반 `git push`, PR, merge, release, tag는 아무것도 막지 않습니다. 기본 브랜치 push는 `pre-push`가 HOLD로 막습니다(A4). 그 밖에 `pre-push`는 원격 커밋이 조상인지(A1)만 봅니다.
 - **A1**: `pre-push`는 git이 넘기는 모든 ref 쌍에 조상 검사를 적용하며 태그도 포함합니다. 자손이 아닌 커밋으로 옮긴 태그는 HOLD로 잡힙니다. 태그 삭제(로컬 해시 0, `refs/tags/` 아래 ref)는 HOLD `push deletes tag <name>`(V25)이고, 새 ref와 브랜치 삭제는 통과합니다. 자손 커밋으로 앞으로 옮긴 태그는 조상 검사를 통과해 거부되지 않으며, 설계는 공개 태그 이동을 되돌릴 수 없는 일로 봅니다.
-- **A2, A3, A4**: `stops.yaml`은 `detect: verifier`로 적고 T4도 이들을 나열하지만, `prePush`는 A1만 구현합니다.
+- **A2, A3, A4**: `stops.yaml`은 `detect: verifier`로 적고 T4도 이들을 나열하지만, `prePush`는 A1과 A4의 기본 브랜치 push만 구현합니다.
 - **B2**: `stops.yaml`은 `detect: verifier`로 적었지만, 설계 불변식과 기록된 결정을 비교하는 코드가 없습니다.
 - **B3**: `stops.yaml`은 B3을 `detect: role`로 적었으나, ticket-start의 승인 사슬 검사는 `reason: B3`으로 보고합니다.
 - **P1 (정지)**: `stops.yaml`은 `detect: role`로 적었고, 근거를 평가하는 코드는 없습니다.

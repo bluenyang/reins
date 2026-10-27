@@ -1,0 +1,98 @@
+schema: reins/policy/enforcement@1
+# How each rule is held today (design §2·§3). One line per rule; this is a statement of fact, not of intent:
+# `stops.yaml` `detect:` says what the design wants, `held:` says what the code does.
+#   held: blocked  a script, hook or permission deny stops the action before it happens
+#         checked  a transition check, the drift check or CI catches it afterwards
+#         advised  written in a role or skill only; nothing in code catches it
+# The grade is the strongest part that really holds; what is left open goes in `gap:`.
+# by: deny · hook:pre-commit · hook:pre-push · check:<stage> · check:drift · gate · ci · agent-tools · role
+# Keys: C1–C10, A1–G2, T1–T6, `<role>#<n>` (n counts the role's `must_not` items from 1), `budget:<scope>`.
+# The tables in README.md, docs/README.ko.md and docs/design*.md are rendered from this file (`pnpm docs:enforcement`).
+rules:
+  # common red lines
+  - { id: C1, held: advised, by: [role], gap: "judged by reviewers only; nothing detects a hard-coded pass" }
+  - { id: C2, held: blocked, by: [hook:pre-commit, check:drift], gap: "only when the hook is installed; the edit itself is not prevented" }
+  - { id: C3, held: blocked, by: [hook:pre-commit, check:drift], gap: "only when the hook is installed; no deny rule covers .claude/settings.json itself" }
+  - { id: C4, held: blocked, by: [deny, hook:pre-commit], gap: "Claude Code only; .env.* is a finite list, so names such as .env.custom have no deny rule; the hook sees staged paths, not reads" }
+  - { id: C5, held: blocked, by: [deny, gate, check:verdict], gap: "combined or later-position forms such as git commit -nm are not denied" }
+  - { id: C6, held: advised, by: [role], gap: "pre-push holds pushes to the default branch (A4) and the deny rules stop force and --no-verify pushes; any other push, PR, merge, release or tag is not blocked" }
+  - { id: C7, held: advised, by: [role] }
+  - { id: C8, held: advised, by: [role] }
+  - { id: C9, held: advised, by: [role] }
+  - { id: C10, held: advised, by: [role], gap: "T2 lists it but the pre-commit check does not compare the diff with plan.md" }
+  # stop conditions
+  - { id: A1, held: blocked, by: [deny, hook:pre-push], gap: "moving a published tag forward to a descendant passes the ancestry test" }
+  - { id: A2, held: advised, by: [role] }
+  - { id: A3, held: advised, by: [role] }
+  - { id: A4, held: blocked, by: [hook:pre-push], gap: "only a push to the default branch is held; other ways of leaving the machine are not detected" }
+  - { id: B1, held: checked, by: [check:ticket-start] }
+  - { id: B2, held: advised, by: [role] }
+  - { id: B3, held: advised, by: [role, check:ticket-start], gap: "the scope conflict is a role's judgement; ticket-start checks only the approval chain" }
+  - { id: B4, held: advised, by: [role] }
+  - { id: B5, held: advised, by: [role] }
+  - { id: P1, held: advised, by: [role] }
+  - { id: P2, held: checked, by: [check:ticket-start, check:rc-close], gap: "only ticket-in-plan; a diff is not compared with plan.md" }
+  - { id: D1, held: checked, by: [check:verdict], gap: "does not tell a ticket before rc.1 from an rc after" }
+  - { id: D2, held: advised, by: [role], gap: "no memory across runs" }
+  - { id: D3, held: advised, by: [role], gap: "no alone-versus-full-run comparison" }
+  - { id: D4, held: blocked, by: [gate, check:verdict], gap: "an empty gate output is only a WARN" }
+  - { id: D5, held: checked, by: [check:verdict] }
+  - { id: E1, held: advised, by: [role], gap: "nothing reads a budget or a token count" }
+  - { id: E2, held: advised, by: [role], gap: "nothing reads a budget or a token count" }
+  - { id: E3, held: advised, by: [role], gap: "T5 lists it but nothing reads a budget or a token count" }
+  - { id: F1, held: advised, by: [role], gap: "the deny rules stop some attempts in Claude Code, but no stop is recorded" }
+  - { id: F2, held: blocked, by: [hook:pre-commit, check:drift, check:ticket-start, check:rc-close] }
+  - { id: F3, held: advised, by: [role] }
+  - { id: G1, held: advised, by: [role], gap: "no signal handler and no resume record on an interrupt" }
+  - { id: G2, held: advised, by: [role] }
+  # transition points
+  - { id: T1, held: checked, by: [check:ticket-start], gap: "budget-left is not implemented" }
+  - { id: T2, held: blocked, by: [hook:pre-commit], gap: "only when the hook is installed; the P2 and C10 diff checks do not exist" }
+  - { id: T3, held: checked, by: [check:verdict] }
+  - { id: T4, held: blocked, by: [hook:pre-push], gap: "implements A1 and the default-branch push (A4); A2, A3, C6 and the loop-step check do not exist" }
+  - { id: T5, held: checked, by: [check:rc-close], gap: "E3 is not implemented" }
+  - { id: T6, held: advised, by: [role], gap: "no code runs on an interrupt or a violation signal" }
+  # role must_not items, in file order
+  - { id: "advisor#1", held: advised, by: [role] }
+  - { id: "advisor#2", held: advised, by: [role] }
+  - { id: "code-review#1", held: blocked, by: [agent-tools], gap: "Claude agent files only (disallowedTools); shell stays open, so a shell write is not stopped" }
+  - { id: "code-review#2", held: advised, by: [role] }
+  - { id: "code-review#3", held: advised, by: [role] }
+  - { id: "deploy#1", held: advised, by: [role], gap: "the stable dispatch line is only printed on request, nothing refuses it" }
+  - { id: "deploy#2", held: blocked, by: [deny, hook:pre-push], gap: "see A1" }
+  - { id: "deploy#3", held: advised, by: [role] }
+  - { id: "docs#1", held: advised, by: [role] }
+  - { id: "docs#2", held: advised, by: [role] }
+  - { id: "docs#3", held: advised, by: [role] }
+  - { id: "implementer#1", held: advised, by: [role], gap: "see C10" }
+  - { id: "implementer#2", held: advised, by: [role] }
+  - { id: "implementer#3", held: advised, by: [role], gap: "see C1" }
+  - { id: "implementer#4", held: advised, by: [role], gap: "see C6" }
+  - { id: "implementer#5", held: advised, by: [role] }
+  - { id: "lookup#1", held: blocked, by: [agent-tools], gap: "Claude agent files only" }
+  - { id: "lookup#2", held: blocked, by: [agent-tools], gap: "Claude agent files only" }
+  - { id: "lookup#3", held: blocked, by: [agent-tools], gap: "Claude agent files only" }
+  - { id: "planner#1", held: advised, by: [role] }
+  - { id: "planner#2", held: advised, by: [role], gap: "see C10" }
+  - { id: "planner#3", held: advised, by: [role], gap: "ticket-start checks that the spec is accepted, not who accepted it" }
+  - { id: "pl#1", held: advised, by: [role], gap: "see C6" }
+  - { id: "pl#2", held: advised, by: [role] }
+  - { id: "pl#3", held: advised, by: [role] }
+  - { id: "pm#1", held: advised, by: [role] }
+  - { id: "pm#2", held: checked, by: [check:ticket-start], gap: "needs a user entry in approvals and an Approved-by commit trailer; the trailer text can be written by anyone" }
+  - { id: "pm#3", held: advised, by: [role], gap: "see C6" }
+  - { id: "qa-design#1", held: advised, by: [role] }
+  - { id: "qa-design#2", held: advised, by: [role] }
+  - { id: "qa-design#3", held: advised, by: [role] }
+  - { id: "qa-run#1", held: advised, by: [role] }
+  - { id: "qa-run#2", held: advised, by: [role] }
+  - { id: "verify-tool#1", held: advised, by: [role] }
+  - { id: "verify-tool#2", held: checked, by: [check:verdict], gap: "evidence is text a role writes; the check reads its command line and exit code" }
+  - { id: "verify-tool#3", held: checked, by: [check:verdict], gap: "evidence is text a role writes; the check reads its command line and exit code" }
+  # budget scopes (budget.yaml)
+  - { id: "budget:project", held: advised, by: [role], gap: "no defaults and no reader" }
+  - { id: "budget:version", held: advised, by: [role], gap: "no reader" }
+  - { id: "budget:rc", held: advised, by: [role], gap: "no reader" }
+  - { id: "budget:ticket", held: advised, by: [role], gap: "no reader" }
+  - { id: "budget:session", held: advised, by: [role], gap: "no reader" }
+  - { id: "budget:role", held: advised, by: [role], gap: "no reader" }

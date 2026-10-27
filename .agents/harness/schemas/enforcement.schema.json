@@ -1,0 +1,22 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "reins/policy/enforcement@1", "type": "object",
+  "required": ["schema", "rules"],
+  "properties": {
+    "schema": { "const": "reins/policy/enforcement@1" },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "held", "by"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "held": { "enum": ["blocked", "checked", "advised"] },
+          "by": {
+            "type": "array", "minItems": 1,
+            "items": { "type": "string", "pattern": "^(deny|hook:pre-commit|hook:pre-push|check:(ticket-start|pre-commit|verdict|pre-push|rc-close|drift)|gate|ci|agent-tools|role)$" }
+          },
+          "gap": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  } }

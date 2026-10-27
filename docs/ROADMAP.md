@@ -38,7 +38,7 @@ Input: the metrics recorded in 0.1.
 - Generated files for Codex, Gemini (Antigravity) and Cursor, with drift verification.
 - `reins recall`, `reins doctor`, `configure budget|gates|language`.
 - Budget stops and the remaining undetected violations.
-- Turning the advised rules from 0.1.5 into enforced ones where a script or hook can hold them (role permissions, change scope, budgets), starting with the `.env` read block.
+- Turning the advised rules from 0.1.5 (the [table](../README.md#enforced-versus-advised), source [`enforcement.yaml`](../harness/policy/enforcement.yaml)) into enforced ones where a script or hook can hold them (role permissions, change scope, budgets), starting with the `.env` read block.
 - Trial migration of older harness generations, read-only rehearsal first.
 
 ## 0.3 — rollout

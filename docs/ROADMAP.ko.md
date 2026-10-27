@@ -38,7 +38,7 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 - Codex, Gemini(Antigravity), Cursor용 생성 파일과 드리프트 검증.
 - `reins recall`, `reins doctor`, `configure budget|gates|language`.
 - 예산 정지와 아직 검출하지 못하는 위반.
-- 0.1.5에서 권고로 분류한 규칙 중 스크립트나 훅으로 막을 수 있는 것(역할 권한, 작업 범위, 예산)을 강제로 바꿉니다. `.env` 읽기 차단부터 시작합니다.
+- 0.1.5에서 권고로 분류한([표](README.ko.md#강제와-권고), 원천 [`enforcement.yaml`](../harness/policy/enforcement.yaml)) 규칙 중 스크립트나 훅으로 막을 수 있는 것(역할 권한, 작업 범위, 예산)을 강제로 바꿉니다. `.env` 읽기 차단부터 시작합니다.
 - 이전 세대 하네스 시험 이전. 읽기 전용 리허설을 먼저 합니다.
 
 ## 0.3 — 적용

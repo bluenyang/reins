@@ -33,6 +33,7 @@
     "fmt:check": "oxfmt --check cli/src cli/test test",
     "test": "vitest run",
     "check": "pnpm lint && pnpm fmt:check && pnpm typecheck && pnpm test",
+    "docs:enforcement": "pnpm -s build && node cli/dist/scripts/enforcement.js",
     "version": "pnpm -s build && node cli/dist/scripts/sync-version.js && git add .claude-plugin/plugin.json skills/reins-setup/SKILL.md",
     "prepare": "husky"
   },

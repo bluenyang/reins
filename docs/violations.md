@@ -26,7 +26,7 @@ Columns:
 | A1 | force push to a shared branch, moving or deleting a published tag, rewriting main | verifier, settings deny | `check --stage pre-push` (remote commit not an ancestor of the pushed one, for every ref pair including tags); `.claude/settings.json` denies `git push --force`, `-f`, `--force-with-lease`. A push that deletes a tag (zero local sha under `refs/tags/`) is a HOLD; branch deletion and new refs pass. Moving a tag forward so that ancestry holds: none (gap) | V8, V18, V25 |
 | A2 | stable (non-rc) release | none (gap) | — | — |
 | A3 | irreversible data change, touching running servers or clusters | none (gap) | — | — |
-| A4 | anything leaving the machine outside the pre-release loop | none (gap) | — | — |
+| A4 | anything leaving the machine outside the pre-release loop | verifier | `check --stage pre-push` holds a push to the default branch outside the PR flow (the publish workflow's `release: v…` commits excepted); every other way of leaving the machine: none (gap) | — |
 | B1 | a ticket with open `asks:` | verifier | `check --stage ticket-start` | V10 |
 | B2 | a design invariant changes without a recorded decision | none (gap) | — | — |
 | B3 | a change conflicts with the intent or spec | role, verifier | the scope conflict itself is a role's judgement; `check --stage ticket-start` checks only the approval chain (intent approved with an `Approved-by:` commit, spec accepted) | V9 |
@@ -58,9 +58,9 @@ Stop conditions P1 and P2 (premise) used to be called C1 and C2, which collided 
 - **C5**: the deny rules match `git commit --no-verify *`, `git commit -n *` and `git push --no-verify *`; combined (`-nm`) or later-position short forms are not covered.
 - **C7, C8, C9**: the prohibitions are written in `common-red-lines.yaml`, and every generated Claude agent carries the line "break any common red line in `common-red-lines.yaml`". They are not in the individual roles' `must_not` lists, and nothing checks them. F3 is also in `stops.yaml` as `detect: role`.
 - **C10**: `code-review.md` step 1 treats a diff outside `plan.md` as C10, and `implementer.md` lists it in `must_not`; that is a review, done by a role. T2 lists C10 as a verifier check, but `preCommit` has no diff-versus-plan comparison.
-- **C6**: the deny rules cover force and `--no-verify` pushes only. A plain `git push`, a PR, a merge, a release or a tag is blocked by nothing. `pre-push` only checks that the remote commit is an ancestor (A1).
+- **C6**: the deny rules cover force and `--no-verify` pushes only. A plain `git push` to a branch other than the default, a PR, a merge, a release or a tag is blocked by nothing; `pre-push` holds a push to the default branch (A4). Otherwise `pre-push` only checks that the remote commit is an ancestor (A1).
 - **A1**: `pre-push` applies the ancestry check to every ref pair git passes, tags included, so a tag moved to a commit that is not a descendant is held. A deletion of a tag (zero local sha, ref under `refs/tags/`) is a HOLD `push deletes tag <name>` (V25); new refs and branch deletions pass. A tag moved forward to a descendant satisfies the ancestry test and is not rejected, although the design calls moving a published tag irreversible.
-- **A2, A3, A4**: `stops.yaml` says `detect: verifier` and T4 lists them, but `prePush` implements only A1.
+- **A2, A3, A4**: `stops.yaml` says `detect: verifier` and T4 lists them, but `prePush` implements only A1 and the default-branch push of A4.
 - **B2**: `stops.yaml` says `detect: verifier`; no code compares a design invariant with a recorded decision.
 - **B3**: the ticket-start approval chain reports `reason: B3`, although `stops.yaml` marks B3 as `detect: role`.
 - **P1 (stop)**: `stops.yaml` says `detect: role`; no code evaluates a rationale.

@@ -23,8 +23,25 @@
 Know-how (`.loctx/history/`) differs per person and stays local; only the explicit knowledge distilled from it (`knowledge/`) is committed (R54).
 
 ## 2. Roles and red lines (D1)
-### Common red lines C1–C10 — every role, enforced by the verifier
+### Common red lines C1–C10 — every role
 C1 implementing "to pass" (hard-coding, making things merely look right) · C2 editing `AGENTS.md` managed blocks, `policy/` or `roles/` (PM and `update` only) · C3 editing one's own permission file or generated output · C4 reading secrets · C5 bypassing hooks or massaging gate output (`| tail`) · C6 push/PR/merge/release/tag (deploy role only) · C7 reversing a past decision without the user · C8 re-raising a rejected proposal · C9 touching production servers or clusters · C10 changes outside intent and plan (open a new ticket instead)
+
+How each is held (`held`): **blocked** by a script, hook or deny before it happens · **checked** at a transition or by the drift check · **advised** in role and skill text only. The source is `policy/enforcement.yaml` (one line per rule: C1–C10, A1–G2, T1–T6, every role `must_not` item as `<role>#<n>`, budget scopes); the grade is the strongest part that really holds, and `gap` names what is left open. The table is rendered from it; details in [`violations.md`](violations.md).
+
+<!-- enforcement:begin redlines -->
+| id | held | by | gap |
+|---|---|---|---|
+| C1 | advised | `role` | judged by reviewers only; nothing detects a hard-coded pass |
+| C2 | blocked | `hook:pre-commit`, `check:drift` | only when the hook is installed; the edit itself is not prevented |
+| C3 | blocked | `hook:pre-commit`, `check:drift` | only when the hook is installed; no deny rule covers .claude/settings.json itself |
+| C4 | blocked | `deny`, `hook:pre-commit` | Claude Code only; .env.* is a finite list, so names such as .env.custom have no deny rule; the hook sees staged paths, not reads |
+| C5 | blocked | `deny`, `gate`, `check:verdict` | combined or later-position forms such as git commit -nm are not denied |
+| C6 | advised | `role` | pre-push holds pushes to the default branch (A4) and the deny rules stop force and --no-verify pushes; any other push, PR, merge, release or tag is not blocked |
+| C7 | advised | `role` | — |
+| C8 | advised | `role` | — |
+| C9 | advised | `role` | — |
+| C10 | advised | `role` | T2 lists it but the pre-commit check does not compare the diff with plan.md |
+<!-- enforcement:end -->
 
 ### Twelve roles — default bindings are reference values
 | Role | Default | Does | Must never |
@@ -61,6 +78,44 @@ Every stop records ① where ② why (`reason: <ID>`) ③ how to resume (R48). R
 `kind` is the distinction kept from the spike: **intent** (a person's call, never automated) / **knowledge** (learned away over time). Metric: knowledge stops per item. Counters (D1·D2) reset on a pass.
 Metrics: the stage skills end every role run with one `reins metrics record --role <role> --tokens <n> --intent <id> [--ticket <id>] --vendor <v> --model <m>` call, and record nothing when the vendor gives no token count. Every `reins check` and `reins gate` run appends a `reins/metric@1` line to `.loctx/reports/metrics.jsonl`; token usage is added by the caller with `reins metrics record`. `reins metrics` summarises tokens by role, vendor, ticket and intent, and knowledge stops per ticket.
 Of these, the surveyed repositories had only A, B1, D1 and D2 — everything else is new.
+
+### How each condition is held
+Same source and columns as the red lines above (`held`: blocked · checked · advised), for the stop conditions and the six transition points. A stop whose `detect:` says `verifier` can still be `advised` here, because `held` records what the code does today, not what the design intends.
+
+<!-- enforcement:begin stops -->
+| id | held | by | gap |
+|---|---|---|---|
+| A1 | blocked | `deny`, `hook:pre-push` | moving a published tag forward to a descendant passes the ancestry test |
+| A2 | advised | `role` | — |
+| A3 | advised | `role` | — |
+| A4 | blocked | `hook:pre-push` | only a push to the default branch is held; other ways of leaving the machine are not detected |
+| B1 | checked | `check:ticket-start` | — |
+| B2 | advised | `role` | — |
+| B3 | advised | `role`, `check:ticket-start` | the scope conflict is a role's judgement; ticket-start checks only the approval chain |
+| B4 | advised | `role` | — |
+| B5 | advised | `role` | — |
+| P1 | advised | `role` | — |
+| P2 | checked | `check:ticket-start`, `check:rc-close` | only ticket-in-plan; a diff is not compared with plan.md |
+| D1 | checked | `check:verdict` | does not tell a ticket before rc.1 from an rc after |
+| D2 | advised | `role` | no memory across runs |
+| D3 | advised | `role` | no alone-versus-full-run comparison |
+| D4 | blocked | `gate`, `check:verdict` | an empty gate output is only a WARN |
+| D5 | checked | `check:verdict` | — |
+| E1 | advised | `role` | nothing reads a budget or a token count |
+| E2 | advised | `role` | nothing reads a budget or a token count |
+| E3 | advised | `role` | T5 lists it but nothing reads a budget or a token count |
+| F1 | advised | `role` | the deny rules stop some attempts in Claude Code, but no stop is recorded |
+| F2 | blocked | `hook:pre-commit`, `check:drift`, `check:ticket-start`, `check:rc-close` | — |
+| F3 | advised | `role` | — |
+| G1 | advised | `role` | no signal handler and no resume record on an interrupt |
+| G2 | advised | `role` | — |
+| T1 | checked | `check:ticket-start` | budget-left is not implemented |
+| T2 | blocked | `hook:pre-commit` | only when the hook is installed; the P2 and C10 diff checks do not exist |
+| T3 | checked | `check:verdict` | — |
+| T4 | blocked | `hook:pre-push` | implements A1 and the default-branch push (A4); A2, A3, C6 and the loop-step check do not exist |
+| T5 | checked | `check:rc-close` | E3 is not implemented |
+| T6 | advised | `role` | no code runs on an interrupt or a violation signal |
+<!-- enforcement:end -->
 
 ### Budget scopes — the narrower scope wins
 project default (install, `policy/budget`) < version (PM, plan.md) < **user-defined scopes** (shipped: ticket · rc · session · role; `configure budget`). Unit: tokens. Without defaults, measure on first use.

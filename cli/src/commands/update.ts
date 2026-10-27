@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { defaultsAsker } from '../lib/ask.js';
+import { migrateDetected } from '../lib/bindings.js';
 import { overrides } from '../lib/blocks.js';
 import type { Vendor } from '../lib/detect.js';
 import { repoRoot } from '../lib/git.js';
@@ -27,6 +28,8 @@ export interface UpdateResult {
   changes: string[]; // changelog entries newer than the pin
   needsSkill: boolean; // some entry asks for /reins-update
   overrides: string[];
+  /** Vendors whose `detected` moved from bindings.yaml to the local file (design §5). */
+  bindingsMoved?: string[];
   install?: InstallResult;
 }
 
@@ -85,6 +88,8 @@ export async function runUpdate(o: UpdateOptions): Promise<UpdateResult> {
   }
   const agents = join(root, 'AGENTS.md');
   if (existsSync(agents)) res.overrides = [...overrides(readFileSync(agents, 'utf8'))];
+  const moved = migrateDetected(root, o.dryRun);
+  if (moved.length > 0) res.bindingsMoved = moved;
   res.install = await runInstall({
     tier: pin.tier,
     mode: pin.mode,

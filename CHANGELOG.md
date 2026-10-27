@@ -20,6 +20,10 @@ Enforced versus advised, per-user binding overrides, documents with every rc, CI
 - `install.yaml` `release.docs` lists the documents a release must update (roadmap row, CHANGELOG section, README status line); T5 warns for each one that still describes the previous state, and deploy updates them on the release branch before T5 (intent 013).
 - `reins check --stage rc-close --release <V> --stable` prints the stable dispatch lines (user's instruction only) and warns when no rc is recorded; without it T5 only hints at `--stable` (intent 013).
 
+### rc.2
+
+- `reins update` moves `vendors.<v>.detected` (and its timestamp) from a 0.1.4-style `bindings.yaml` into `.loctx/bindings.local.yaml`, keeping comments and every other key; a vendor the local file already has is kept (intent 013).
+
 ## [0.1.4] — 2026-10-27
 
 Readiness for large repositories (intent 012).

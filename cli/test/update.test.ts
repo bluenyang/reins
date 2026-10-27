@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { driftMatch } from '../src/commands/check.js';
 import { retiredFiles, runInstall } from '../src/commands/install.js';
 import { changesBetween, newer, runUpdate } from '../src/commands/update.js';
+import { resolveBindings } from '../src/lib/bindings.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { packageHarness } from '../src/lib/upstream.js';
 
@@ -129,5 +130,84 @@ describe('reins update', () => {
     const d = mkdtempSync(join(tmpdir(), 'reins-up-'));
     execFileSync('git', ['init', '-q'], { cwd: d });
     expect((await runUpdate({ cwd: d })).refused).toMatch(/not installed/);
+  });
+
+  describe('0.1.4 detected keys (013-7)', () => {
+    const old = (b: string) =>
+      b.replace(
+        /vendors:\n(?:  .*\n|\s*\n)+?(?=roles:)/,
+        `vendors:
+  # claude is the floor
+  claude:
+    cli: claude # the CLI
+    detected: true
+    available: true
+  openai:
+    cli: codex
+    detected: false
+    at: "2026-10-01T00:00:00.000Z"
+    available: false
+  google:
+    cli: gemini
+    detected: true
+    available: true
+`,
+      );
+    async function setup() {
+      const d = mkdtempSync(join(tmpdir(), 'reins-mig-'));
+      execFileSync('git', ['init', '-q'], { cwd: d });
+      writeFileSync(join(d, 'package.json'), '{}');
+      await runInstall({
+        tier: 'graph',
+        mode: 'auto',
+        asker: defaultsAsker,
+        cwd: d,
+        detectVendors: claude,
+      });
+      const b = join(d, '.agents/harness/bindings.yaml');
+      writeFileSync(b, old(readFileSync(b, 'utf8')));
+      return { d, b, local: join(d, '.loctx/bindings.local.yaml') };
+    }
+    const noDetect = () => claude();
+
+    it('moves the keys, keeps comments and other keys, resolver result unchanged, idempotent', async () => {
+      const { d, b, local } = await setup();
+      writeFileSync(
+        local,
+        'schema: reins/bindings-local@1\nvendors:\n  google:\n    detected: false\n',
+      );
+      const before = resolveBindings(d, noDetect);
+      const r = await runUpdate({ cwd: d, detectVendors: claude });
+      expect(r.bindingsMoved).toEqual(['claude', 'openai', 'google']);
+      const t = readFileSync(b, 'utf8');
+      expect(t).not.toContain('detected');
+      expect(t).not.toContain('2026-10-01');
+      expect(t).toContain('# claude is the floor');
+      expect(t).toContain('cli: claude # the CLI');
+      expect(t).toContain('available: false');
+      const l = parse(readFileSync(local, 'utf8')) as {
+        vendors: Record<string, { detected: boolean; at?: string }>;
+      };
+      expect(l.vendors['claude']?.detected).toBe(true);
+      expect(l.vendors['openai']).toEqual({ detected: false, at: '2026-10-01T00:00:00.000Z' });
+      expect(l.vendors['google']?.detected).toBe(false); // the local entry wins
+      expect(driftMatch(d)).toEqual([]);
+      const afterLocal = readFileSync(local, 'utf8');
+      const r2 = await runUpdate({ cwd: d, detectVendors: claude });
+      expect(r2.bindingsMoved).toBeUndefined();
+      expect(readFileSync(b, 'utf8')).toBe(t);
+      expect(readFileSync(local, 'utf8')).toBe(afterLocal);
+      expect(resolveBindings(d, noDetect).map((x) => x.model)).toEqual(before.map((x) => x.model));
+    });
+
+    it('dry run lists the move and writes nothing', async () => {
+      const { d, b, local } = await setup();
+      const t = readFileSync(b, 'utf8');
+      const l0 = readFileSync(local, 'utf8');
+      const r = await runUpdate({ cwd: d, dryRun: true, detectVendors: claude });
+      expect(r.bindingsMoved).toEqual(['claude', 'openai', 'google']);
+      expect(readFileSync(b, 'utf8')).toBe(t);
+      expect(readFileSync(local, 'utf8')).toBe(l0);
+    });
   });
 });

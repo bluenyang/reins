@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { parse, stringify } from 'yaml';
+import { isMap, isScalar, parse, parseDocument, stringify } from 'yaml';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { vendorOf, vendors, type Vendor } from './detect.js';
 import { packageHarness } from './upstream.js';
@@ -52,6 +52,11 @@ function localValid(doc: unknown): string | null {
 
 /** Tolerant: a missing file reads as empty; an invalid one is ignored with a warning, never a crash. */
 export function readLocal(root: string): LocalBindings {
+  return loadLocal(root) ?? { schema: 'reins/bindings-local@1', vendors: {}, roles: {} };
+}
+
+/** The local file, empty when absent; `null` (after a warning) when it exists but cannot be used. */
+function loadLocal(root: string): LocalBindings | null {
   const out: LocalBindings = { schema: 'reins/bindings-local@1', vendors: {}, roles: {} };
   const path = join(root, LOCAL_BINDINGS);
   if (!existsSync(path)) return out;
@@ -62,12 +67,12 @@ export function readLocal(root: string): LocalBindings {
     process.stderr.write(
       `warning: ${LOCAL_BINDINGS} cannot be read (${(e as Error).message}) — ignored\n`,
     );
-    return out;
+    return null;
   }
   const bad = isObj(doc) ? localValid(doc) : 'not a mapping';
   if (bad !== null || !isObj(doc)) {
     process.stderr.write(`warning: ${LOCAL_BINDINGS} is invalid (${bad}) — ignored\n`);
-    return out;
+    return null;
   }
   if (isObj(doc['vendors']))
     for (const [k, v] of Object.entries(doc['vendors']))
@@ -199,4 +204,66 @@ export function resolveBindings(root: string, detect: () => Vendor[] = vendors):
   const out: ResolvedBinding[] = [];
   for (const role of roles) out.push(role === 'pm' ? pmRes : one(role, pm));
   return out;
+}
+
+const DETECT_KEYS = ['detected', 'at', 'detected_at', 'detectedAt', 'checked_at', 'checkedAt'];
+
+/**
+ * 0.1.4 kept `vendors.<v>.detected` (and a timestamp) in the committed bindings.yaml. Moves them to the
+ * local file (a vendor the local file already has is kept as is) and removes just those keys from the
+ * committed one through the Document API, so comments, order and every other key stay as written.
+ * Returns the vendors moved; nothing is written when `dryRun`.
+ */
+export function migrateDetected(root: string, dryRun = false): string[] {
+  const path = join(root, '.agents/harness/bindings.yaml');
+  if (!existsSync(path)) return [];
+  const doc = parseDocument(readFileSync(path, 'utf8'));
+  if (doc.errors.length > 0) return [];
+  const vs = doc.get('vendors', true);
+  if (!isMap(vs)) return [];
+  const found: Record<string, { detected: boolean; at?: string }> = {};
+  const touched: string[] = [];
+  for (const pair of vs.items) {
+    const name = isScalar(pair.key) ? String(pair.key.value) : undefined;
+    if (name === undefined || !isMap(pair.value)) continue;
+    const m = pair.value;
+    const keys = m.items.filter(
+      (i) => isScalar(i.key) && DETECT_KEYS.includes(String(i.key.value)),
+    );
+    if (keys.length === 0) continue;
+    const val = (k: string): unknown => {
+      const v = m.get(k);
+      return v;
+    };
+    const det = val('detected');
+    const at = ['at', 'detected_at', 'detectedAt', 'checked_at', 'checkedAt']
+      .map(val)
+      .find((x) => typeof x === 'string' || x instanceof Date);
+    if (typeof det === 'boolean')
+      found[name] = {
+        detected: det,
+        ...(at === undefined ? {} : { at: at instanceof Date ? at.toISOString() : String(at) }),
+      };
+    touched.push(name);
+  }
+  if (touched.length === 0) return [];
+  if (dryRun) return touched;
+  const local = loadLocal(root);
+  if (local === null) return []; // never overwrite a local file we cannot read
+  let add = false;
+  for (const [k, v] of Object.entries(found))
+    if (!local.vendors[k]) {
+      local.vendors[k] = v;
+      add = true;
+    }
+  if (add) writeLocal(root, local);
+  for (const name of touched) {
+    const m = vs.get(name, true);
+    if (!isMap(m)) continue;
+    for (const k of DETECT_KEYS) m.delete(k);
+    if (m.items.length === 0) vs.delete(name);
+  }
+  if (vs.items.length === 0) doc.delete('vendors');
+  writeFileSync(path, doc.toString());
+  return touched;
 }

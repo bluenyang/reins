@@ -50,7 +50,7 @@ export function proposeKnowledge(
   for (const f of o.from ?? []) {
     const abs = resolve(root, f.includes('/') ? f : join('.loctx', 'history', f));
     const rel = relative(hist, abs);
-    if (rel.startsWith('..') || rel.includes('/') || !existsSync(abs))
+    if (rel.startsWith('..') || /[\\/]/.test(rel) || !existsSync(abs))
       return { refused: `--from ${f}: not a page under .loctx/history/` };
     const text = readFileSync(abs, 'utf8');
     const lines = [...text.matchAll(/^(?:decisions|reasons):\s*(.+)$/gm)].flatMap((m) =>

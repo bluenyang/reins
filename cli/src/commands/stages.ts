@@ -1,5 +1,6 @@
-import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
+import { isWithin, realPath } from '../lib/fsx.js';
 import { harnessDir, readYaml } from '../lib/harness.js';
 import { dispatchLines, readRelease } from '../lib/release.js';
 import { loadSchemas, validateFile } from '../lib/schema.js';
@@ -226,18 +227,9 @@ export function readEvidence(
 }[] {
   const tokens = evidence.split(/\s+/).filter(Boolean);
   // an absolute path inside the repository reads like a relative one; outside it is refused
-  // macOS: tmpdir() is /var/... while git reports /private/var/..., so compare real paths
-  const real = (p: string) => {
-    try {
-      return realpathSync(p);
-    } catch {
-      return p;
-    }
-  };
-  const inside = (t: string) => {
-    const rel = relative(real(root), real(t));
-    return rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
-  };
+  // macOS: tmpdir() is /var/... while git reports /private/var/...; Windows: RUNNER~1 vs the long name
+  const real = realPath;
+  const inside = (t: string) => isWithin(real(root), real(t));
   const outside = tokens.filter((t) => isAbsolute(t) && !inside(t));
   const resolve = (t: string) => (isAbsolute(t) ? t : join(root, t));
   const files = tokens.length > 0 && tokens.every((t) => existsSync(resolve(t)));

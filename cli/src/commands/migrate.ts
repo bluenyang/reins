@@ -12,6 +12,7 @@ import {
 import { dirname, join } from 'node:path';
 import type { Asker } from '../lib/ask.js';
 import { applyBlocks, parseBlocks, swapSections } from '../lib/blocks.js';
+import { relPath } from '../lib/fsx.js';
 import { generation, type Generation, type Vendor } from '../lib/detect.js';
 import { repoRoot } from '../lib/git.js';
 import { convertWorkToTicket, planMigration, type Move } from '../lib/migrate-plan.js';
@@ -167,9 +168,9 @@ export async function runMigrate(o: MigrateOptions): Promise<MigrateResult> {
     } else {
       const alt = to.replace(/(\.[^./]+)?$/, '.from-ai$1');
       renameSync(from, alt);
-      res.moves.push({ ...m, to: alt.slice(root.length + 1), result: 'kept-both' });
+      res.moves.push({ ...m, to: relPath(root, alt), result: 'kept-both' });
       res.report.push(
-        `${m.to} already existed — the old file is next to it as ${alt.slice(root.length + 1)}`,
+        `${m.to} already existed — the old file is next to it as ${relPath(root, alt)}`,
       );
     }
   }

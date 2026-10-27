@@ -1,5 +1,13 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, sep } from 'node:path';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import path, { dirname, join, relative, sep } from 'node:path';
 
 /** A planned write. Install, migrate and update compute these first, then apply — so --dry-run is exact. */
 export interface Write {
@@ -38,6 +46,25 @@ export function apply(root: string, writes: Write[], dryRun: boolean): Applied {
 export function relPath(from: string, to: string): string {
   const rel = relative(from, to);
   return sep === '/' ? rel : rel.split(sep).join('/');
+}
+
+/** Whether `to` is `from` or lies under it; `p` selects the path flavour (tests pass `path.win32`). */
+export function isWithin(
+  from: string,
+  to: string,
+  p: Pick<typeof path, 'relative' | 'isAbsolute' | 'sep'> = path,
+): boolean {
+  const rel = p.relative(from, to);
+  return rel !== '..' && !rel.startsWith(`..${p.sep}`) && !p.isAbsolute(rel);
+}
+
+/** The real path with symlinks and Windows 8.3 short names (RUNNER~1) resolved; the input when it does not exist. */
+export function realPath(p: string): string {
+  try {
+    return realpathSync.native(p);
+  } catch {
+    return p;
+  }
 }
 
 /** Every file under `dir`, as `/`-separated paths relative to `dir`. */

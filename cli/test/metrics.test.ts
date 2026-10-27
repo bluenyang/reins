@@ -234,7 +234,7 @@ describe('recordUsage (S-3, C-3)', () => {
 
   it('refuses without .loctx/', async () => {
     const bare = await project();
-    rmSync(join(bare, '.loctx'), { recursive: true, force: true });
+    rmSync(join(bare, '.loctx'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     expect(recordUsage({ cwd: bare, role: 'pl', tokens: '1' }).refused).toContain('.loctx');
   });
 });
@@ -420,7 +420,7 @@ describe('CLI wiring (S-2, C-1, C-2)', () => {
   it('writes nothing and changes nothing in a repository without .loctx/', async () => {
     const bare = await project();
     const withLoctx = run(bare, 'check', '--drift');
-    rmSync(join(bare, '.loctx'), { recursive: true, force: true });
+    rmSync(join(bare, '.loctx'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     const without = run(bare, 'check', '--drift');
     expect(without).toEqual(withLoctx);
     expect(existsSync(join(bare, '.loctx'))).toBe(false);

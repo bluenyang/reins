@@ -28,7 +28,7 @@ function repo(): string {
 }
 
 afterAll(() => {
-  for (const d of dirs) rmSync(d, { recursive: true, force: true });
+  for (const d of dirs) rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 describe('robustness of the built cli', () => {

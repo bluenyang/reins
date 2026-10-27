@@ -45,7 +45,7 @@ export function newer(a: string, b: string): boolean {
 export function changesBetween(changelog: string, from: string, to: string): string[] {
   const out: string[] = [];
   let take = false;
-  for (const line of changelog.split('\n')) {
+  for (const line of changelog.split(/\r?\n/)) {
     const h = /^## (\S+)/.exec(line);
     if (h) take = newer(h[1] ?? '0', from) && !newer(h[1] ?? '0', to);
     else if (take && line.startsWith('- ')) out.push(line.slice(2));

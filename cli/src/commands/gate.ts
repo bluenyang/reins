@@ -78,7 +78,7 @@ export function runGates(o: GateOptions): { runs: GateRun[]; refused?: string } 
 
 /** One line per failing gate for stdout: the first failure signature and the first file:line in the raw report. */
 export function failureSummary(report: string): string {
-  const lines = report.split('\n').filter((l) => l.trim() && !l.startsWith('$ '));
+  const lines = report.split(/\r?\n/).filter((l) => l.trim() && !l.startsWith('$ '));
   const sig =
     lines.find(
       (l) => /\b(error|fail(ed|ure)?|assertion|✗|×)\b/i.test(l) && !/^exit \d+$/.test(l),

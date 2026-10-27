@@ -133,6 +133,7 @@ ticket 없는 `reins-review`(사용자가 직접 고친 범위)는 drift만 부�
 신호(순서대로 첫 일치): 미적용 / 1세대(`.ai/`만) / 2세대(AGENTS만) / 3세대(`.claude/commands/`) / 4세대(skills 10+ & `work-cicd-to|go-flow`) / reins(마커).
 매핑: history → `.loctx/history/` 그대로 · 열린 plan → intent 폴더 `draft` · 열린 work → ticket(프론트매터 변환) · ROADMAP.local 그대로, pub → `docs/ROADMAP.md` · release·pr 그대로 · test 리포트 → reports, 섞인 **도구 파일은 목록만**(비밀 가능) · verify/benchmark/artifacts 목록만 · conversation 등 → context · `<repo>-workflow`·commands **버림**(고유 절차는 보존 목록) · `.claude/memory`는 그대로 두고 파일마다 `.loctx/knowledge-proposals/memory-<name>.md` 초안을 만든다(`reins knowledge accept`로 승격) · AGENTS 절 유지 + Workflow·Skills·Language만 치환(원문 보관) · 1세대 = install + `_legacy/`.
 열린 work는 실행 한 번에 경로순으로 `000-1…000-N`을 매겨 `.loctx/ticket/000-<n>_<slug>.md`로 쓴다(원래 id는 `migrated_id`, 원래 경로는 `migrated_from`). `depends`는 같은 하위 폴더·버전 안에서 열린 항목 하나만 그 id를 가질 때만 새 id로 바꾸고, 끝난 의존은 빼며, 나머지는 빼서 `asks:`에 적는다. `migrated_from`이 이미 있는 ticket은 다시 만들지 않는다. ticket을 만든 실행은 intent 000이 없으면 `.agents/intent/000_migrated/intent.md`를 `draft`로 써서 목록을 적는다(version은 `package.json`, 없으면 `0.0.0`). 그 뒤 T1은 "intent 000이 draft"로 멈추고 `status`는 "user: approve the intent"를 보여 준다. legacy는 `.loctx/_legacy/`(`--legacy local`, 기본) 또는 `.agents/legacy/`(`--legacy committed`)로 가며, 비밀 패턴에 걸린 파일은 어느 쪽이든 `.loctx/_legacy/`에 남고 보고서에 적는다. 나머지는 "커밋 전 검토"를 적는다.
+`migrate --dry-run`(과 `install --dry-run`)은 install 단계도 계획만 세우고 아무것도 쓰지 않는다. 노트에 install이 제안할 하위 디렉터리 게이트(이름과 명령)와 만들 메모리 초안(경로)이 나온다.
 멱등. 매 실행 history 한 장. **첫 대상 = 이 레포.**
 
 ## 8. knowledge (D12)

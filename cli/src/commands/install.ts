@@ -261,6 +261,8 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
             .filter(Boolean),
         );
         chosen = proposal.proposals.filter((g) => names.has(g.name));
+        if (o.dryRun)
+          notes.push(`subdirectory gates offered (names are asked in a real run): ${listing}`);
         for (const n of names)
           if (!chosen.some((g) => g.name === n)) notes.push(`no such subdirectory gate: ${n}`);
       } else

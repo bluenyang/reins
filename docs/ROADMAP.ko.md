@@ -14,7 +14,7 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 | 0.1.1 | 완료 | 안정화: 0.1.0에서 루프가 찾은 문제 수정(관리 블록 드리프트 검출, 증거 경로, 밀폐 테스트, 모델 ID 확인, 정지 id 충돌, 버스 응답 스키마) |
 | 0.1.2 | 완료 | Claude Code 플러그인: `/plugin marketplace add bluenyang/reins`. 플러그인에는 `reins-setup`만 싣고 나머지 스킬은 프로젝트에 설치합니다 |
 | 0.1.3 | 배포됨 | 단계 스킬, 릴리스 흐름, 회고와 knowledge, 루프 수정(아래) |
-| 0.1.4 | rc.2 배포됨, stable은 관리자 지시로 | 큰 저장소 적용 준비: 릴리스 흐름을 저장소 설정으로, 모노레포·Go 게이트 탐색, migrate ticket id, install 때 기억 파일 옮기기, `*.env` 비밀 패턴 |
+| 0.1.4 | 배포됨 | 큰 저장소 적용 준비: 릴리스 흐름을 저장소 설정으로, 모노레포·Go 게이트 탐색, migrate ticket id, install 때 기억 파일 옮기기, `*.env` 비밀 패턴 |
 | 0.1.5 | 계획 | 강제와 권고 구분, rc마다 문서 갱신, 여러 플랫폼 CI(아래) |
 
 ### 0.1.3 내용

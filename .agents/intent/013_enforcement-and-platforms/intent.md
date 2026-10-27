@@ -2,7 +2,7 @@
 id: "013"
 slug: enforcement-and-platforms
 version: "0.1.5"
-status: approved
+status: released
 origin: user
 approvals:
   - { role: user, at: 2026-10-27 }

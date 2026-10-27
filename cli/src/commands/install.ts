@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import type { Asker } from '../lib/ask.js';
 import { planMemoryProposals } from '../lib/memory.js';
+import { draftRelease, releaseDraftNotes } from '../lib/release.js';
 import { applyBlocks, parseBlocks } from '../lib/blocks.js';
 import {
   CONFIRMED_MODELS,
@@ -363,6 +364,9 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     writes.push(...memory.writes);
     notes.push(...memory.notes);
   }
+
+  // 4c. a release: draft from dispatchable workflows — proposal only, never written
+  notes.push(...releaseDraftNotes(draftRelease(root)));
 
   // 5. AGENTS.md managed blocks, CLAUDE.md pointer
   const agentsPath = join(root, 'AGENTS.md');

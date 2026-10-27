@@ -10,7 +10,7 @@ deploy role, inside the pre-release loop only. Run the CLI as `npx @bluenyang/re
 0. **Release documents.** If `.agents/harness/install.yaml` has `release.docs`, the docs role updates those files (roadmap row, CHANGELOG section, README status line) on the release branch and commits them before T5, so they ship in the release PR, for an rc and for stable. Details in deploy.md, "Release documents".
 1. **Check first (T5).** `reins check --stage rc-close --release <version>`. Not CONTINUE → no dispatch; follow the verdict. T4 runs in the pre-push hook and holds a direct push to the default branch.
 2. Follow the deploy role's procedures in `.agents/harness/roles/deploy.md`: **Merge procedure** (push the feature branch, `gh pr create`, `gh pr checks --watch`, `gh pr merge --rebase --delete-branch` on green only) and **rc procedure** (run the `dispatch:` lines T5 prints, watch the run, ledger line; a workflow with `approval: npm-staged` adds the steps deploy.md lists for it). The merge target is the repository's default branch. With no `release:` in `install.yaml`, stop after the merge and report "no release settings". If a dispatch is refused for permissions, hand the printed line to the user. Do not restate the procedures here; announce each step.
-3. Stable is always the user's explicit call (A2); then set the intent `status: released` as deploy.md says.
+3. Stable is always the user's explicit call (A2): only then run `reins check --stage rc-close --release <version> --stable` and the stable `dispatch (stable — …)` lines it prints; then set the intent `status: released` as deploy.md says.
 4. Anything in stop group A → stop and report.
 
 Next: `reins-retro`.

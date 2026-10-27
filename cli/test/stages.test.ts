@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { driftConvention } from '../src/commands/check.js';
+import { driftConvention, runCheck } from '../src/commands/check.js';
 import { checkDoc, dispatchLines, readRelease } from '../src/lib/release.js';
 import { rcClose, ticketStart, verdictCheck } from '../src/commands/stages.js';
 import { runInstall } from '../src/commands/install.js';
@@ -301,6 +301,61 @@ describe('release.docs (C-8, C-9)', () => {
     expect(deploy.indexOf('Release documents')).toBeLessThan(deploy.indexOf('## rc procedure'));
     expect(skill).toContain('release.docs');
     expect(skill.indexOf('release.docs')).toBeLessThan(skill.indexOf('(T5)'));
+  });
+});
+
+describe('T5 --stable (C-10)', () => {
+  const RELEASE =
+    'release:\n  workflows:\n' +
+    '    - { file: publish.yml, inputs: { version: "{version}", dry_run: "false" }, approval: npm-staged }\n';
+  async function ready() {
+    const d = await project();
+    approved(d);
+    put(d, '.loctx/history/2026-10-26-1000_001.md', '# 001\n- 001-1 done\n- 001-2 done\n');
+    const pin = join(d, '.agents/harness/install.yaml');
+    writeFileSync(pin, readFileSync(pin, 'utf8') + RELEASE);
+    return d;
+  }
+  const msgs = (d: string, stable: boolean) =>
+    rcClose(d, '0.2.0', stable).map((x) => `${x.verdict} ${x.message}`);
+
+  it('prints the stable lines, no next rc, and warns when no rc is recorded', async () => {
+    const d = await ready();
+    expect(msgs(d, true)).toEqual([
+      'WARN no rc recorded for 0.2.0',
+      "WARN dispatch (stable — user's instruction only, A2): gh workflow run publish.yml -f version=0.2.0 -f dry_run=false",
+    ]);
+    put(d, '.loctx/release/0.2.0.md', '- rc.1 abc123 s 2026-10-26\n');
+    const withRc = msgs(d, true);
+    expect(withRc).toHaveLength(1);
+    expect(withRc.join()).not.toContain('next rc');
+    expect(withRc[0]).toContain("user's instruction only");
+  });
+  it('without --stable prints the rc lines and one hint', async () => {
+    const d = await ready();
+    expect(msgs(d, false)).toEqual([
+      'WARN next rc: 0.2.0-rc.1',
+      'WARN dispatch: gh workflow run publish.yml -f version=0.2.0-rc.1 -f dry_run=false',
+      "WARN stable: rerun with --stable on the user's instruction",
+    ]);
+  });
+  it('still stops on open tickets and carries the lines in --json', async () => {
+    const d = await ready();
+    put(d, '.loctx/ticket/001-1_cli.md', TICKET('001-1'));
+    expect(msgs(d, true).some((m) => m.startsWith('STOP'))).toBe(true);
+    expect(msgs(d, true).join()).not.toContain('dispatch (stable');
+    rmSync(join(d, '.loctx/ticket/001-1_cli.md'));
+    const r = runCheck({ stage: 'rc-close', release: '0.2.0', stable: true, cwd: d });
+    expect(r.verdict).toBe('CONTINUE');
+    expect(r.findings.map((x) => x.message).join('\n')).toContain(
+      "dispatch (stable — user's instruction only, A2): gh workflow run publish.yml -f version=0.2.0",
+    );
+  });
+  it('deploy role uses --stable for the stable step', () => {
+    expect(readFileSync('harness/roles/deploy.md', 'utf8')).toContain(
+      'rc-close --release <V> --stable',
+    );
+    expect(readFileSync('skills/reins-release/SKILL.md', 'utf8')).toContain('--stable');
   });
 });
 

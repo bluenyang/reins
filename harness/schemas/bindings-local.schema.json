@@ -1,0 +1,20 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "reins/bindings-local@1", "type": "object",
+  "required": ["schema"],
+  "properties": {
+    "schema": { "const": "reins/bindings-local@1" },
+    "vendors": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object", "required": ["detected"],
+        "properties": { "detected": { "type": "boolean" }, "at": { "type": "string" } }
+      }
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object", "required": ["model"],
+        "properties": { "model": { "type": "string", "minLength": 1 } }
+      }
+    }
+  }
+}

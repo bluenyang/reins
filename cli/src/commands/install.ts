@@ -29,6 +29,7 @@ import {
   tierSkills,
 } from '../lib/upstream.js';
 import { generateVendorFiles } from '../lib/generate.js';
+import { recordDetection } from '../lib/bindings.js';
 import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
 
 export type Tier = 'harness' | 'loop' | 'graph';
@@ -138,10 +139,7 @@ export function buildBindings(
     schema: 'reins/bindings@1',
     mode,
     vendors: Object.fromEntries(
-      vs.map((v) => [
-        v.name,
-        { cli: v.cli, detected: v.detected, available: available.has(v.name) },
-      ]),
+      vs.map((v) => [v.name, { cli: v.cli, available: available.has(v.name) }]),
     ),
     roles,
     escalation: ['pl', 'pm', 'advisor', 'user'],
@@ -280,12 +278,15 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   }
 
   // 3. generated configuration
-  if (o.tier === 'graph' && !hasBindings)
+  if (o.tier === 'graph' && !hasBindings) {
+    // detection results are per-user: .loctx/bindings.local.yaml, never the committed file
+    if (!o.dryRun) recordDetection(root, vs);
     add(
       '.agents/harness/bindings.yaml',
       buildBindings(up, avail, vs, o.mode, o.modelCache ?? newModelCache()),
       'role ↔ model bindings',
     );
+  }
   add(
     '.agents/harness/install.yaml',
     `# version pin and install settings (R25) — read by reins update\n${stringify({ ...pinned, schema: 'reins/install@1', tier: o.tier, version, cli: packageVersion(), mode: o.mode, language })}`,

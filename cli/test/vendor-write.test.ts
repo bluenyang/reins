@@ -62,7 +62,7 @@ describe('writing generated vendor files (design §6, C3)', () => {
     expect(readFileSync(join(d, '.claude/settings.json'), 'utf8')).toBe(mine);
   });
 
-  it('re-binding a role away from Claude removes the agent file reins wrote for it', async () => {
+  it('re-binding a role away from Claude rewrites its agent file on the fallback model', async () => {
     const d = await setup();
     expect(existsSync(join(d, '.claude/agents/reins-code-review.md'))).toBe(true);
     const b = join(d, '.agents/harness/bindings.yaml');
@@ -74,8 +74,11 @@ describe('writing generated vendor files (design §6, C3)', () => {
       ),
     );
     const r = writeGenerated(d, generateVendorFiles(d), false);
-    expect(r.removed).toEqual(['.claude/agents/reins-code-review.md']);
-    expect(existsSync(join(d, '.claude/agents/reins-code-review.md'))).toBe(false);
+    expect(r.removed).toEqual([]);
+    expect(r.written).toEqual(['.claude/agents/reins-code-review.md']);
+    expect(readFileSync(join(d, '.claude/agents/reins-code-review.md'), 'utf8')).toContain(
+      'fallback for openai',
+    );
     expect(driftGenerated(d)).toEqual([]);
   });
 });

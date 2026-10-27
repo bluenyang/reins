@@ -209,35 +209,53 @@ configure
     '--vendors <list>',
     'rebuild every role from its defaults for these vendors (comma-separated)',
   )
+  .option('--local', 'with --set: write your own override to .loctx/bindings.local.yaml')
+  .option('--show', 'print what each role actually runs on')
   .option('--json')
-  .action(async (o: { set?: string[]; vendors?: string; json?: boolean }) => {
-    const asker = !o.set && !o.vendors ? await stdinAsker() : undefined;
-    const r = await configureBindings({
-      set: o.set,
-      vendors: o.vendors?.split(',').map((s) => s.trim()),
-      asker,
-    });
-    asker?.close();
-    if (o.json) {
-      process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
-      process.exit(r.refused ? 2 : 0);
-    }
-    if (r.refused) {
-      process.stderr.write(`reins configure bindings: ${r.refused}\n`);
-      process.exit(2);
-    }
-    for (const t of r.table)
-      process.stdout.write(
-        `  ${r.changed.includes(t.role) ? '*' : ' '} ${t.role.padEnd(12)} ${t.vendor.padEnd(7)} ${t.model}\n`,
-      );
-    process.stdout.write(r.changed.length ? `changed: ${r.changed.join(', ')}\n` : 'no change\n');
-    const g = r.generated;
-    if (g) {
-      for (const p of g.written) process.stdout.write(`  ~ ${p}\n`);
-      for (const p of g.removed) process.stdout.write(`  - ${p}\n`);
-      for (const x of g.refused) process.stdout.write(`• left alone ${x.path}: ${x.why}\n`);
-    }
-  });
+  .action(
+    async (o: {
+      set?: string[];
+      vendors?: string;
+      json?: boolean;
+      local?: boolean;
+      show?: boolean;
+    }) => {
+      const asker = !o.set && !o.vendors && !o.local && !o.show ? await stdinAsker() : undefined;
+      const r = await configureBindings({
+        local: o.local,
+        show: o.show,
+        set: o.set,
+        vendors: o.vendors?.split(',').map((s) => s.trim()),
+        asker,
+      });
+      asker?.close();
+      if (o.json) {
+        process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
+        process.exit(r.refused ? 2 : 0);
+      }
+      if (r.refused) {
+        process.stderr.write(`reins configure bindings: ${r.refused}\n`);
+        process.exit(2);
+      }
+      if (o.show || o.local) {
+        for (const t of r.resolved ?? [])
+          process.stdout.write(
+            `  ${r.changed.includes(t.role) ? '*' : ' '} ${t.role.padEnd(12)} ${t.vendor.padEnd(7)} ${t.model} (${t.source}: ${t.reason})\n`,
+          );
+      } else
+        for (const t of r.table)
+          process.stdout.write(
+            `  ${r.changed.includes(t.role) ? '*' : ' '} ${t.role.padEnd(12)} ${t.vendor.padEnd(7)} ${t.model}\n`,
+          );
+      process.stdout.write(r.changed.length ? `changed: ${r.changed.join(', ')}\n` : 'no change\n');
+      const g = r.generated;
+      if (g) {
+        for (const p of g.written) process.stdout.write(`  ~ ${p}\n`);
+        for (const p of g.removed) process.stdout.write(`  - ${p}\n`);
+        for (const x of g.refused) process.stdout.write(`• left alone ${x.path}: ${x.why}\n`);
+      }
+    },
+  );
 
 configure
   .command('gates')

@@ -13,6 +13,13 @@ import {
   type ModelCache,
   type Vendor,
 } from '../lib/detect.js';
+import {
+  readLocal,
+  recordDetection,
+  resolveBindings,
+  writeLocal,
+  type ResolvedBinding,
+} from '../lib/bindings.js';
 import { generateVendorFiles } from '../lib/generate.js';
 import { repoRoot } from '../lib/git.js';
 import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
@@ -42,6 +49,10 @@ export interface ConfigureBindingsOptions {
   asker?: Asker;
   detectVendors?: () => Vendor[];
   modelCache?: ModelCache;
+  /** with `set`: write the per-user override file instead of bindings.yaml (no regeneration) */
+  local?: boolean;
+  /** only print the resolved table */
+  show?: boolean;
 }
 
 export interface ConfigureResult {
@@ -49,6 +60,8 @@ export interface ConfigureResult {
   changed: string[];
   table: { role: string; vendor: string; model: string }[];
   generated?: GenWriteResult;
+  /** what each role actually runs on (local → team → fallback → pm) */
+  resolved?: ResolvedBinding[];
 }
 
 /** `reins configure bindings` (R57–R59): any role, any model, any vendor; then the vendor files follow. */
@@ -65,9 +78,39 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
   let doc = parse(readFileSync(path, 'utf8')) as BindingsDoc;
   const changed: string[] = [];
   const cache = o.modelCache ?? newModelCache();
+  const detect = o.detectVendors ?? vendors;
+  const teamTable = () =>
+    Object.entries(doc.roles)
+      .map(([role, b]) => ({ role, vendor: b.vendor, model: b.model }))
+      .toSorted((a, b) => a.role.localeCompare(b.role));
+
+  if (o.show) return { changed, table: teamTable(), resolved: resolveBindings(root, detect) };
+
+  if (o.local) {
+    // per-user overrides: roles only; the team file and generated files stay untouched
+    const local = readLocal(root);
+    for (const pair of o.set ?? []) {
+      const [role, model] = pair.split('=').map((s) => s.trim());
+      if (!role || !model)
+        return { refused: `"${pair}" is not role=model`, changed: [], table: [] };
+      if (!roles.has(role))
+        return {
+          refused: `unknown role "${role}" — roles: ${[...roles].toSorted().join(', ')}`,
+          changed: [],
+          table: [],
+        };
+      if (local.roles[role]?.model !== model) {
+        local.roles[role] = { model };
+        changed.push(role);
+      }
+    }
+    if (changed.length) writeLocal(root, local);
+    return { changed, table: teamTable(), resolved: resolveBindings(root, detect) };
+  }
 
   if (o.vendors?.length) {
-    const vs = (o.detectVendors ?? vendors)();
+    const vs = detect();
+    recordDetection(root, vs);
     const avail = new Set<Vendor['name']>([
       'claude',
       ...(o.vendors.filter((v) => ['openai', 'google', 'cursor'].includes(v)) as Vendor['name'][]),
@@ -121,10 +164,7 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
   const generated = changed.length
     ? writeGenerated(root, generateVendorFiles(root), false)
     : undefined;
-  const table = Object.entries(doc.roles)
-    .map(([role, b]) => ({ role, vendor: b.vendor, model: b.model }))
-    .toSorted((a, b) => a.role.localeCompare(b.role));
-  return { changed, table, generated };
+  return { changed, table: teamTable(), generated, resolved: resolveBindings(root, detect) };
 }
 
 export interface ConfigureGatesOptions {

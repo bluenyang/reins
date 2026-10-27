@@ -4,19 +4,15 @@ mode: manual
 vendors:
   claude:
     cli: claude
-    detected: true
     available: true
   openai:
     cli: codex
-    detected: true
     available: true
   google:
     cli: agy
-    detected: true
     available: true
   cursor:
     cli: cursor-agent
-    detected: true
     available: true
 roles:
   advisor:

@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import { isWithin, realPath } from '../lib/fsx.js';
 import { harnessDir, readYaml } from '../lib/harness.js';
-import { dispatchLines, readRelease } from '../lib/release.js';
+import { checkDoc, dispatchLines, readRelease, readReleaseDocs } from '../lib/release.js';
 import { loadSchemas, validateFile } from '../lib/schema.js';
 import type { Finding } from '../lib/verdict.js';
 import { compound } from './gate.js';
@@ -475,7 +475,24 @@ export function rcClose(root: string, release: string | undefined): Finding[] {
   if (findings.length === 0) findings.push(...nextRc(root, release));
   if (findings.every((f) => f.verdict === 'WARN'))
     findings.push(...dispatchFindings(root, findings));
+  findings.push(...docsFindings(root, release, 'rc'));
   return findings;
+}
+
+/** One F2 WARN per `release.docs` file that still describes the previous state (S-7); never a STOP. */
+export function docsFindings(root: string, release: string, stage: 'rc' | 'stable'): Finding[] {
+  const out: Finding[] = [];
+  for (const d of readReleaseDocs(root)) {
+    const p = join(root, d.file);
+    if (existsSync(p) && checkDoc(readFileSync(p, 'utf8'), d.check, release, stage)) continue;
+    out.push({
+      reason: 'F2',
+      verdict: 'WARN',
+      path: d.file,
+      message: `docs: ${d.file} still describes the previous state (${d.check})`,
+    });
+  }
+  return out;
 }
 
 /** The rc dispatch lines (S-3) from install.yaml `release:`; the rc number comes from the ledger finding. */

@@ -21,6 +21,9 @@ Readiness for large repositories (intent 012, planned).
 - `update` deletes harness files the tier no longer installs (e.g. `.agents/harness/CHANGELOG.md` from a 0.1.0 install) and lists them; `--dry-run` only lists. Drift compares only the files the tier installs and warns about such leftovers instead of stopping with F2.
 - `status` names the CLI version next to the harness version (`cli <pinned> (running <package>)`, JSON `cliInstalled`/`cliPackage`) and its next action for an intent with open tickets follows the first ticket (`implementer: <id>`, `reins-review: close <id>`, `pl: unblock <id>`); `update` opens with `cli vA → vB, harness vX → vY` and says `already up to date` when nothing changed.
 
+### rc.2
+- `publish.yml` pushes the release commit and tag with the `PUBLISH_DEPLOY_KEY` deploy key when the secret is set, so the default branch can require PRs with deploy keys as the only bypass.
+
 ## [0.1.3] — 2026-10-27
 
 The workflow the maintainer laid out, end to end (intents 008–011). Harness 0.1.2.

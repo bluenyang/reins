@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { harnessDir } from '../lib/harness.js';
 import { loadSchemas, validateFile } from '../lib/schema.js';
 import { intentDir, intentFile, intentIds, openTickets } from '../lib/work.js';
@@ -156,10 +156,7 @@ export function newTicket(
     : [];
   const open = openTickets(root).map((f) => String(f.data['id'] ?? ''));
   const n = ticketNumber(intent, planned, [...open, ...historyTicketIds(root, intent)]);
-  const iSlug = idir
-    .split('/')
-    .pop()!
-    .replace(/^\d{3}_/, '');
+  const iSlug = basename(idir).replace(/^\d{3}_/, '');
   const branch =
     typeof plan.data['branch'] === 'string' ? plan.data['branch'] : `feat/${intent}-${iSlug}`;
   const depends = (o.depends ?? '')

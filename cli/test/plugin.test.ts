@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const root = new URL('../../', import.meta.url);
@@ -60,7 +61,7 @@ describe('claude plugin manifests', () => {
     cpSync(new URL('.claude-plugin/plugin.json', root), join(tmp, '.claude-plugin/plugin.json'));
     cpSync(new URL('skills/reins-setup/SKILL.md', root), join(tmp, 'skills/reins-setup/SKILL.md'));
     writeFileSync(join(tmp, 'package.json'), '{"version":"9.8.7"}');
-    const script = new URL('cli/dist/scripts/sync-version.js', root).pathname;
+    const script = fileURLToPath(new URL('cli/dist/scripts/sync-version.js', root));
     execFileSync('node', [script, tmp]);
     expect(JSON.parse(readFileSync(join(tmp, '.claude-plugin/plugin.json'), 'utf8')).version).toBe(
       '9.8.7',
@@ -71,7 +72,7 @@ describe('claude plugin manifests', () => {
   });
 
   describe('sync-version keeps the rest of plugin.json as written (C-8)', () => {
-    const script = new URL('cli/dist/scripts/sync-version.js', root).pathname;
+    const script = fileURLToPath(new URL('cli/dist/scripts/sync-version.js', root));
     function fixture(pluginText: string): string {
       const tmp = mkdtempSync(join(tmpdir(), 'reins-sync-'));
       mkdirSync(join(tmp, '.claude-plugin'));

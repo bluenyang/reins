@@ -2,7 +2,7 @@
 // Run by the `version` lifecycle script (npm/pnpm version), after package.json is bumped.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 /** Replaces only the first `"version": "<x>"` value; every other byte stays. Null when there is no such key. */
 export function replaceVersion(text: string, version: string): string | null {
@@ -14,7 +14,7 @@ export function replaceVersion(text: string, version: string): string | null {
 
 // compiled to cli/dist/scripts/: the repository root is three levels up (or the first argument)
 const root = pathToFileURL(
-  `${resolve(process.argv[2] ?? new URL('../../../', import.meta.url).pathname)}/`,
+  `${resolve(process.argv[2] ?? fileURLToPath(new URL('../../../', import.meta.url)))}/`,
 );
 const read = (p: string): string => readFileSync(new URL(p, root), 'utf8');
 const write = (p: string, s: string): void => writeFileSync(new URL(p, root), s);

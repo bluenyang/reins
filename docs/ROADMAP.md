@@ -14,7 +14,7 @@ The first target is this repository itself.
 | 0.1.1 | done | stabilisation: fixes the loop found in 0.1.0 (drift detection of managed blocks, evidence paths, sealed tests, model id checks, stop id collisions, bus response schema) |
 | 0.1.2 | done | Claude Code plugin: `/plugin marketplace add bluenyang/reins`; the plugin carries `reins-setup` only, the other skills are installed into the project |
 | 0.1.3 | published | stage skills, release flow, retro and knowledge, loop fixes (below) |
-| 0.1.4 | rc.2 published; stable on the maintainer's instruction | readiness for large repositories: release flow as a repository setting, gate discovery in monorepos and Go, migrate ticket ids, carrying memory files on install, `*.env` secrets |
+| 0.1.4 | published | readiness for large repositories: release flow as a repository setting, gate discovery in monorepos and Go, migrate ticket ids, carrying memory files on install, `*.env` secrets |
 | 0.1.5 | planned | enforced versus advised, documents updated with every rc, CI on more platforms (below) |
 
 ### 0.1.3

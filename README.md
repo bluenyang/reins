@@ -14,10 +14,11 @@ loop that works only with Claude. The full list (P1–P6) is in [docs/proposal.m
 
 ## Status
 
-Version 0.1.0 is on npm: `npx @bluenyang/reins <command>`. It is round one of the plan — the graph
+Version 0.1.4 is on npm: `npx @bluenyang/reins <command>`. It is round one of the plan — the graph
 tier, with generated vendor files verified for Claude Code only; the loop and harness tiers are
-carved out of it in 0.2. Known issues are listed in [CHANGELOG.md](CHANGELOG.md); their fixes ship
-as 0.1.1, and 0.1.2 adds a Claude Code plugin.
+carved out of it in 0.2. 0.1.3 split the loop into stage skills with a PR → CI → rc release flow,
+and 0.1.4 prepares large repositories (release settings, monorepo gates, migrate fixes). What
+changed in each version is in [CHANGELOG.md](CHANGELOG.md); what comes next is in the roadmap.
 
 reins develops itself through its own loop: intents 001 (`reins status`), 002 (`reins metrics`) and
 003 (violation scenarios) each went intent → spec → plan → tickets, with the checks at T1 to T5

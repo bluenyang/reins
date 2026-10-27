@@ -10,9 +10,13 @@ This file is about the package. The harness that `reins update` re-applies to in
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md); an entry there tagged `[skill]`
 needs the `/reins-update` skill.
 
-## [Unreleased] — 0.1.4
+## [Unreleased] — 0.1.5
 
-Readiness for large repositories (intent 012, planned).
+Enforced versus advised, per-user binding overrides, documents with every rc, CI on more platforms (planned).
+
+## [0.1.4] — 2026-10-27
+
+Readiness for large repositories (intent 012).
 
 - `install.yaml` `release:` sets the release workflows; T5 prints their `gh workflow run` lines and deploy dispatches them (merge target is the default branch); `update` keeps `release:` and unknown keys.
 - Gate discovery also finds subdirectory candidates (`package.json` scripts, `Makefile` targets, `go.mod`; depth 3). `install` offers them in manual mode and reports them in auto mode; `reins configure gates [--add <name>…]` lists and appends them.

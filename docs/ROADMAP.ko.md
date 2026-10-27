@@ -14,7 +14,8 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 | 0.1.1 | 완료 | 안정화: 0.1.0에서 루프가 찾은 문제 수정(관리 블록 드리프트 검출, 증거 경로, 밀폐 테스트, 모델 ID 확인, 정지 id 충돌, 버스 응답 스키마) |
 | 0.1.2 | 완료 | Claude Code 플러그인: `/plugin marketplace add bluenyang/reins`. 플러그인에는 `reins-setup`만 싣고 나머지 스킬은 프로젝트에 설치합니다 |
 | 0.1.3 | 배포됨 | 단계 스킬, 릴리스 흐름, 회고와 knowledge, 루프 수정(아래) |
-| 0.1.4 | 계획 | 큰 저장소 적용 준비: 릴리스 흐름을 저장소 설정으로, 모노레포·Go 게이트 탐색, migrate ticket id, install 때 기억 파일 옮기기, `*.env` 비밀 패턴 |
+| 0.1.4 | rc.2 배포됨, stable은 관리자 지시로 | 큰 저장소 적용 준비: 릴리스 흐름을 저장소 설정으로, 모노레포·Go 게이트 탐색, migrate ticket id, install 때 기억 파일 옮기기, `*.env` 비밀 패턴 |
+| 0.1.5 | 계획 | 강제와 권고 구분, rc마다 문서 갱신, 여러 플랫폼 CI(아래) |
 
 ### 0.1.3 내용
 
@@ -22,6 +23,12 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 - **릴리스 흐름.** 배포 요약과 버전 동기화를 바로잡고, deploy 역할의 rc 흐름을 스킬로 적습니다.
 - **회고와 knowledge.** 반복되는 사유를 세어 제안, 승인, 커밋을 거쳐 knowledge로 올리고, 찾는 데는 `reins recall`을 씁니다.
 - **루프 수정.** ticket과 버스 요청을 손으로 쓰지 않고 `reins new`로 만들고, `--respond`가 verify 응답을 쓰며, `status`가 이미 릴리스된 intent의 마감을 다시 요구하지 않게 합니다.
+
+### 0.1.5 내용
+
+- **강제와 권고 구분.** README는 통제를 약속하지만, 역할 권한과 작업 범위, 예산은 아직 에이전트의 협조에 기대고 있습니다. 규칙마다 어떻게 지켜지는지를 한 줄로 적습니다. 스크립트나 훅이 막는 것, 전이 지점에서 검사하는 것, 역할과 스킬에 적혀만 있는 것으로 나눕니다. 이 표를 README 양판과 설계서에 넣고, 권고에 머문 규칙은 0.2의 입력으로 삼습니다.
+- **rc마다 문서 갱신.** rc도 결국 기본 브랜치로 merge되므로 문서도 그 시점에 맞아야 합니다. 로드맵 상태, CHANGELOG 절, README 상태 줄을 코드와 같은 릴리스 PR에서 고치고, 이전 상태가 남아 있으면 T5가 경고합니다.
+- **여러 플랫폼 CI.** 패키지는 Node 20 이상을 선언하지만 CI는 Ubuntu와 Node 24만 봅니다. Node 20, 22, 24와 Windows, macOS에서도 `pnpm check`를 돌리고, 거기서 실패하는 것은 같은 버전에서 고칩니다.
 
 ## 0.2 — graph에서 loop·harness 깎기, 이기종 에이전트
 
@@ -31,6 +38,7 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 - Codex, Gemini(Antigravity), Cursor용 생성 파일과 드리프트 검증.
 - `reins recall`, `reins doctor`, `configure budget|gates|language`.
 - 예산 정지와 아직 검출하지 못하는 위반.
+- 0.1.5에서 권고로 분류한 규칙 중 스크립트나 훅으로 막을 수 있는 것(역할 권한, 작업 범위, 예산)을 강제로 바꿉니다. `.env` 읽기 차단부터 시작합니다.
 - 이전 세대 하네스 시험 이전. 읽기 전용 리허설을 먼저 합니다.
 
 ## 0.3 — 적용

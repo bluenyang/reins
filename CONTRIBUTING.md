@@ -39,7 +39,7 @@ The hooks run `reins check --stage pre-commit` and `--stage pre-push`. Never byp
 
 - **Design first.** `docs/design.md` is the reference. If code needs to differ, change
   `docs/design.ko.md` and `docs/design.md` in the same commit (R45).
-- **TypeScript only** for scripts — no Python (R65). ESM, Node ≥ 22.
+- **TypeScript** for everything that ships (CLI, generators, checks, build output) — it never needs Python (R65). Development, test and editing scripts may use Python. ESM, Node ≥ 22.
 - **Branches** `type/topic` from `master`, rebased, fast-forward merged. Never commit on `master`.
 - **Commits** — one finished unit per commit, each passing `pnpm check` on its own. Message:
   `type(scope): title`, a one-line summary, then bullets. Stage explicit paths.

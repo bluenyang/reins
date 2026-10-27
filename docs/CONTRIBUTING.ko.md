@@ -39,7 +39,7 @@ pnpm build       # cli/src → cli/dist
 
 - **설계가 먼저입니다.** 기준은 `docs/design.md`입니다. 코드가 설계와 달라져야 하면 같은 커밋에서
   `docs/design.ko.md`와 `docs/design.md`를 먼저 고칩니다(R45).
-- **스크립트는 TypeScript만** 씁니다. Python은 쓰지 않습니다(R65). ESM, Node 22 이상입니다.
+- **배포되는 것**(CLI, 생성기, 검사, 빌드 산출물)은 **TypeScript**로 쓰고, Python이 필요 없어야 합니다(R65). 개발·테스트·편집용 스크립트는 Python이어도 됩니다. ESM, Node 22 이상입니다.
 - **브랜치**는 `master`에서 `type/topic`으로 따고, rebase한 뒤 fast-forward로 병합합니다.
   `master`에 직접 커밋하지 않습니다.
 - **커밋**은 끝난 단위마다 하나씩 하고, 커밋마다 `pnpm check`를 통과해야 합니다. 메시지는

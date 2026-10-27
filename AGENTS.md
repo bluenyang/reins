@@ -21,7 +21,7 @@ of this repository.
 
 - The design document is the reference. If an implementation needs to differ, change
   `docs/design.ko.md` (and the English edition) **in the same commit** before the code.
-- Scripts are TypeScript. No Python in this repository (R65).
+- What ships (the CLI, generators, checks and build output) is TypeScript and never needs Python (R65). Development, test, verification and editing scripts may use Python; do not block Python itself — target repositories may be Python projects.
 - Stop conditions, roles and file formats come from `docs/design.md`; do not invent parallel ones.
 
 ### Stack and commands

@@ -122,7 +122,7 @@ Non-goals (not this project):
 - **R64** Approval chain: intent = **approved by the user** / spec = **first review by PM + QA**, then **a 3–5 line "this is how I understood it" summary to the user, with a veto** / plan = **light QA review**. Thorough review is the agents'; the final word is a person's — who reads only the summary and can stop (the formalisation of intervention axis ③). The summary is dropped at the loop tier (maintainer, confirmed 2026-10-25).
 
 ### 3-14. This repository itself (maintainer, at confirmation 2026-10-25)
-- **R65** The repository's scripts **do not use Python.** CLI, generators and checks are TS/Node; shell is limited to one-line hook calls. (Maintainer's preference. External tools written in Python are only invoked.)
+- **R65** **What ships does not use Python**: the published package — its CLI, generators, checks and build output — is TS/Node and never needs Python at runtime; shell is limited to one-line hook calls. Scripts used while developing, testing, verifying or editing may use Python, and often should when it is the safer or more exact tool. reins never forbids Python itself: the repositories it is installed in may be Python projects. (Maintainer's preference, scope clarified 2026-10-27.)
 - **R66** This repository **improves itself with its own loop**. It is the first install/migrate target (S1) and every later change rides the intent → spec → plan → ticket chain it built. Whatever the tool cannot yet do becomes the next intent.
 
 ## 4. Scope

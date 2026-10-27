@@ -1,6 +1,6 @@
 ---
 intent: "012"
-status: done
+status: active
 approvals:
   - { role: qa-design, at: 2026-10-27, kind: light-review }
 agents:
@@ -9,7 +9,7 @@ agents:
   review: [code-review]
 budget: {}
 branch: feat/012-large-repo-readiness
-tickets: ["012-1", "012-2", "012-3", "012-4", "012-5", "012-6"]
+tickets: ["012-1", "012-2", "012-3", "012-4", "012-5", "012-6", "012-7", "012-8", "012-9"]
 ---
 ## 바뀌는 파일
 - 012-1: `harness/schemas/install.schema.json`(새), `cli/src/lib/release.ts`(새), `cli/src/commands/stages.ts`(T5 dispatch 줄), `cli/src/commands/install.ts`(install.yaml 키 보존), `harness/roles/deploy.md`, `skills/reins-release/SKILL.md`, 이 저장소 `.agents/harness/install.yaml`(release), 설치본, 테스트, `docs/design*.md` §4·§9
@@ -40,4 +40,5 @@ tickets: ["012-1", "012-2", "012-3", "012-4", "012-5", "012-6"]
 - [ ] spec C-1~C-15
 - [ ] npm rc 스모크: install(하위 게이트 제안), migrate fixture(id 겹침), 0.1.0·0.1.3 설치본 update
 ## 이탈 기록
+- 2026-10-27 (pl, rc.1 뒤 사용자 지시 "a, b rc.2, c는 0.2"): croffle `migrate --dry-run` 결과에서. 012-7 dry-run이 게이트 제안·memory 초안 예정을 보여 줌 · 012-8 `workflow_dispatch` 워크플로에서 `release:` 초안 제안 · 012-9 publish가 deploy key로 push(사용자가 master 보호 규칙을 거는 중). 모두 release: stabilization. 버전별 intent 분리는 0.2.
 - 2026-10-27 (pl, 버전 e2e): `--legacy committed`인데 보고서가 `.loctx/_legacy/`라고 적음 → 012-3 후속 커밋으로 수정(review 012-3_04 approve). 그 밖의 e2e는 통과: 모노레포 제안·configure gates·memory 초안·`*.env` deny·버전 출력·0.1.0 설치본 update·migrate id/intent 000/재실행.

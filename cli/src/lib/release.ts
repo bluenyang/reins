@@ -76,6 +76,8 @@ export interface ReleaseDraft {
  * `on: workflow_dispatch` trigger (string, list or map form). Pure: reads, never writes; files
  * that do not parse are ignored. Returns [] when install.yaml already has a `release:` key.
  */
+const RELEASE_NAME = /release|publish|deploy|ship/i;
+
 export function draftRelease(root: string): ReleaseDraft[] {
   const pin = join(root, '.agents/harness/install.yaml');
   if (existsSync(pin))
@@ -121,7 +123,9 @@ export function draftRelease(root: string): ReleaseDraft[] {
       }
     out.push({ file: f, inputs, approval: 'none' });
   }
-  return out;
+  // CI and scanners are often dispatchable too: when some workflow looks like a release, propose only those
+  const releasing = out.filter((d) => RELEASE_NAME.test(d.file));
+  return releasing.length ? releasing : out;
 }
 
 /** The notes install and migrate print for a draft (and their dry runs). */

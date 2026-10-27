@@ -53,21 +53,34 @@ function repo(files: Record<string, string> = {}): string {
 describe('release: draft from dispatchable workflows (012-8)', () => {
   it('drafts one entry per workflow_dispatch workflow, in all three trigger forms', () => {
     const d = repo({
-      '.github/workflows/a.yaml': 'on: workflow_dispatch\n',
-      '.github/workflows/b.yml': 'on: [push, workflow_dispatch]\n',
-      '.github/workflows/c.yml': 'on:\n  workflow_dispatch:\n    inputs:\n      tag: {}\n',
+      '.github/workflows/deploy-a.yaml': 'on: workflow_dispatch\n',
+      '.github/workflows/publish-b.yml': 'on: [push, workflow_dispatch]\n',
+      '.github/workflows/ship-c.yml': 'on:\n  workflow_dispatch:\n    inputs:\n      tag: {}\n',
       '.github/workflows/bad.yml': 'on: [unclosed\n',
     });
     expect(draftRelease(d)).toEqual([
-      { file: 'a.yaml', inputs: {}, approval: 'none' },
-      { file: 'b.yml', inputs: {}, approval: 'none' },
-      { file: 'c.yml', inputs: { tag: 'v{version}' }, approval: 'none' },
+      { file: 'deploy-a.yaml', inputs: {}, approval: 'none' },
+      { file: 'publish-b.yml', inputs: {}, approval: 'none' },
       {
         file: 'release.yml',
         inputs: { version: '{version}', dry_run: 'false', note: '<fill in>' },
         approval: 'none',
       },
+      { file: 'ship-c.yml', inputs: { tag: 'v{version}' }, approval: 'none' },
     ]);
+  });
+
+  it('prefers release-like names over other dispatchable workflows, else lists them all', () => {
+    const d = repo({
+      '.github/workflows/ci.yml': 'on: [push, workflow_dispatch]\n',
+      '.github/workflows/secret-scan.yml': 'on: workflow_dispatch\n',
+    });
+    expect(draftRelease(d).map((x) => x.file)).toEqual(['release.yml']);
+    const only = repo({
+      '.github/workflows/release.yml': 'on: push\n',
+      '.github/workflows/ci.yml': 'on: workflow_dispatch\n',
+    });
+    expect(draftRelease(only).map((x) => x.file)).toEqual(['ci.yml']);
   });
 
   it('proposes nothing when install.yaml already has release:', () => {

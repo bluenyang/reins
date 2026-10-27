@@ -406,7 +406,7 @@ export function verdictCheck(root: string, id: string): Finding[] {
 }
 
 /** T5 — an rc closes: every planned ticket of the release's intents is done and recorded. */
-export function rcClose(root: string, release: string | undefined): Finding[] {
+export function rcClose(root: string, release: string | undefined, stable = false): Finding[] {
   if (!release)
     return [
       {
@@ -472,10 +472,11 @@ export function rcClose(root: string, release: string | undefined): Finding[] {
           resume: 'add it to plan.md (departure log) or close it',
         });
   }
-  if (findings.length === 0) findings.push(...nextRc(root, release));
+  if (findings.length === 0)
+    findings.push(...(stable ? noRcRecorded(root, release) : nextRc(root, release)));
   if (findings.every((f) => f.verdict === 'WARN'))
-    findings.push(...dispatchFindings(root, findings));
-  findings.push(...docsFindings(root, release, 'rc'));
+    findings.push(...(stable ? stableFindings(root, release) : dispatchFindings(root, findings)));
+  findings.push(...docsFindings(root, release, stable ? 'stable' : 'rc'));
   return findings;
 }
 
@@ -512,7 +513,46 @@ function dispatchFindings(root: string, found: Finding[]): Finding[] {
     return [
       { reason: 'F2', verdict: 'WARN', message: 'no release workflow is set for the rc stage' },
     ];
-  return lines.map((l) => ({ reason: 'F2', verdict: 'WARN' as const, message: `dispatch: ${l}` }));
+  return [
+    ...lines.map((l) => ({ reason: 'F2', verdict: 'WARN' as const, message: `dispatch: ${l}` })),
+    {
+      reason: 'F2',
+      verdict: 'WARN' as const,
+      message: "stable: rerun with --stable on the user's instruction",
+    },
+  ];
+}
+
+/** The stable dispatch lines (S-9): printed only under --stable, labelled so an agent does not run them unasked. */
+function stableFindings(root: string, release: string): Finding[] {
+  const ws = readRelease(root);
+  if (!ws)
+    return [
+      {
+        reason: 'F2',
+        verdict: 'WARN',
+        message: 'no release settings (install.yaml has no release:) — merge only',
+      },
+    ];
+  const lines = dispatchLines(ws, 'stable', release);
+  if (lines.length === 0)
+    return [
+      { reason: 'F2', verdict: 'WARN', message: 'no release workflow is set for the stable stage' },
+    ];
+  return lines.map((l) => ({
+    reason: 'F2',
+    verdict: 'WARN' as const,
+    message: `dispatch (stable — user's instruction only, A2): ${l}`,
+  }));
+}
+
+/** A stable normally follows an rc: WARN when the ledger records none. */
+function noRcRecorded(root: string, release: string): Finding[] {
+  const path = join(root, '.loctx', 'release', `${release}.md`);
+  const has = existsSync(path) && /^\s*[-*]\s*rc\.\d+\b/m.test(readFileSync(path, 'utf8'));
+  return has
+    ? []
+    : [{ reason: 'F2', verdict: 'WARN', path, message: `no rc recorded for ${release}` }];
 }
 
 /**

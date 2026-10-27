@@ -18,6 +18,7 @@ Enforced versus advised, per-user binding overrides, documents with every rc, CI
 - Node ≥ 22 (commander 14), `.gitattributes` with LF endings, and CI on Ubuntu, Windows and macOS with Node 22 and 24 (intent 013).
 - Bindings in two layers: the committed `bindings.yaml` no longer records `detected`; `.loctx/bindings.local.yaml` holds detection and your own `configure bindings --local --set` overrides, `reins status` and `--show` print the resolved model per role, and roles on another vendor also get a Claude fallback agent file (intent 013).
 - `install.yaml` `release.docs` lists the documents a release must update (roadmap row, CHANGELOG section, README status line); T5 warns for each one that still describes the previous state, and deploy updates them on the release branch before T5 (intent 013).
+- `reins check --stage rc-close --release <V> --stable` prints the stable dispatch lines (user's instruction only) and warns when no rc is recorded; without it T5 only hints at `--stable` (intent 013).
 
 ## [0.1.4] — 2026-10-27
 

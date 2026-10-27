@@ -28,6 +28,8 @@ export interface CheckOptions {
   ticket?: string;
   /** rc-close: the release version the rc closes. */
   release?: string;
+  /** rc-close: print the stable dispatch lines instead of the next rc (the user's instruction only). */
+  stable?: boolean;
 }
 
 const SKILL_ROOTS = ['skills', '.agents/skills', '.claude/skills'];
@@ -390,7 +392,7 @@ export function runCheck(opts: CheckOptions): StopReport {
           ? ticketStart(root, opts.ticket)
           : verdictCheck(root, opts.ticket)),
       );
-  } else if (opts.stage === 'rc-close') findings.push(...rcClose(root, opts.release));
+  } else if (opts.stage === 'rc-close') findings.push(...rcClose(root, opts.release, opts.stable));
   if (opts.drift || !opts.stage)
     findings.push(
       ...driftFormat(root),

@@ -485,6 +485,7 @@ program
   )
   .option('--ticket <id>', 'ticket-start, verdict: the ticket id')
   .option('--release <version>', 'rc-close: the version the rc closes')
+  .option('--stable', "rc-close: print the stable dispatch lines (the user's instruction only)")
   .option('--drift')
   .option('--json')
   .action(
@@ -492,6 +493,7 @@ program
       stage?: string;
       ticket?: string;
       release?: string;
+      stable?: boolean;
       drift?: boolean;
       json?: boolean;
     }) => {
@@ -506,7 +508,14 @@ program
         for await (const c of process.stdin) chunks.push(c as Buffer);
         pushRefs = Buffer.concat(chunks).toString('utf8').split('\n').filter(Boolean);
       }
-      const r = runCheck({ stage, drift: o.drift, pushRefs, ticket: o.ticket, release: o.release });
+      const r = runCheck({
+        stage,
+        drift: o.drift,
+        pushRefs,
+        ticket: o.ticket,
+        release: o.release,
+        stable: o.stable,
+      });
       // S-8: the verdict code is set before anything is printed, so a closed pipe cannot change it
       process.exitCode = EXIT[r.verdict];
       process.stdout.on('error', (e: NodeJS.ErrnoException) => {

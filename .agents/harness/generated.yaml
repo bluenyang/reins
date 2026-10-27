@@ -3,7 +3,7 @@ schema: reins/generated@1
 files:
   .claude/agents/reins-advisor.md: a735be4b856a7bcf
   .claude/agents/reins-code-review.md: 66973027eb08c75a
-  .claude/agents/reins-deploy.md: 90bd4836331ac86e
+  .claude/agents/reins-deploy.md: b111e29d6907122a
   .claude/agents/reins-docs.md: baaa26b9b7cc6790
   .claude/agents/reins-implementer.md: 5c34b645290e69dc
   .claude/agents/reins-lookup.md: 3d6bf8d8deaf7a0e
@@ -17,7 +17,7 @@ files:
   .claude/skills/reins-intent/SKILL.md: 51dcaa684493abb7
   .claude/skills/reins-loop/SKILL.md: 35151cf39a5f265a
   .claude/skills/reins-loop/references/vendor-cli.md: f9ca796b01414e0c
-  .claude/skills/reins-release/SKILL.md: 614acc7af9f34d1c
+  .claude/skills/reins-release/SKILL.md: 7ef748f44cb1a6b9
   .claude/skills/reins-retro/SKILL.md: de0ac68b439edb5c
   .claude/skills/reins-review/SKILL.md: 180b09aa7cd45adf
   .claude/skills/reins-roadmap/SKILL.md: ea8c6a85a160b177

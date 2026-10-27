@@ -9,7 +9,7 @@ agents:
   review: [code-review]
 budget: {}
 branch: feat/013-enforcement-and-platforms
-tickets: ["013-1", "013-2", "013-3", "013-4", "013-5", "013-6", "013-7"]
+tickets: ["013-1", "013-2", "013-3", "013-4", "013-5", "013-6", "013-7", "013-8"]
 ---
 ## 바뀌는 파일
 - 013-1: `package.json`(engines `>=22`, commander `^14`), lockfile, `.gitattributes`(새), `.github/workflows/ci.yml`(matrix), Windows·macOS에서 드러난 실패 수정(테스트·`split('\n')` 파서·임시 폴더 삭제 재시도·realpath), README·CONTRIBUTING·AGENTS.md 양판의 Node 문구, `docs/design*.md` §9, 테스트(engines·matrix)
@@ -39,5 +39,6 @@ tickets: ["013-1", "013-2", "013-3", "013-4", "013-5", "013-6", "013-7"]
 - [ ] PR CI matrix 녹색
 - [ ] npm rc 스모크
 ## 이탈 기록
+- 2026-10-27 (pl, 013-7 실제 실행 중 발견): `reins update | head`가 EPIPE로 죽음 — 닫힌 stdout 처리가 check에만 있었음 → 013-8 모든 명령에 같은 처리. 코드를 먼저 쓰고 ticket을 뒤에 만듦(이탈). release: stabilization.
 - 2026-10-27 (pl, rc.1 스모크·사용자 지시 "rc.2로 넣고"): 0.1.4 설치본은 update 뒤에도 bindings.yaml에 `detected`가 남음 → 013-7 update가 감지 결과를 `.loctx/bindings.local.yaml`로 옮기고 커밋 파일에서 지움. release: stabilization.
 - 2026-10-27 (pl, 013-1 PR CI matrix): Windows 2칸에서 테스트 파일 6개 실패(경로 `new URL().pathname` → `/D:/…`, 템플릿·출력 비교 등), macOS Node 22에서 e2e 2개가 5초 제한 초과 → 위험 항목대로 ticket 013-6 "Windows·macOS CI 실패 수정"으로 분리.

@@ -224,7 +224,7 @@ export function stateLabel(b: {
   return b.enabled_source === 'local' ? 'on (local)' : '';
 }
 
-function teamRoles(root: string): Record<string, { vendor: string; model: string }> {
+export function teamRoles(root: string): Record<string, { vendor: string; model: string }> {
   const path = join(root, '.agents/harness/bindings.yaml');
   if (!existsSync(path)) return {};
   try {

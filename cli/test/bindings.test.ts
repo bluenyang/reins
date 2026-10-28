@@ -135,6 +135,35 @@ describe('two-layer bindings (013-3)', () => {
     expect(runStatus({ cwd: d }).stdout).toContain('bindings (resolved):');
   });
 
+  it('choosing the team model again removes the local override', async () => {
+    const d = await repo(['claude']);
+    await configureBindings({
+      cwd: d,
+      local: true,
+      set: ['pm=claude-fable-5-1'],
+      detectVendors: detect(['claude']),
+    });
+    const team = readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8').match(
+      /pm:\n\s+vendor: \w+\n\s+model: (\S+)/,
+    )![1]!;
+    const r = await configureBindings({
+      cwd: d,
+      local: true,
+      set: [`pm=${team}`],
+      detectVendors: detect(['claude']),
+    });
+    expect(r.changed).toEqual(['pm']);
+    expect(readLocal(d).roles['pm']).toBeUndefined();
+    expect(r.resolved?.find((x) => x.role === 'pm')?.source).not.toBe('local');
+    const again = await configureBindings({
+      cwd: d,
+      local: true,
+      set: [`pm=${team}`],
+      detectVendors: detect(['claude']),
+    });
+    expect(again.changed).toEqual([]);
+  });
+
   it('generated files ignore the local file and cover non-Claude roles (C-7)', async () => {
     const d = await repo(['claude']);
     const bp = join(d, '.agents/harness/bindings.yaml');

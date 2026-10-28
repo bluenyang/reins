@@ -19,6 +19,7 @@ import {
   resolveBindings,
   roleEnabledRefusal,
   setRoleEnabled,
+  teamRoles,
   writeLocal,
   type ResolvedBinding,
 } from '../lib/bindings.js';
@@ -133,7 +134,15 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
           changed: [],
           table: [],
         };
-      if (local.roles[role]?.model !== model) {
+      if (teamRoles(root)[role]?.model === model) {
+        // the same as the team: no override to keep (the role follows the team again)
+        if (local.roles[role]?.model !== undefined) {
+          const { model: _drop, ...rest } = local.roles[role]!;
+          if (Object.keys(rest).length) local.roles[role] = rest;
+          else delete local.roles[role];
+          changed.push(role);
+        }
+      } else if (local.roles[role]?.model !== model) {
         local.roles[role] = { ...local.roles[role], model };
         changed.push(role);
       }

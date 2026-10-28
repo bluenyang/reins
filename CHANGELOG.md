@@ -15,6 +15,7 @@ needs the `/reins-update` skill.
 Planned; see the roadmap.
 
 - `reins config`: a settings screen on a terminal (prompter layer on `@clack/prompts`, loaded only when a screen is drawn); without a terminal it prints the resolved bindings table (`--json` for JSON).
+- `reins config` models and roles screens: switch the write scope (`local` or `global`), roles on or off, and pick a role's vendor (detected ones) and model (`agy`/`cursor-agent` model lists, known lists for claude and openai, or `other`); each choice is written at once through `configure bindings`.
 - Roles can be switched off: `roles.<r>.enabled` in `bindings.yaml` (team) or `.loctx/bindings.local.yaml` (you, wins both ways), `reins configure bindings --disable|--enable <role…> [--local]`, role files gain `covered_by`; pm, implementer and verify-tool stay on, a team-off role gets no agent file, `reins status` shows `off → <role>` and `on (local)`, T1 warns for a ticket whose role is off.
 
 ## [0.1.5] — 2026-10-27

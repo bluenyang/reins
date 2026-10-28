@@ -14,6 +14,8 @@ needs the `/reins-update` skill.
 
 Planned; see the roadmap.
 
+- `reins config`: a settings screen on a terminal (prompter layer on `@clack/prompts`, loaded only when a screen is drawn); without a terminal it prints the resolved bindings table (`--json` for JSON).
+
 ## [0.1.5] — 2026-10-27
 
 Enforced versus advised, per-user binding overrides, documents with every rc, CI on more platforms.

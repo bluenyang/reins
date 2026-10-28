@@ -9,6 +9,7 @@ import { formatRetro, runRetro } from './commands/retro.js';
 import { runStatus } from './commands/status.js';
 import { runUpdate } from './commands/update.js';
 import { configureBindings, configureGates } from './commands/configure.js';
+import { runConfig } from './commands/config.js';
 import { respondRefusal, runGates, writeResponse } from './commands/gate.js';
 import { newIntent, newRequest, newTicket, type NewResult } from './commands/new.js';
 import {
@@ -206,6 +207,14 @@ program
         '• this update needs project sections changed: run /reins-update in your agent\n',
       );
     if (r.install?.history) process.stdout.write(`recorded: ${r.install.history}\n`);
+  });
+
+program
+  .command('config')
+  .description('settings screen on a terminal; the resolved bindings table otherwise')
+  .option('--json', 'print the resolved bindings as JSON (no screen)')
+  .action(async (o: { json?: boolean }) => {
+    process.exit(await runConfig({ json: o.json }));
   });
 
 const configure = program.command('configure').description('change project-owned settings');

@@ -193,6 +193,7 @@ To work on reins itself: `git clone https://github.com/bluenyang/reins.git`, the
 | `install <harness\|loop\|graph>` | implemented | places the harness; `--mode manual\|auto`, `--hooks`, `--dry-run`, `--json` |
 | `migrate <tier>` | implemented | moves an existing harness or `.ai/` workspace to this layout |
 | `update` | implemented | re-applies the packaged harness without touching project sections |
+| `config` | implemented | settings screen on a terminal (`models and roles configuration`, `exit`); without a terminal it prints the resolved bindings table and how to change it; `--json` |
 | `configure bindings` | implemented | `--set role=model ...` or `--vendors claude,openai`; no options asks |
 | `gate [names...]` | implemented | runs `gates.yaml` as declared and keeps the raw output in `.loctx/reports/` |
 | `status` | implemented | read-only view of harness, intents, tickets, bus and last history |

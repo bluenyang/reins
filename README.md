@@ -19,7 +19,8 @@ tier, with generated vendor files verified for Claude Code only; the loop and ha
 carved out of it in 0.2. 0.1.3 split the loop into stage skills with a PR → CI → rc release flow,
 0.1.4 prepares large repositories (release settings, monorepo gates, migrate fixes), and 0.1.5
 states which rules are enforced and which are only advised, splits model bindings into a team
-and a per-user layer, and runs CI on Ubuntu, Windows and macOS with Node 22 and 24. What
+and a per-user layer, and runs CI on Ubuntu, Windows and macOS with Node 22 and 24. 0.2.0 (in rc) adds `reins config`,
+a terminal screen for models and roles, and asks install and update questions as screens. What
 changed in each version is in [CHANGELOG.md](CHANGELOG.md); what comes next is in the roadmap.
 
 reins develops itself through its own loop: intents 001 (`reins status`), 002 (`reins metrics`) and

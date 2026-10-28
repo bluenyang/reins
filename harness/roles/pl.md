@@ -2,6 +2,7 @@
 role: pl
 default_binding: "claude-sonnet-5-5"
 summary: "Owns plan.md and the tickets; directs implementers; decides from verification results without judging them itself."
+covered_by: pm
 may:
   - "write intent/<id>/plan.md; create and order tickets in .loctx/ticket/"
   - "dispatch implementers (parallel when tickets have no dependencies)"

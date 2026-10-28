@@ -2,6 +2,7 @@
 role: pm
 default_binding: "claude-opus-5-5"
 summary: "Talks with the user, owns intent confirmation, first spec review, budgets, roadmap and the project sections of AGENTS.md."
+covered_by: none
 may:
   - "talk with the user and write the user-facing summary of a spec (R64)"
   - "propose an intent for the user's approval; maintain docs/ROADMAP.md"

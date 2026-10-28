@@ -10,6 +10,7 @@ import { runStatus } from './commands/status.js';
 import { runUpdate } from './commands/update.js';
 import { configureBindings, configureGates } from './commands/configure.js';
 import { runConfig } from './commands/config.js';
+import { stateLabel } from './lib/bindings.js';
 import { respondRefusal, runGates, writeResponse } from './commands/gate.js';
 import { newIntent, newRequest, newTicket, type NewResult } from './commands/new.js';
 import {
@@ -229,6 +230,8 @@ configure
     'rebuild every role from its defaults for these vendors (comma-separated)',
   )
   .option('--local', 'with --set: write your own override to .loctx/bindings.local.yaml')
+  .option('--disable <roles...>', 'switch roles off (pm, implementer and verify-tool cannot be)')
+  .option('--enable <roles...>', 'switch roles on again')
   .option('--show', 'print what each role actually runs on')
   .option('--json')
   .action(
@@ -238,28 +241,35 @@ configure
       json?: boolean;
       local?: boolean;
       show?: boolean;
+      disable?: string[];
+      enable?: string[];
     }) => {
-      const asker = !o.set && !o.vendors && !o.local && !o.show ? await stdinAsker() : undefined;
+      const asker =
+        !o.set && !o.vendors && !o.local && !o.show && !o.disable && !o.enable
+          ? await stdinAsker()
+          : undefined;
       const r = await configureBindings({
         local: o.local,
         show: o.show,
         set: o.set,
+        disable: o.disable,
+        enable: o.enable,
         vendors: o.vendors?.split(',').map((s) => s.trim()),
         asker,
       });
       asker?.close();
       if (o.json) {
         process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
-        process.exit(r.refused ? 2 : 0);
+        process.exit(r.refused ? (r.code ?? 2) : 0);
       }
       if (r.refused) {
         process.stderr.write(`reins configure bindings: ${r.refused}\n`);
-        process.exit(2);
+        process.exit(r.code ?? 2);
       }
       if (o.show || o.local) {
         for (const t of r.resolved ?? [])
           process.stdout.write(
-            `  ${r.changed.includes(t.role) ? '*' : ' '} ${t.role.padEnd(12)} ${t.vendor.padEnd(7)} ${t.model} (${t.source}: ${t.reason})\n`,
+            `  ${r.changed.includes(t.role) ? '*' : ' '} ${t.role.padEnd(12)} ${t.vendor.padEnd(7)} ${t.model} (${t.source}: ${t.reason})${stateLabel(t) ? ` ${stateLabel(t)}` : ''}\n`,
           );
       } else
         for (const t of r.table)

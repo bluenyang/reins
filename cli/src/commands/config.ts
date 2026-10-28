@@ -1,4 +1,4 @@
-import { resolveBindings, type ResolvedBinding } from '../lib/bindings.js';
+import { resolveBindings, stateLabel, type ResolvedBinding } from '../lib/bindings.js';
 import type { Vendor } from '../lib/detect.js';
 import { repoRoot } from '../lib/git.js';
 import { clackPrompter, isInteractive, type Prompter } from '../lib/prompter.js';
@@ -20,7 +20,8 @@ export const CONFIG_HINT =
 export function formatBindings(rows: ResolvedBinding[]): string {
   return rows
     .map(
-      (t) => `  ${t.role.padEnd(12)} ${t.vendor.padEnd(7)} ${t.model} (${t.source}: ${t.reason})`,
+      (t) =>
+        `  ${t.role.padEnd(12)} ${t.vendor.padEnd(7)} ${t.model} (${t.source}: ${t.reason})${stateLabel(t) ? ` ${stateLabel(t)}` : ''}`,
     )
     .join('\n');
 }

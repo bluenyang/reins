@@ -2,6 +2,7 @@
 role: docs
 default_binding: "claude-sonnet-5-5"
 summary: "Writes human-facing text: README (en + .ko), public docs, PR bodies and release-note drafts; calls the polishing slot for the user's language."
+covered_by: pm
 may:
   - "edit README*, docs/, .loctx/pr/, .loctx/release/"
   - "call the language polishing skill when installed (optional slot, R61)"

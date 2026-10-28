@@ -3,6 +3,7 @@ import { parse, stringify } from 'yaml';
 import type { Write } from './fsx.js';
 import type { RedLine } from './harness.js';
 import { workTreeReader, type Reader } from './reader.js';
+import { FIXED_ROLES } from './bindings.js';
 import { vendorOf } from './detect.js';
 import { splitFrontmatter } from './skills.js';
 
@@ -17,6 +18,7 @@ export const sha = (s: string) => createHash('sha256').update(s).digest('hex').s
 interface Binding {
   vendor: string;
   model: string;
+  enabled?: boolean;
 }
 
 interface RoleDoc {
@@ -141,6 +143,8 @@ export function generateVendorFiles(root: string, rd: Reader = workTreeReader(ro
     const r = readRole(rd.read(p) ?? '');
     const b = bindings[r.role];
     if (!b) continue;
+    // a role the team switched off gets no agent file (fixed roles cannot be off); the local file never counts
+    if (b.enabled === false && !FIXED_ROLES.includes(r.role)) continue;
     // Committed team defaults only (never the local file), so no user's override makes drift.
     // A role bound to another vendor still gets a Claude file on its fallback model, else pm's.
     let model = b.model;

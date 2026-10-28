@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
+import { roleStates } from '../lib/bindings.js';
 import { isWithin, realPath } from '../lib/fsx.js';
 import { harnessDir, readYaml } from '../lib/harness.js';
 import { checkDoc, dispatchLines, readRelease, readReleaseDocs } from '../lib/release.js';
@@ -209,6 +210,18 @@ export function ticketStart(root: string, id: string): Finding[] {
         message: `role "${role}" has no binding`,
         resume: `reins configure bindings --set ${role}=<model>`,
       });
+    else {
+      // an off role is not refused yet (the loop's stage cutting is 0.2); the covering role does the work
+      const st = roleStates(root).states.get(role);
+      if (st && !st.enabled)
+        findings.push({
+          reason: 'P1',
+          verdict: 'WARN',
+          path: t.path,
+          message: `role ${role} is off — covered by ${st.covered_by ?? 'the next role in the chain'}`,
+          resume: `reins configure bindings --enable ${role} [--local], or let ${st.covered_by ?? 'the next role'} do it`,
+        });
+    }
   }
   return findings;
 }

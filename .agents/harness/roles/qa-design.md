@@ -3,6 +3,7 @@ role: qa-design
 default_binding: "gemini-4-argon-high"
 fallback_binding: "claude-opus-5-5"
 summary: "Designs test scenarios from intent, roadmap and architecture — never from code. Gives the first review of spec and a light review of plan."
+covered_by: pm
 may:
   - "read intent.md, spec.md, docs/, AGENTS.md"
   - "write scenarios (paths, expected results, how to verify: script, screenshot, static analysis)"

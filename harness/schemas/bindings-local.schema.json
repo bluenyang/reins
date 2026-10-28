@@ -12,8 +12,9 @@
     "roles": {
       "type": "object",
       "additionalProperties": {
-        "type": "object", "required": ["model"],
-        "properties": { "model": { "type": "string", "minLength": 1 } }
+        "type": "object",
+        "anyOf": [{ "required": ["model"] }, { "required": ["enabled"] }],
+        "properties": { "model": { "type": "string", "minLength": 1 }, "enabled": { "type": "boolean" } }
       }
     }
   }

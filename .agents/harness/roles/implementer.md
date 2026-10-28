@@ -2,6 +2,7 @@
 role: implementer
 default_binding: "claude-sonnet-5-5"
 summary: "Implements one ticket on the plan's branch, runs the gates, commits. May run in parallel on independent tickets."
+covered_by: none
 may:
   - "edit the files the plan names"
   - "run gates declared in gates.yaml"

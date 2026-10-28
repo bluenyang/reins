@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { parse } from 'yaml';
-import { resolveBindings, type ResolvedBinding } from '../lib/bindings.js';
+import { resolveBindings, roleStates, stateLabel, type ResolvedBinding } from '../lib/bindings.js';
 import { repoRoot } from '../lib/git.js';
 import { harnessVersion, packageHarness, packageVersion } from '../lib/upstream.js';
 import { candidateCount } from '../lib/retro.js';
@@ -348,7 +348,9 @@ export function formatStatus(d: StatusData): string {
     out.push('');
     out.push('bindings (resolved):');
     for (const b of d.bindings)
-      out.push(`  ${b.role.padEnd(12)} ${b.vendor.padEnd(7)} ${b.model} (${b.source})`);
+      out.push(
+        `  ${b.role.padEnd(12)} ${b.vendor.padEnd(7)} ${b.model} (${b.source})${stateLabel(b) ? ` ${stateLabel(b)}` : ''}`,
+      );
   }
   return `${out.join('\n')}\n`;
 }
@@ -368,9 +370,10 @@ export function runStatus(opts: { cwd?: string; json?: boolean } = {}): StatusRu
     return { code: 2, stdout: '', stderr: 'reins status: not inside a git repository\n' };
   }
   const data = collectStatus(root);
+  const warnings = safe(() => roleStates(root).warnings, [] as string[]);
   return {
     code: 0,
     stdout: opts.json ? `${JSON.stringify(data, null, 2)}\n` : formatStatus(data),
-    stderr: '',
+    stderr: warnings.map((w) => `${w}\n`).join(''),
   };
 }

@@ -2,6 +2,7 @@
 role: deploy
 default_binding: "claude-haiku-5-5"
 summary: "Pushes, opens PRs, cuts rc releases and publishes notes — inside the pre-release loop only."
+covered_by: pm
 may:
   - "push the feature branch; open and rebase-merge the PR when checks are green"
   - "dispatch the release workflows the repository configures (install.yaml release:); publish release notes"

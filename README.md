@@ -190,9 +190,9 @@ To work on reins itself: `git clone https://github.com/bluenyang/reins.git`, the
 
 | Command | State | Does |
 |---|---|---|
-| `install <harness\|loop\|graph>` | implemented | places the harness; `--mode manual\|auto`, `--hooks`, `--dry-run`, `--json` |
+| `install <harness\|loop\|graph>` | implemented | places the harness; on a terminal `--mode manual` asks vendors, language, gates and subdirectory gates as screens; `--mode manual\|auto`, `--hooks`, `--dry-run`, `--json` |
 | `migrate <tier>` | implemented | moves an existing harness or `.ai/` workspace to this layout |
-| `update` | implemented | re-applies the packaged harness without touching project sections |
+| `update` | implemented | re-applies the packaged harness without touching project sections; on a terminal it shows the plan and asks first (`--yes` skips the question) |
 | `config` | implemented | settings screen on a terminal (`models and roles configuration`, `exit`); without a terminal it prints the resolved bindings table and how to change it; `--json` |
 | `configure bindings` | implemented | `--set role=model ...` or `--vendors claude,openai`; `--disable <role...>` / `--enable <role...>` switch roles off or on (`--local` for you only; pm, implementer and verify-tool cannot be switched off); no options asks |
 | `gate [names...]` | implemented | runs `gates.yaml` as declared and keeps the raw output in `.loctx/reports/` |

@@ -189,9 +189,9 @@ reins 자체를 개발하려면 `git clone https://github.com/bluenyang/reins.gi
 
 | 명령 | 상태 | 하는 일 |
 |---|---|---|
-| `install <harness\|loop\|graph>` | 구현됨 | 하네스를 설치합니다. `--mode manual\|auto`, `--hooks`, `--dry-run`, `--json` |
+| `install <harness\|loop\|graph>` | 구현됨 | 하네스를 설치합니다. 터미널에서 `--mode manual`이면 벤더·언어·게이트·하위 게이트를 화면으로 묻습니다. `--mode manual\|auto`, `--hooks`, `--dry-run`, `--json` |
 | `migrate <tier>` | 구현됨 | 기존 하네스나 `.ai/` 작업 공간을 이 배치로 옮깁니다 |
-| `update` | 구현됨 | 패키지된 하네스를 다시 적용하되 프로젝트 섹션은 건드리지 않습니다 |
+| `update` | 구현됨 | 패키지된 하네스를 다시 적용하되 프로젝트 섹션은 건드리지 않습니다. 터미널에서는 계획을 보여 주고 먼저 묻습니다(`--yes`는 묻지 않습니다) |
 | `config` | 구현됨 | 터미널에서는 설정 화면(`models and roles configuration`, `exit`)을 띄웁니다. 터미널이 아니면 해석된 bindings 표와 바꾸는 방법을 출력합니다. `--json` |
 | `configure bindings` | 구현됨 | `--set role=model ...` 또는 `--vendors claude,openai`. `--disable <role...>`·`--enable <role...>`은 역할을 끄고 켭니다(`--local`은 나만. pm·implementer·verify-tool은 끌 수 없습니다). 옵션이 없으면 묻습니다 |
 | `gate [names...]` | 구현됨 | `gates.yaml`을 선언된 대로 실행하고 원본 출력을 `.loctx/reports/`에 남깁니다 |

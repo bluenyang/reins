@@ -22,6 +22,8 @@ user confirms it.
    vendors to use (show the detected ones) · language of the documents the user reads · public repository?
 3. **Apply** non-interactively: `reins install <tier> --mode auto` (or `reins migrate <tier> --mode auto`).
    Then adjust what the user changed: `reins configure bindings --set <role>=<model> …`.
+   The user can also change bindings and switch roles on or off themselves in a terminal with `reins config`;
+   as the agent, keep using the flag form (`reins configure bindings --set …`, `--disable|--enable`).
 4. **Gates.** Show `.agents/harness/gates.yaml`; run `reins gate` once. A gate that fails or mutates files is
    the user's call — never edit the project's scripts to make it pass.
 5. **Hooks are proposed, not added.** Show the proposal from the install notes; only on the user's yes run

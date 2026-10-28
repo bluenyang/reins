@@ -147,7 +147,8 @@ export function formatUpdate(r: UpdateResult, dry: boolean): string {
     out.push(
       `${dry ? 'would write' : 'wrote'}: ${a.created.length} new, ${a.changed.length} changed${a.removed.length ? `, ${a.removed.length} removed` : ''}`,
     );
-    for (const p of [...a.created, ...a.changed]) out.push(`  ~ ${p}`);
+    for (const p of a.created) out.push(`  + ${p}`);
+    for (const p of a.changed) out.push(`  ~ ${p}`);
     for (const p of a.removed) out.push(`  - ${p} (no longer installed by this tier)`);
   }
   for (const n of r.overrides)

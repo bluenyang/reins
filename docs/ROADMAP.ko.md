@@ -42,7 +42,7 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 | 0.2.1 | 계획 | 루프 강제: reins가 작업 단위와 전이 상태를 소유, 작업 단위 없는 커밋은 STOP, 에이전트 런타임 훅, 승인 재설계, CLI가 쓰는 기록, easy 등급 |
 | 0.2.2 | 계획 | 작업 등급과 문서 루프: common·complex 등급, 묶음 승인, 근거 중심 문서 루프, 독립 리뷰를 종료 조건으로, merge·릴리스 재검증 |
 | 0.2.3 | 계획 | 논의와 총괄: roadmap 앞 discussion 단계, PM·PL 총괄, PL 사이 교차검증 |
-| 0.2.4 | 계획 | 적용 준비: stable도 merge 전에 릴리스 문서 갱신, Python 게이트 탐색, migrate가 work를 버전별 intent로 나누기 |
+| 0.2.4 | 계획 | 적용 준비: stable도 merge 전에 릴리스 문서 갱신, Python 게이트 탐색, migrate가 work를 버전별 intent로 나누기, `.loctx` 보존 정책과 `reins prune` |
 | 0.2.5 | 계획 | 남은 강제: `.env` 읽기 차단, push·PR·merge·릴리스는 deploy 역할만(C6), plan 밖 변경(C10), 꺼진 역할의 ticket을 T1이 거부 |
 | 0.2.6 | 계획 | 예산과 T6: `metrics.jsonl` 기반 예산 정지 E1~E3, `configure budget`, 중단 기록(G1)과 F1 |
 | 0.2.7 | 계획 | 이기종 에이전트: Codex, Gemini(Antigravity), Cursor 생성 파일·런타임 훅과 드리프트 검증, 역할마다 벤더에서 실행할 명령 줄 |
@@ -56,7 +56,7 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 - **작업 단위 없는 커밋은 STOP.** T2가 활성 단위, 유효한 승인, 변경 범위를 확인합니다. 리뷰 완료는 커밋마다 요구하지 않고 종료 시점에 요구합니다.
 - **에이전트 런타임 훅.** 설계 §6에 있었지만 생성되지 않던 훅을 생성합니다. 세션 시작과 프롬프트에서는 상태를 주입합니다. 도구 호출 전에는 작업 단위 없는 쓰기, `reins-*`가 아닌 서브에이전트와 바인딩과 다른 모델, 에이전트가 직접 하는 승인 쓰기를 막습니다. 리뷰 없이 끝나는 단위도 막습니다. 이번 버전은 Claude Code만이고, 다른 벤더는 0.2.7에서 합니다.
 - **승인 재설계.** 승인은 사람이 권한 확인 창에서 허락해야 실행되는 `reins approve`로만 합니다. 증빙은 승인 대상의 개정·범위·주체·시각에 묶고, 지난 트레일러는 다시 쓰지 못합니다. 위임에 따른 자동 수락(spec 요약)은 `Accepted-by:`로 따로 둡니다.
-- **기록은 CLI가.** 단위의 시작·커밋·거부·리뷰·종료를 CLI와 훅이 append-only로 남기고, 단위 없이 한 커밋은 `off-loop`로 기록해 retro가 셉니다. 에이전트는 이 기록을 보고 history 서술만 씁니다.
+- **기록은 CLI가.** 단위의 시작·커밋·거부·리뷰·종료를 CLI와 훅이 append-only로 남기고, 단위 없이 한 커밋은 `off-loop`로 기록해 retro가 셉니다. 에이전트는 이 기록을 보고 history 서술만 씁니다. 단위를 닫을 때 history 요약이 있는지 확인하고 그 단위의 bus 파일을 CLI가 지웁니다. 지금은 에이전트가 지우게 되어 있어서 닫힌 ticket의 bus가 쌓였습니다.
 - **easy 등급.** 작은 수정은 명령 한 줄로 단위를 열고, 요청 자체를 허가로 봅니다. 사후 보고와 독립 리뷰가 있고 사용자는 거부권을 가집니다. 강제와 같은 버전에 나가야 합니다. 무거운 경로만 있는 채로 STOP을 걸면 우회하려는 압력이 커집니다.
 
 ### 0.2.2 내용 — 작업 등급과 문서 루프
@@ -78,6 +78,7 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 - **stable도 merge 전에 릴리스 문서 갱신.** 문서만 바꾸는 stable PR(intent `released`, 날짜가 붙은 CHANGELOG `[V]`, 로드맵 행, README 상태 줄)을 먼저 merge하고 stable을 배포합니다. publish 워크플로는 HEAD가 마지막 rc 태그와 같아야 한다는 조건 대신, 그 태그 이후 바뀐 것이 `release.docs` 파일과 해당 버전 intent의 상태뿐이면 stable을 받습니다.
 - **Python 게이트.** 게이트 탐색이 `pytest`, `pyproject.toml`, `requirements.txt` 프로젝트를 찾습니다. 하위 디렉터리처럼 제안만 합니다.
 - **버전별 migrate.** `migrate`가 열린 work를 intent 000 하나로 묶지 않고 버전마다 초안 intent로 나눕니다.
+- **`.loctx` 보존 정책.** 경로마다 수명(단위 종료까지, 버전 stable까지, 영구)을 정책 파일에 적고, `reins prune`이 그에 따라 정리합니다. `--dry-run`은 목록만 보여 주고, 실제 삭제는 확인을 거칩니다. 게이트 로그는 해당 버전의 stable이 나간 뒤에 지웁니다. history, metrics, release 기록은 영구입니다. reins가 만들지 않은 경로(다른 스킬의 작업 폴더 등)는 지우지 않고 목록에만 올립니다.
 
 ### 0.2.5 내용 — 남은 강제
 

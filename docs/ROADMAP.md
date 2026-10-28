@@ -42,7 +42,7 @@ Order set by the maintainer (revised 2026-10-28): **restructuring the loop comes
 | 0.2.1 | planned | loop enforcement: reins owns the unit of work and its transitions, a commit without a unit of work stops, agent runtime hooks, approvals redesigned, records written by the CLI, the easy tier |
 | 0.2.2 | planned | work tiers and the docs loop: common and complex tiers, one approval per bundle, an evidence-first docs loop, independent review as a closing condition, re-checks at merge and release |
 | 0.2.3 | planned | discussion and leadership: a discussion stage before the roadmap, PM and PL lead together, cross-checks between PLs |
-| 0.2.4 | planned | readiness for adoption: release documents before the merge also for stable, Python gate discovery, migrate splitting work into intents per version |
+| 0.2.4 | planned | readiness for adoption: release documents before the merge also for stable, Python gate discovery, migrate splitting work into intents per version, a `.loctx` retention policy and `reins prune` |
 | 0.2.5 | planned | remaining enforcement: the `.env` read block, push, PR, merge and release by the deploy role only (C6), changes outside the plan (C10), T1 refusing tickets of a role that is off |
 | 0.2.6 | planned | budgets and T6: budget stops E1–E3 from `metrics.jsonl`, `configure budget`, the interruption record (G1) and F1 |
 | 0.2.7 | planned | heterogeneous agents: generated files and runtime hooks for Codex, Gemini (Antigravity) and Cursor with drift checks; the command line each role runs on its vendor |
@@ -56,7 +56,7 @@ For 0.2.1–0.2.3 the design (`docs/design.md` and its Korean edition) changes f
 - **A commit without a unit of work stops.** T2 checks the active unit, a valid approval and the scope of the change. Review is required when the unit closes, not at every commit.
 - **Agent runtime hooks.** The hooks design §6 named but generation never wrote: state injected at session start and on each prompt; before a tool call, writes without a unit, subagents other than `reins-*` or on a model other than the binding, and approval writes by the agent are refused; a unit cannot end without its review. Claude Code in this version; other vendors in 0.2.7.
 - **Approvals redesigned.** An approval is only `reins approve`, which runs after the person allows it in the permission prompt. The proof is tied to the revision, scope, person and time it approves; old trailers cannot be reused. Delegated acceptance (spec summaries) uses its own `Accepted-by:`.
-- **The CLI writes the record.** The CLI and hooks append the start, commits, refusals, review and close of each unit; a commit without a unit is recorded as `off-loop` and counted by retro. Agents write only the history narrative, from that record.
+- **The CLI writes the record.** The CLI and hooks append the start, commits, refusals, review and close of each unit; a commit without a unit is recorded as `off-loop` and counted by retro. Agents write only the history narrative, from that record. On close the CLI checks that the history summary exists and deletes the unit's bus files; today agents are meant to delete them, and the bus files of closed tickets piled up.
 - **The easy tier.** A small change opens a unit with one command, and the request itself is the permission. A report afterwards, an independent review and the user's veto remain. It ships with the enforcement: a stop with only the heavy path available pushes agents to go around it.
 
 ### 0.2.2 — work tiers and the docs loop
@@ -78,6 +78,7 @@ For 0.2.1–0.2.3 the design (`docs/design.md` and its Korean edition) changes f
 - **Release documents before the merge, also for stable.** A docs-only stable PR (intent `released`, CHANGELOG `[V]` with its date, roadmap row, README status line) is merged before the stable dispatch. The publish workflow accepts stable when everything changed since the last rc tag is a `release.docs` file or the version's intent status, instead of requiring HEAD to be that tag.
 - **Python gates.** Gate discovery finds `pytest`, `pyproject.toml` and `requirements.txt` projects (proposals, as for subdirectories).
 - **Migrate per version.** `migrate` splits open work into one draft intent per version instead of a single intent 000.
+- **A `.loctx` retention policy.** A policy file gives each path its lifetime (until its unit closes, until the version's stable, permanent) and `reins prune` applies it: `--dry-run` lists, deleting asks first. Gate logs go once the version's stable is out; history, metrics and the release ledger are permanent. Paths reins did not create (another skill's workspace) are listed, never deleted.
 
 ### 0.2.5 — remaining enforcement
 

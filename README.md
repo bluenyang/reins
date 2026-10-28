@@ -194,7 +194,7 @@ To work on reins itself: `git clone https://github.com/bluenyang/reins.git`, the
 | `migrate <tier>` | implemented | moves an existing harness or `.ai/` workspace to this layout |
 | `update` | implemented | re-applies the packaged harness without touching project sections |
 | `config` | implemented | settings screen on a terminal (`models and roles configuration`, `exit`); without a terminal it prints the resolved bindings table and how to change it; `--json` |
-| `configure bindings` | implemented | `--set role=model ...` or `--vendors claude,openai`; no options asks |
+| `configure bindings` | implemented | `--set role=model ...` or `--vendors claude,openai`; `--disable <role...>` / `--enable <role...>` switch roles off or on (`--local` for you only; pm, implementer and verify-tool cannot be switched off); no options asks |
 | `gate [names...]` | implemented | runs `gates.yaml` as declared and keeps the raw output in `.loctx/reports/` |
 | `status` | implemented | read-only view of harness, intents, tickets, bus and last history |
 | `check` | implemented | `--stage ticket-start\|pre-commit\|verdict\|pre-push\|rc-close`, or `--drift` |

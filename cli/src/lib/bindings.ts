@@ -12,7 +12,8 @@ export const LOCAL_BINDINGS = '.loctx/bindings.local.yaml';
 export interface LocalBindings {
   schema: 'reins/bindings-local@1';
   vendors: Record<string, { detected: boolean; at?: string }>;
-  roles: Record<string, { model: string }>;
+  /** `model` and/or `enabled` per role (the schema wants at least one). */
+  roles: Record<string, { model?: string; enabled?: boolean }>;
 }
 
 export type BindingSource = 'local' | 'team' | 'fallback' | 'pm' | 'default';
@@ -20,12 +21,22 @@ export type BindingSource = 'local' | 'team' | 'fallback' | 'pm' | 'default';
 /** Used only when pm itself has no usable binding. */
 export const DEFAULT_MODEL = 'claude-opus-5-5';
 
+/** Always on (design §2): pm, implementer and verify-tool cannot be switched off. */
+export const FIXED_ROLES: readonly string[] = ['pm', 'implementer', 'verify-tool'];
+
+export type EnabledSource = 'fixed' | 'local' | 'team' | 'default';
+
 export interface ResolvedBinding {
   role: string;
   vendor: string;
   model: string;
   source: BindingSource;
   reason: string;
+  /** Whether the role is on for this user (fixed → on; else local ?? team ?? true). */
+  enabled: boolean;
+  enabled_source: EnabledSource;
+  /** Who does the work while the role is off: a role, `caller` or `user`; absent for the fixed roles. */
+  covered_by?: string;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
@@ -83,8 +94,12 @@ function loadLocal(root: string): LocalBindings | null {
         };
   if (isObj(doc['roles']))
     for (const [k, v] of Object.entries(doc['roles']))
-      if (isObj(v) && typeof v['model'] === 'string' && v['model'])
-        out.roles[k] = { model: v['model'] };
+      if (isObj(v)) {
+        const e: { model?: string; enabled?: boolean } = {};
+        if (typeof v['model'] === 'string' && v['model']) e.model = v['model'];
+        if (typeof v['enabled'] === 'boolean') e.enabled = v['enabled'];
+        if (e.model !== undefined || e.enabled !== undefined) out.roles[k] = e;
+      }
   return out;
 }
 
@@ -107,6 +122,7 @@ export function recordDetection(root: string, vs: Vendor[], now: Date = new Date
 interface RoleMeta {
   def?: string;
   fb?: string;
+  covered?: string;
 }
 
 function roleMeta(root: string): Map<string, RoleMeta> {
@@ -120,9 +136,91 @@ function roleMeta(root: string): Map<string, RoleMeta> {
     meta.set(f.slice(0, -3), {
       def: typeof data?.['default_binding'] === 'string' ? data['default_binding'] : undefined,
       fb: typeof data?.['fallback_binding'] === 'string' ? data['fallback_binding'] : undefined,
+      covered:
+        typeof data?.['covered_by'] === 'string' && data['covered_by'] !== 'none'
+          ? data['covered_by']
+          : undefined,
     });
   }
   return meta;
+}
+
+/** `roles.<r>.enabled` of the committed file, where a boolean is written. */
+function teamEnabled(root: string): Record<string, boolean> {
+  const path = join(root, '.agents/harness/bindings.yaml');
+  if (!existsSync(path)) return {};
+  try {
+    const doc = parse(readFileSync(path, 'utf8')) as { roles?: Record<string, unknown> } | null;
+    const out: Record<string, boolean> = {};
+    for (const [r, b] of Object.entries(doc?.roles ?? {}))
+      if (isObj(b) && typeof b['enabled'] === 'boolean') out[r] = b['enabled'];
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export interface RoleState {
+  role: string;
+  enabled: boolean;
+  enabled_source: EnabledSource;
+  covered_by?: string;
+}
+
+/**
+ * On or off per role for this user, without resolving models (no vendor detection): fixed roles are
+ * on; otherwise `local enabled ?? team enabled ?? true`. `warnings` names a fixed role that carries
+ * `enabled: false` in either layer (ignored).
+ */
+export function roleStates(root: string): { states: Map<string, RoleState>; warnings: string[] } {
+  const local = readLocal(root);
+  const team = teamEnabled(root);
+  const meta = roleMeta(root);
+  const names = new Set([
+    ...Object.keys(teamRoles(root)),
+    ...meta.keys(),
+    ...Object.keys(team),
+    ...Object.keys(local.roles),
+  ]);
+  const states = new Map<string, RoleState>();
+  const warnings: string[] = [];
+  for (const role of [...names].toSorted()) {
+    const covered = meta.get(role)?.covered;
+    let enabled = true;
+    let enabled_source: EnabledSource = 'default';
+    if (FIXED_ROLES.includes(role)) {
+      enabled_source = 'fixed';
+      for (const [layer, v] of [
+        ['bindings.yaml', team[role]],
+        [LOCAL_BINDINGS, local.roles[role]?.enabled],
+      ] as const)
+        if (v === false)
+          warnings.push(`warning: ${layer}: ${role} is always on — its enabled: false is ignored`);
+    } else if (local.roles[role]?.enabled !== undefined) {
+      enabled = local.roles[role].enabled;
+      enabled_source = 'local';
+    } else if (team[role] !== undefined) {
+      enabled = team[role];
+      enabled_source = 'team';
+    }
+    states.set(role, {
+      role,
+      enabled,
+      enabled_source,
+      ...(covered ? { covered_by: covered } : {}),
+    });
+  }
+  return { states, warnings };
+}
+
+/** The state column of status and the config table: `off → pm`, `on (local)`, or empty when plainly on. */
+export function stateLabel(b: {
+  enabled: boolean;
+  enabled_source: EnabledSource;
+  covered_by?: string;
+}): string {
+  if (!b.enabled) return `off${b.covered_by ? ` → ${b.covered_by}` : ''}`;
+  return b.enabled_source === 'local' ? 'on (local)' : '';
 }
 
 function teamRoles(root: string): Record<string, { vendor: string; model: string }> {
@@ -152,6 +250,8 @@ export function resolveBindings(root: string, detect: () => Vendor[] = vendors):
   const local = readLocal(root);
   const team = teamRoles(root);
   const meta = roleMeta(root);
+  const { states } = roleStates(root);
+  const stateOf = (role: string) => states.get(role)!;
   let live: Map<string, boolean> | undefined;
   const detected = (v: string): boolean => {
     if (v === 'claude') return true;
@@ -161,32 +261,43 @@ export function resolveBindings(root: string, detect: () => Vendor[] = vendors):
     return live.get(v) ?? false;
   };
   const roles = [...new Set([...Object.keys(team), ...meta.keys()])].toSorted();
+  const withState = (b: Omit<ResolvedBinding, 'enabled' | 'enabled_source' | 'covered_by'>) => {
+    const { enabled, enabled_source, covered_by } = stateOf(b.role);
+    return { ...b, enabled, enabled_source, ...(covered_by ? { covered_by } : {}) };
+  };
   const one = (
     role: string,
     last: { vendor: string; model: string; source: BindingSource; label: string },
   ): ResolvedBinding => {
     const l = local.roles[role]?.model;
     if (l)
-      return { role, vendor: vendorOf(l), model: l, source: 'local', reason: 'local override' };
+      return withState({
+        role,
+        vendor: vendorOf(l),
+        model: l,
+        source: 'local',
+        reason: 'local override',
+      });
     const t = team[role];
-    if (t && detected(t.vendor)) return { role, ...t, source: 'team', reason: 'team binding' };
+    if (t && detected(t.vendor))
+      return withState({ role, ...t, source: 'team', reason: 'team binding' });
     const fb = meta.get(role)?.fb;
     const why = t ? `${t.vendor} not detected` : 'no team binding';
     if (fb && detected(vendorOf(fb)))
-      return {
+      return withState({
         role,
         vendor: vendorOf(fb),
         model: fb,
         source: 'fallback',
         reason: `${why} — fallback_binding`,
-      };
-    return {
+      });
+    return withState({
       role,
       vendor: last.vendor,
       model: last.model,
       source: last.source,
       reason: `${why} — ${last.label}`,
-    };
+    });
   };
   // pm first, through the same order; its last resort is the claude default model
   const pmRes = one('pm', {
@@ -266,4 +377,75 @@ export function migrateDetected(root: string, dryRun = false): string[] {
   if (vs.items.length === 0) doc.delete('vendors');
   writeFileSync(path, doc.toString());
   return touched;
+}
+
+export type EnabledScope = 'global' | 'local';
+
+export interface SetRoleEnabledResult {
+  refused?: string;
+  changed: boolean;
+}
+
+function roleNames(root: string): string[] {
+  const dir = join(root, '.agents/harness/roles');
+  return existsSync(dir)
+    ? readdirSync(dir)
+        .filter((f) => f.endsWith('.md'))
+        .map((f) => f.slice(0, -3))
+        .toSorted()
+    : [];
+}
+
+/** Why a role cannot be switched on or off, or null (used before anything is written). */
+export function roleEnabledRefusal(root: string, role: string, on: boolean): string | null {
+  const names = roleNames(root);
+  if (!names.includes(role)) return `unknown role "${role}" — roles: ${names.join(', ')}`;
+  if (!on && FIXED_ROLES.includes(role))
+    return `${role} is always on and cannot be switched off (fixed roles: ${FIXED_ROLES.join(', ')})`;
+  return null;
+}
+
+/**
+ * Switches a role on or off in one layer and touches nothing else. Global edits `bindings.yaml` through
+ * the Document API (comments and order stay; switching on removes the key, since on is the default);
+ * local drops its key when it equals the team value. Regenerating vendor files is the caller's job.
+ */
+export function setRoleEnabled(
+  root: string,
+  role: string,
+  on: boolean,
+  scope: EnabledScope,
+): SetRoleEnabledResult {
+  const refused = roleEnabledRefusal(root, role, on);
+  if (refused) return { refused, changed: false };
+  if (scope === 'local') {
+    const local = readLocal(root);
+    const teamValue = teamEnabled(root)[role] ?? true;
+    const before = local.roles[role]?.enabled;
+    const entry = { ...local.roles[role] };
+    if (on === teamValue) delete entry.enabled;
+    else entry.enabled = on;
+    if (entry.enabled === before) return { changed: false };
+    if (entry.model === undefined && entry.enabled === undefined) delete local.roles[role];
+    else local.roles[role] = entry;
+    writeLocal(root, local);
+    return { changed: true };
+  }
+  const path = join(root, '.agents/harness/bindings.yaml');
+  if (!existsSync(path))
+    return { refused: 'no bindings.yaml — install the graph tier first', changed: false };
+  const doc = parseDocument(readFileSync(path, 'utf8'));
+  if (doc.errors.length > 0) return { refused: 'bindings.yaml cannot be parsed', changed: false };
+  const was = doc.getIn(['roles', role, 'enabled']);
+  if (on) {
+    if (was === undefined) return { changed: false };
+    doc.deleteIn(['roles', role, 'enabled']);
+    const entry = doc.getIn(['roles', role], true);
+    if (isMap(entry) && entry.items.length === 0) doc.deleteIn(['roles', role]);
+  } else {
+    if (was === false) return { changed: false };
+    doc.setIn(['roles', role, 'enabled'], false);
+  }
+  writeFileSync(path, doc.toString());
+  return { changed: true };
 }

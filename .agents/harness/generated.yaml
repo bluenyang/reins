@@ -15,7 +15,7 @@ files:
   .claude/agents/reins-verify-tool.md: eeaccc1650f4f6d5
   .claude/skills/reins-implement/SKILL.md: 648bde44e29cced8
   .claude/skills/reins-intent/SKILL.md: 51dcaa684493abb7
-  .claude/skills/reins-loop/SKILL.md: 35151cf39a5f265a
+  .claude/skills/reins-loop/SKILL.md: 13899176c1c132e9
   .claude/skills/reins-loop/references/vendor-cli.md: f9ca796b01414e0c
   .claude/skills/reins-release/SKILL.md: 7ef748f44cb1a6b9
   .claude/skills/reins-retro/SKILL.md: de0ac68b439edb5c

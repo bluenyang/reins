@@ -19,6 +19,8 @@ Resume: `reins status` names the stage; call that stage's skill again. Stop on a
 
 **Models.** Take the model a role runs on from `reins status --json` (`bindings`: `{role, vendor, model, source}`) — your own override, else the team binding, else its fallback, else pm's model. Never read `bindings.yaml` for it and never use the default from the role file.
 
+**Off roles.** A role whose `bindings` entry has `enabled: false` is switched off for this user: do not call it. Its `covered_by` does the work (`caller`: the role that needs the lookup searches itself; `user`: ask the user), keeps the off role's `must_not`, and hands a judgement on its own work to the next role of the chain (pl → pm → advisor → user). A role with `enabled: true` but no `.claude/agents/reins-<role>.md` is on only through the user's local file (the team switched it off): call it on its resolved `model` from `reins status --json` — on Claude, a general subagent given the role file's body (`.agents/harness/roles/<role>.md`).
+
 **Metrics.** After each role run, report what it cost with one call: `reins metrics record --role <role> --tokens <n> --intent <id> [--ticket <id>] --vendor <v> --model <m>`. No token count from the vendor → record nothing, never guess. Tokens come from the vendor — Claude subagent: the Agent result's token count · `codex exec`: the "tokens used" line · `agy`, `cursor-agent` with `--output-format json`: the usage field when present. `reins check` and `reins gate` log themselves to `.loctx/reports/metrics.jsonl`; `reins metrics` summarises it.
 
 On an interruption (G1) write where you are — ticket, step, last commit, open bus files, next command — to the ticket, so the same command resumes.

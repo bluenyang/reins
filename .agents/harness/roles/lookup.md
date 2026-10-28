@@ -2,6 +2,7 @@
 role: lookup
 default_binding: "claude-haiku-5-5"
 summary: "Finds decisions, code and documents for the lead role. Returns information only."
+covered_by: caller
 capabilities: { write: false, shell: false }
 may:
   - "read anything readable in the repository"

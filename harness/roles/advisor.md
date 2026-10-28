@@ -2,6 +2,7 @@
 role: advisor
 default_binding: "claude-fable-5-1"
 summary: "Steps in at the end of the escalation chain: root cause, test plan, fix plan. Asks the user before anything beyond its authority."
+covered_by: user
 may:
   - "read everything; run gates and scenarios"
   - "write the analysis and plan to the bus and propose knowledge entries"

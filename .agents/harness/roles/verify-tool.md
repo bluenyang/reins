@@ -2,6 +2,7 @@
 role: verify-tool
 default_binding: "claude-haiku-5-5"
 summary: "Runs the declared gates and scenarios, attaches raw tool output, summarises failures so the PL can act."
+covered_by: none
 may:
   - "run gates from gates.yaml and scenarios from the plan's test checklist"
   - "write .loctx/reports/ with raw output (R46)"

@@ -6,6 +6,7 @@ import {
   readdirSync,
   statSync,
   writeFileSync,
+  rmSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -152,6 +153,7 @@ describe('update confirmation (spec S-9)', () => {
     writeFileSync(pin, readFileSync(pin, 'utf8').replace(/version: .*/, 'version: 0.0.9'));
     const role = join(d, '.agents/harness/roles/pl.md');
     writeFileSync(role, `${readFileSync(role, 'utf8')}\nold text\n`);
+    rmSync(join(d, '.agents/harness/roles/docs.md')); // update recreates it: a created line
     return d;
   }
   const opts = { detectVendors: detect, now: new Date(2026, 9, 28, 9, 0) };
@@ -172,6 +174,8 @@ describe('update confirmation (spec S-9)', () => {
     expect(shown).toMatch(/^reins update — cli .* → v.*, harness v0\.0\.9 → v/);
     expect(shown).toContain('(dry run)');
     expect(shown).toContain('  ~ .agents/harness/roles/pl.md');
+    expect(shown).toContain('  + .agents/harness/roles/docs.md');
+    expect(shown).not.toContain('  ~ .agents/harness/roles/docs.md');
     expect(snapshot(d)).toEqual(before);
   });
 

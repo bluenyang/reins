@@ -210,4 +210,39 @@ describe('models and roles screens (C-3, C-5)', () => {
     await go(d, ['models', 'planner', 'claude', 'other', EXIT]);
     expect(snapshot(d)).toEqual(before);
   });
+
+  it('global toggle works on the team value, whatever the local override says', async () => {
+    const run = async (teamOff: boolean) => {
+      const d = await repo();
+      const tp = join(d, '.agents/harness/bindings.yaml');
+      const t = readFileSync(tp, 'utf8');
+      const planner = /\n  planner:\n/;
+      if (teamOff) writeFileSync(tp, t.replace(planner, '\n  planner:\n    enabled: false\n'));
+      writeFileSync(
+        localFile(d),
+        `schema: reins/bindings-local@1\nvendors: {}\nroles:\n  planner:\n    enabled: ${teamOff}\n`,
+      );
+      const localBefore = readFileSync(localFile(d), 'utf8');
+      const probe = scriptedPrompter(['models', 'scope', 'global', 'toggle', EXIT]);
+      await runConfig({
+        cwd: d,
+        interactive: true,
+        prompter: probe,
+        detectVendors: all(['claude']),
+        modelCache: noRun,
+      });
+      const ms = probe.asked.find((q) => q.kind === 'multiselect');
+      expect(ms).toBeTruthy();
+      // answer: flip planner relative to the team value only
+      const names = ((ms?.values ?? []) as string[]).filter((n) => n !== 'planner');
+      const answer = teamOff ? [...names, 'planner'] : names;
+      await go(d, ['models', 'scope', 'global', 'toggle', answer, 'back', 'exit']);
+      expect(readFileSync(localFile(d), 'utf8')).toBe(localBefore);
+      return team(d);
+    };
+    // team off, local on: selecting planner switches the team value on (key removed)
+    expect(await run(true)).not.toMatch(/planner:\s+enabled: false/);
+    // team on, local off: deselecting planner switches the team value off
+    expect(await run(false)).toMatch(/planner:\s+(vendor: \w+\s+model: \S+\s+)?enabled: false/);
+  });
 });

@@ -7,7 +7,13 @@ import {
   type ModelCache,
   type Vendor,
 } from '../lib/detect.js';
-import { FIXED_ROLES, readLocal, resolveBindings, type ResolvedBinding } from '../lib/bindings.js';
+import {
+  FIXED_ROLES,
+  readLocal,
+  teamEnabled,
+  resolveBindings,
+  type ResolvedBinding,
+} from '../lib/bindings.js';
 import { BACK, EXIT, type Option, type Prompter } from '../lib/prompter.js';
 import { splitFrontmatter } from '../lib/skills.js';
 import { configureBindings } from './configure.js';
@@ -109,13 +115,19 @@ export async function modelsScreen(o: ModelsScreenOptions): Promise<'back' | 'ex
       prompter.note(`always on: ${FIXED_ROLES.join(', ')}`);
       const on = await prompter.multiselect<string>({
         message: 'Roles that are on',
-        initial: names.filter((b) => b.enabled).map((b) => b.role),
+        initial: names
+          .filter((b) => (scope === 'global' ? (teamEnabled(root)[b.role] ?? true) : b.enabled))
+          .map((b) => b.role),
         options: names.map((b) => ({ value: b.role, label: b.role })),
       });
       if (on === EXIT) return 'exit';
       if (on === BACK) continue;
-      const enable = names.filter((b) => !b.enabled && on.includes(b.role)).map((b) => b.role);
-      const disable = names.filter((b) => b.enabled && !on.includes(b.role)).map((b) => b.role);
+      // the list and the diff use the chosen scope's own value: global = the team file, local = effective
+      const team = teamEnabled(root);
+      const isOn = (b: ResolvedBinding): boolean =>
+        scope === 'global' ? (team[b.role] ?? true) : b.enabled;
+      const enable = names.filter((b) => !isOn(b) && on.includes(b.role)).map((b) => b.role);
+      const disable = names.filter((b) => isOn(b) && !on.includes(b.role)).map((b) => b.role);
       if (enable.length + disable.length > 0)
         await write({ enable, disable }, `roles ${[...enable, ...disable].join(', ')}`);
       continue;

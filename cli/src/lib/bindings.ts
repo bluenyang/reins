@@ -146,7 +146,7 @@ function roleMeta(root: string): Map<string, RoleMeta> {
 }
 
 /** `roles.<r>.enabled` of the committed file, where a boolean is written. */
-function teamEnabled(root: string): Record<string, boolean> {
+export function teamEnabled(root: string): Record<string, boolean> {
   const path = join(root, '.agents/harness/bindings.yaml');
   if (!existsSync(path)) return {};
   try {

@@ -32,19 +32,30 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 
 ## 0.2 — graph에서 loop·harness 깎기, 이기종 에이전트
 
-입력: 0.1에서 쌓은 metrics.
+입력: 0.1에서 쌓은 metrics. 순서는 관리자가 정했습니다(2026-10-28). 큰 저장소 적용에 필요한 것부터 하고, 강제, 예산, 벤더 순서로 진행합니다. 깎기는 수치가 쌓인 뒤 마지막에 합니다.
 
 | 버전 | 상태 | 내용 |
 |---|---|---|
 | 0.2.0 | rc, stable은 관리자 지시로 | `reins config` TUI(모델과 역할, 나 또는 팀 범위, 역할 켜고 끄기), install과 update 화면 |
+| 0.2.1 | 계획 | 적용 준비: stable도 merge 전에 릴리스 문서 갱신, Python 게이트 탐색, migrate가 work를 버전별 intent로 나누기 |
+| 0.2.2 | 계획 | 강제: `.env` 읽기 차단, push·PR·merge·릴리스는 deploy 역할만(C6), plan 밖 변경(C10), 꺼진 역할의 ticket을 T1이 거부 |
+| 0.2.3 | 계획 | 예산과 T6: `metrics.jsonl` 기반 예산 정지 E1~E3, `configure budget`, 중단 기록(G1)과 F1 |
+| 0.2.4 | 계획 | 이기종 에이전트: Codex, Gemini(Antigravity), Cursor 생성 파일과 드리프트 검증, 역할마다 벤더에서 실행할 명령 줄 |
+| 0.2.5 | 계획 | 깎기: 비용과 정지 수치로 graph에서 loop·harness 단계를 깎음, `reins recall`·`reins doctor`·`configure language`, 이전 세대 하네스 이전 리허설 |
 
-- 비용과 정지 수치를 기준으로 graph에서 loop·harness 단계를 깎습니다.
-- Codex, Gemini(Antigravity), Cursor용 생성 파일과 드리프트 검증.
-- `reins recall`, `reins doctor`, `configure budget|gates|language`.
-- 예산 정지와 아직 검출하지 못하는 위반.
-- 0.1.5에서 권고로 분류한([표](README.ko.md#강제와-권고), 원천 [`enforcement.yaml`](../harness/policy/enforcement.yaml)) 규칙 중 스크립트나 훅으로 막을 수 있는 것(역할 권한, 작업 범위, 예산)을 강제로 바꿉니다. `.env` 읽기 차단부터 시작합니다.
-- 이전 세대 하네스 시험 이전. 읽기 전용 리허설을 먼저 합니다.
-- stable도 merge 전에 문서를 갱신합니다. 문서만 바꾸는 stable PR(intent `released`, 날짜가 붙은 CHANGELOG `[V]`, 로드맵 행, README 상태 줄)을 먼저 merge하고 stable을 배포합니다. publish 워크플로는 HEAD가 마지막 rc 태그와 같아야 한다는 조건 대신, 그 태그 이후 바뀐 것이 `release.docs` 파일과 해당 버전 intent의 상태뿐이면 stable을 받습니다.
+### 0.2.1 내용 — 적용 준비
+
+- **stable도 merge 전에 릴리스 문서 갱신.** 문서만 바꾸는 stable PR(intent `released`, 날짜가 붙은 CHANGELOG `[V]`, 로드맵 행, README 상태 줄)을 먼저 merge하고 stable을 배포합니다. publish 워크플로는 HEAD가 마지막 rc 태그와 같아야 한다는 조건 대신, 그 태그 이후 바뀐 것이 `release.docs` 파일과 해당 버전 intent의 상태뿐이면 stable을 받습니다.
+- **Python 게이트.** 게이트 탐색이 `pytest`, `pyproject.toml`, `requirements.txt` 프로젝트를 찾습니다. 하위 디렉터리처럼 제안만 합니다.
+- **버전별 migrate.** `migrate`가 열린 work를 intent 000 하나로 묶지 않고 버전마다 초안 intent로 나눕니다.
+
+### 0.2.2 내용 — 강제
+
+0.1.5에서 권고로 분류한 규칙([표](README.ko.md#강제와-권고), 원천 [`enforcement.yaml`](../harness/policy/enforcement.yaml)) 가운데 스크립트나 훅으로 막을 수 있는 것을 강제로 바꿉니다. `.env` 읽기 차단(예제 파일은 읽을 수 있음), C6, C10, 그리고 꺼진 역할의 ticket을 T1이 거부하는 것입니다. 바뀐 규칙은 표에서도 함께 옮깁니다.
+
+### 0.2.4 내용 — CLI는 여전히 모델을 부르지 않음
+
+설계 불변식은 그대로 둡니다(관리자 결정, 2026-10-28). reins는 벤더마다 파일을 생성하고, 역할이 그 벤더에서 실행할 명령 줄을 정확히 보여 줍니다. 실행은 에이전트가 합니다. reins가 벤더 CLI를 직접 띄우지는 않습니다.
 
 ## 0.3 — 적용
 

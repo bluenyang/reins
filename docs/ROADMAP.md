@@ -38,7 +38,7 @@ Order set by the maintainer (revised 2026-10-28): **restructuring the loop comes
 
 | Version | State | Content |
 |---|---|---|
-| 0.2.0 | rc; stable on the maintainer's instruction | `reins config` TUI (models and roles, local or team scope, roles on and off), install and update as screens |
+| 0.2.0 | published | `reins config` TUI (models and roles, local or team scope, roles on and off), install and update as screens |
 | 0.2.1 | planned | loop enforcement: reins owns the unit of work and its transitions, a commit without a unit of work stops, agent runtime hooks, approvals redesigned, records written by the CLI, the easy tier |
 | 0.2.2 | planned | work tiers and the docs loop: common and complex tiers, one approval per bundle, an evidence-first docs loop, independent review as a closing condition, re-checks at merge and release |
 | 0.2.3 | planned | discussion and leadership: a discussion stage before the roadmap, PM and PL lead together, cross-checks between PLs |

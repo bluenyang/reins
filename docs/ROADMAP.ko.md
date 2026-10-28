@@ -38,7 +38,7 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 
 | 버전 | 상태 | 내용 |
 |---|---|---|
-| 0.2.0 | rc, stable은 관리자 지시로 | `reins config` TUI(모델과 역할, 나 또는 팀 범위, 역할 켜고 끄기), install과 update 화면 |
+| 0.2.0 | 배포됨 | `reins config` TUI(모델과 역할, 나 또는 팀 범위, 역할 켜고 끄기), install과 update 화면 |
 | 0.2.1 | 계획 | 루프 강제: reins가 작업 단위와 전이 상태를 소유, 작업 단위 없는 커밋은 STOP, 에이전트 런타임 훅, 승인 재설계, CLI가 쓰는 기록, easy 등급 |
 | 0.2.2 | 계획 | 작업 등급과 문서 루프: common·complex 등급, 묶음 승인, 근거 중심 문서 루프, 독립 리뷰를 종료 조건으로, merge·릴리스 재검증 |
 | 0.2.3 | 계획 | 논의와 총괄: roadmap 앞 discussion 단계, PM·PL 총괄, PL 사이 교차검증 |

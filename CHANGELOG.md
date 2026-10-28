@@ -10,9 +10,13 @@ This file is about the package. The harness that `reins update` re-applies to in
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md); an entry there tagged `[skill]`
 needs the `/reins-update` skill.
 
-## [Unreleased] — 0.2.0
+## [Unreleased] — 0.2.1
 
 Planned; see the roadmap.
+
+## [0.2.0] — 2026-10-29
+
+`reins config` settings screens, roles on and off, install and update questions as screens.
 
 - `reins config`: a settings screen on a terminal (prompter layer on `@clack/prompts`, loaded only when a screen is drawn); without a terminal it prints the resolved bindings table (`--json` for JSON).
 - `reins config` models and roles screens: switch the write scope (`local` or `global`), roles on or off, and pick a role's vendor (detected ones) and model (`agy`/`cursor-agent` model lists, known lists for claude and openai, or `other`); each choice is written at once through `configure bindings`.

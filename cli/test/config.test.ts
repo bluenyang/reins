@@ -163,10 +163,15 @@ describe('reins config (C-2)', () => {
 
   it('on a terminal the main screen lists models and roles first, then exit', async () => {
     const d = await repo();
-    const p = scriptedPrompter(['models', 'exit']);
-    expect(await runConfig({ cwd: d, interactive: true, prompter: p })).toBe(0);
-    expect(p.asked.map((q) => q.message)).toEqual(['Configuration', 'Configuration']);
+    const p = scriptedPrompter(['models', 'back', 'exit']);
+    expect(await runConfig({ cwd: d, interactive: true, prompter: p, detectVendors: detect })).toBe(
+      0,
+    );
+    expect(p.asked.map((q) => q.message)).toEqual([
+      'Configuration',
+      'Models and roles',
+      'Configuration',
+    ]);
     expect(p.asked[0]?.values).toEqual(['models', 'exit']);
-    expect(p.notes.join('\n')).toMatch(/not available yet/);
   });
 });

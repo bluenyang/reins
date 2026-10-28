@@ -1,6 +1,7 @@
 import { resolveBindings, stateLabel, type ResolvedBinding } from '../lib/bindings.js';
-import type { Vendor } from '../lib/detect.js';
+import { newModelCache, vendors, type ModelCache, type Vendor } from '../lib/detect.js';
 import { repoRoot } from '../lib/git.js';
+import { modelsScreen } from './config-models.js';
 import { clackPrompter, isInteractive, type Prompter } from '../lib/prompter.js';
 
 export interface ConfigOptions {
@@ -11,6 +12,8 @@ export interface ConfigOptions {
   /** Defaults to the real prompter, loaded only when a screen is drawn. */
   prompter?: Prompter;
   detectVendors?: () => Vendor[];
+  /** Lists vendor models (google, cursor); inject `run` to avoid spawning a CLI. */
+  modelCache?: ModelCache;
   write?: (s: string) => void;
 }
 
@@ -38,22 +41,18 @@ export async function runConfig(o: ConfigOptions = {}): Promise<number> {
     return 0;
   }
   const prompter = o.prompter ?? (await clackPrompter());
-  let screen: 'main' | 'models' = 'main';
+  const modelCache = o.modelCache ?? newModelCache();
+  const detect = o.detectVendors ?? vendors;
   for (;;) {
-    if (screen === 'main') {
-      const v = await prompter.select<'models' | 'exit'>({
-        message: 'Configuration',
-        options: [
-          { value: 'models', label: 'models and roles configuration' },
-          { value: 'exit', label: 'exit' },
-        ],
-      });
-      if (v === 'models') screen = 'models';
-      else return 0; // exit, EXIT (Ctrl-C) or BACK: nothing was written
-    } else {
-      // Placeholder until the models and roles screen lands (ticket 014-3).
-      prompter.note('models and roles configuration is not available yet; back to Configuration.');
-      screen = 'main';
-    }
+    const v = await prompter.select<'models' | 'exit'>({
+      message: 'Configuration',
+      options: [
+        { value: 'models', label: 'models and roles configuration' },
+        { value: 'exit', label: 'exit' },
+      ],
+    });
+    if (v !== 'models') return 0; // exit, EXIT (Ctrl-C) or BACK: nothing more is written
+    const r = await modelsScreen({ root, prompter, detectVendors: detect, modelCache });
+    if (r === 'exit') return 0;
   }
 }

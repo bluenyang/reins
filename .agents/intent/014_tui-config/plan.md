@@ -1,6 +1,6 @@
 ---
 intent: "014"
-status: reviewed
+status: done
 approvals:
   - { role: qa-design, at: 2026-10-28, kind: light-review }
 agents:
@@ -36,4 +36,4 @@ tickets: ["014-1", "014-2", "014-3", "014-4"]
 - [ ] CI matrix 녹색
 - [ ] npm rc 스모크
 ## 이탈 기록
-—
+- 2026-10-28 (pl, C-13 Linux 실행): TUI에서 팀과 같은 모델을 고르면 local 항목이 중복으로 써져 `(local)`로 보임 → 014-3 후속 커밋으로 수정(review 014-3_04 approve). 014-2의 T1 경고 id P1 → F2(pm 수정). Linux pty 렌더링 확인, Windows·macOS 수동 확인은 rc에서 사용자.

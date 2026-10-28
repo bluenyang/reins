@@ -2,9 +2,10 @@
 id: "014"
 slug: tui-config
 version: "0.2.0"
-status: draft
+status: approved
 origin: user
-approvals: []
+approvals:
+  - { role: user, at: 2026-10-28 }
 supersedes: null
 ---
 ## 문제

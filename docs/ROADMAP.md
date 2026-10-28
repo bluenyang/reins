@@ -34,6 +34,10 @@ The first target is this repository itself.
 
 Input: the metrics recorded in 0.1.
 
+| Version | State | Content |
+|---|---|---|
+| 0.2.0 | rc; stable on the maintainer's instruction | `reins config` TUI (models and roles, local or team scope, roles on and off), install and update as screens |
+
 - Carve the loop and harness tiers out of the graph by cost and stop figures.
 - Generated files for Codex, Gemini (Antigravity) and Cursor, with drift verification.
 - `reins recall`, `reins doctor`, `configure budget|gates|language`.

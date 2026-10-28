@@ -34,6 +34,10 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 
 입력: 0.1에서 쌓은 metrics.
 
+| 버전 | 상태 | 내용 |
+|---|---|---|
+| 0.2.0 | rc, stable은 관리자 지시로 | `reins config` TUI(모델과 역할, 나 또는 팀 범위, 역할 켜고 끄기), install과 update 화면 |
+
 - 비용과 정지 수치를 기준으로 graph에서 loop·harness 단계를 깎습니다.
 - Codex, Gemini(Antigravity), Cursor용 생성 파일과 드리프트 검증.
 - `reins recall`, `reins doctor`, `configure budget|gates|language`.

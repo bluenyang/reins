@@ -32,19 +32,30 @@ The first target is this repository itself.
 
 ## 0.2 — carve the loop and harness out of the graph, heterogeneous agents
 
-Input: the metrics recorded in 0.1.
+Input: the metrics recorded in 0.1. Order set by the maintainer (2026-10-28): what large repositories need first, then enforcement, budgets, vendors, and the carving last, when its figures exist.
 
 | Version | State | Content |
 |---|---|---|
 | 0.2.0 | rc; stable on the maintainer's instruction | `reins config` TUI (models and roles, local or team scope, roles on and off), install and update as screens |
+| 0.2.1 | planned | readiness for adoption: release documents before the merge also for stable, Python gate discovery, migrate splitting work into intents per version |
+| 0.2.2 | planned | enforcement: the `.env` read block, push, PR, merge and release by the deploy role only (C6), changes outside the plan (C10), T1 refusing tickets of a role that is off |
+| 0.2.3 | planned | budgets and T6: budget stops E1–E3 from `metrics.jsonl`, `configure budget`, the interruption record (G1) and F1 |
+| 0.2.4 | planned | heterogeneous agents: generated files for Codex, Gemini (Antigravity) and Cursor with drift checks; the command line each role runs on its vendor |
+| 0.2.5 | planned | carving: loop and harness tiers cut out of the graph by cost and stop figures; `reins recall`, `reins doctor`, `configure language`; rehearsed migration of older harness generations |
 
-- Carve the loop and harness tiers out of the graph by cost and stop figures.
-- Generated files for Codex, Gemini (Antigravity) and Cursor, with drift verification.
-- `reins recall`, `reins doctor`, `configure budget|gates|language`.
-- Budget stops and the remaining undetected violations.
-- Turning the advised rules from 0.1.5 (the [table](../README.md#enforced-versus-advised), source [`enforcement.yaml`](../harness/policy/enforcement.yaml)) into enforced ones where a script or hook can hold them (role permissions, change scope, budgets), starting with the `.env` read block.
-- Trial migration of older harness generations, read-only rehearsal first.
-- Release documents before the merge, also for stable: a docs-only stable PR (intent `released`, CHANGELOG `[V]` with its date, roadmap row, README status line) is merged before the stable dispatch. The publish workflow accepts stable when everything changed since the last rc tag is a `release.docs` file or the version's intent status, instead of requiring HEAD to be that tag.
+### 0.2.1 — readiness for adoption
+
+- **Release documents before the merge, also for stable.** A docs-only stable PR (intent `released`, CHANGELOG `[V]` with its date, roadmap row, README status line) is merged before the stable dispatch. The publish workflow accepts stable when everything changed since the last rc tag is a `release.docs` file or the version's intent status, instead of requiring HEAD to be that tag.
+- **Python gates.** Gate discovery finds `pytest`, `pyproject.toml` and `requirements.txt` projects (proposals, as for subdirectories).
+- **Migrate per version.** `migrate` splits open work into one draft intent per version instead of a single intent 000.
+
+### 0.2.2 — enforcement
+
+The advised rules from 0.1.5 (the [table](../README.md#enforced-versus-advised), source [`enforcement.yaml`](../harness/policy/enforcement.yaml)) that a script or hook can hold become enforced: the `.env` read block (examples stay readable), C6 and C10, and T1 refusing a ticket whose role is off. The table moves with each rule.
+
+### 0.2.4 — the CLI still calls no model
+
+The design invariant stays (maintainer, 2026-10-28): reins generates each vendor's files and prints the exact command line a role runs on its vendor; the agent runs it. reins does not start vendor CLIs itself.
 
 ## 0.3 — rollout
 

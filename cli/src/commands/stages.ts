@@ -211,11 +211,12 @@ export function ticketStart(root: string, id: string): Finding[] {
         resume: `reins configure bindings --set ${role}=<model>`,
       });
     else {
-      // an off role is not refused yet (the loop's stage cutting is 0.2); the covering role does the work
+      // an off role is not refused yet (the loop's stage cutting is 0.2); the covering role does the work.
+      // F2: a check without its own stop id reports as F2 (design §3)
       const st = roleStates(root).states.get(role);
       if (st && !st.enabled)
         findings.push({
-          reason: 'P1',
+          reason: 'F2',
           verdict: 'WARN',
           path: t.path,
           message: `role ${role} is off — covered by ${st.covered_by ?? 'the next role in the chain'}`,

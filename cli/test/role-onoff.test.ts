@@ -225,6 +225,7 @@ describe('role on/off (014-2)', () => {
     expect(warn).toHaveLength(1);
     expect(warn[0]).toMatchObject({ verdict: 'WARN' });
     expect(warn[0]!.message).toBe('role docs is off — covered by pm');
+    expect([warn[0]!.reason, warn[0]!.verdict]).toEqual(['F2', 'WARN']); // no stop id of its own (design §3)
   });
 });
 

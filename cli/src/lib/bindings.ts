@@ -177,6 +177,7 @@ export function roleStates(root: string): { states: Map<string, RoleState>; warn
   const team = teamEnabled(root);
   const meta = roleMeta(root);
   const names = new Set([
+    ...FIXED_ROLES,
     ...Object.keys(teamRoles(root)),
     ...meta.keys(),
     ...Object.keys(team),
@@ -251,7 +252,12 @@ export function resolveBindings(root: string, detect: () => Vendor[] = vendors):
   const team = teamRoles(root);
   const meta = roleMeta(root);
   const { states } = roleStates(root);
-  const stateOf = (role: string) => states.get(role)!;
+  const stateOf = (role: string): RoleState =>
+    states.get(role) ?? {
+      role,
+      enabled: true,
+      enabled_source: FIXED_ROLES.includes(role) ? 'fixed' : 'default',
+    };
   let live: Map<string, boolean> | undefined;
   const detected = (v: string): boolean => {
     if (v === 'claude') return true;
@@ -260,7 +266,7 @@ export function resolveBindings(root: string, detect: () => Vendor[] = vendors):
     live ??= new Map(detect().map((x) => [x.name, x.detected]));
     return live.get(v) ?? false;
   };
-  const roles = [...new Set([...Object.keys(team), ...meta.keys()])].toSorted();
+  const roles = [...new Set([...FIXED_ROLES, ...Object.keys(team), ...meta.keys()])].toSorted();
   const withState = (b: Omit<ResolvedBinding, 'enabled' | 'enabled_source' | 'covered_by'>) => {
     const { enabled, enabled_source, covered_by } = stateOf(b.role);
     return { ...b, enabled, enabled_source, ...(covered_by ? { covered_by } : {}) };

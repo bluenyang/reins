@@ -229,6 +229,19 @@ describe('role on/off (014-2)', () => {
   });
 });
 
+describe('no harness installed (014-2 review)', () => {
+  it('roleStates and resolveBindings do not throw on an empty repo', () => {
+    const d = mkdtempSync(join(tmpdir(), 'reins-empty-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    const { states, warnings } = roleStates(d);
+    expect(warnings).toEqual([]);
+    for (const r of ['pm', 'implementer', 'verify-tool'])
+      expect(states.get(r)).toMatchObject({ enabled: true, enabled_source: 'fixed' });
+    const pm = resolveBindings(d, detect).find((x) => x.role === 'pm');
+    expect(pm).toMatchObject({ model: 'claude-opus-5-5', source: 'default', enabled: true });
+  });
+});
+
 describe('docs and skill text (014-2)', () => {
   const root = join(__dirname, '../..');
   const read = (f: string) => readFileSync(join(root, f), 'utf8');

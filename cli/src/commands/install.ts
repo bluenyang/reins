@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, rmdirSync, rmSync } from 'node:f
 import { dirname, join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import type { Asker } from '../lib/ask.js';
+import { askerPrompter, BACK, EXIT, type Prompter } from '../lib/prompter.js';
 import { planMemoryProposals } from '../lib/memory.js';
 import { draftRelease, releaseDraftNotes } from '../lib/release.js';
 import { applyBlocks, parseBlocks } from '../lib/blocks.js';
@@ -41,6 +42,11 @@ export interface InstallOptions {
   hooks?: boolean;
   cwd?: string;
   asker: Asker;
+  /**
+   * Screens for the four manual questions (design §9). Given only when stdin and stdout are terminals,
+   * mode is manual and the output is not JSON; otherwise the questions go through `asker` as before.
+   */
+  prompter?: Prompter;
   /** tests: replace vendor detection */
   detectVendors?: () => Vendor[];
   /** model-list check (spec S-3); tests inject a runner */
@@ -58,6 +64,8 @@ export interface InstallResult {
   root: string;
   generation: Generation;
   refused?: string;
+  /** The user left a screen: nothing was written. */
+  cancelled?: boolean;
   applied?: Applied;
   generated?: GenWriteResult;
   notes: string[];
@@ -226,22 +234,68 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   const vs = (o.detectVendors ?? vendors)();
   const detected = vs.filter((v) => v.detected).map((v) => v.name);
   const avail = new Set<Vendor['name']>(['claude']); // claude is the floor (R22)
+  const screens = o.mode === 'manual' ? o.prompter : undefined;
+  const line = askerPrompter(o.asker); // the piped, line-based form: today's strings and parsing
+  const cancelled = (): InstallResult => ({ root, generation: gen, notes, cancelled: true });
+  const isNav = (v: unknown): v is typeof BACK | typeof EXIT => v === BACK || v === EXIT;
+  const VENDOR_NAMES: Vendor['name'][] = ['claude', 'openai', 'google', 'cursor'];
   if (o.tier === 'graph' && !hasBindings) {
-    const ans = await o.asker.ask(
-      `vendors you can use (claude,openai,google,cursor) — detected: ${detected.join(',') || 'none'}`,
-      ['claude', ...detected.filter((d) => d !== 'claude')].join(','),
-    );
-    for (const v of ans.split(',').map((s) => s.trim()))
-      if (['claude', 'openai', 'google', 'cursor'].includes(v)) avail.add(v as Vendor['name']);
+    if (screens) {
+      const picked = await screens.multiselect<Vendor['name']>({
+        message: 'Vendors you can use (claude is always on)',
+        options: VENDOR_NAMES.map((n) => ({
+          value: n,
+          label: n,
+          hint: n === 'claude' ? 'always' : detected.includes(n) ? 'detected' : undefined,
+        })),
+        initial: ['claude', ...detected.filter((d) => d !== 'claude')],
+      });
+      if (isNav(picked)) return cancelled();
+      for (const v of picked) avail.add(v);
+    } else {
+      const ans = await line.text({
+        message: `vendors you can use (claude,openai,google,cursor) — detected: ${detected.join(',') || 'none'}`,
+        initial: ['claude', ...detected.filter((d) => d !== 'claude')].join(','),
+      });
+      for (const v of String(ans)
+        .split(',')
+        .map((s) => s.trim()))
+        if ((VENDOR_NAMES as string[]).includes(v)) avail.add(v as Vendor['name']);
+    }
   }
-  const language =
-    pinned?.language ??
-    (await o.asker.ask('language of documents the user reads (ko, en, …)', 'ko'));
+  let language = pinned?.language;
+  if (language === undefined) {
+    if (screens) {
+      const pick = await screens.select<string>({
+        message: 'Language of documents you read',
+        options: [
+          { value: 'ko', label: 'ko' },
+          { value: 'en', label: 'en' },
+          { value: 'other', label: 'other', hint: 'type a language code' },
+        ],
+        initial: 'ko',
+      });
+      if (isNav(pick)) return cancelled();
+      if (pick === 'other') {
+        const typed = await screens.text({ message: 'Language code (ko, en, …)', initial: 'ko' });
+        if (isNav(typed)) return cancelled();
+        language = typed.trim() || 'ko';
+      } else language = pick;
+    } else
+      language = String(
+        await line.text({
+          message: 'language of documents the user reads (ko, en, …)',
+          initial: 'ko',
+        }),
+      );
+  }
   if (!hasGates) {
     const proposal = discoverGates(root);
     const gateList = proposal.gates.map((g) => `${g.name}=${g.cmd}`).join(', ') || 'none found';
-    const okGates = await o.asker.ask(`gates found: ${gateList} — use them? (y/n)`, 'y');
-    if (!/^y/i.test(okGates))
+    const gateQ = `gates found: ${gateList} — use them?`;
+    const gateAns = await (screens ?? line).confirm({ message: gateQ, initial: true });
+    if (isNav(gateAns)) return cancelled();
+    if (!gateAns)
       notes.push(
         'gates not confirmed — edit .agents/harness/gates.yaml, then `reins check --dry-run`',
       );
@@ -249,16 +303,29 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     if (proposal.proposals.length) {
       const listing = proposal.proposals.map((g) => `${g.name}=${g.cmd}`).join('; ');
       if (o.mode === 'manual') {
-        const pick = await o.asker.ask(
-          `subdirectory gates (names, comma-separated; empty: none) — ${listing}`,
-          '',
-        );
-        const names = new Set(
-          pick
-            .split(',')
-            .map((x) => x.trim())
-            .filter(Boolean),
-        );
+        let names: Set<string>;
+        if (screens) {
+          const picked = await screens.multiselect<string>({
+            message: 'Subdirectory gates to add',
+            options: proposal.proposals.map((g) => ({ value: g.name, label: g.name, hint: g.cmd })),
+            initial: [],
+          });
+          if (isNav(picked)) return cancelled();
+          names = new Set(picked);
+        } else {
+          const pick = String(
+            await line.text({
+              message: `subdirectory gates (names, comma-separated; empty: none) — ${listing}`,
+              initial: '',
+            }),
+          );
+          names = new Set(
+            pick
+              .split(',')
+              .map((x) => x.trim())
+              .filter(Boolean),
+          );
+        }
         chosen = proposal.proposals.filter((g) => names.has(g.name));
         if (o.dryRun)
           notes.push(`subdirectory gates offered (names are asked in a real run): ${listing}`);
@@ -272,7 +339,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     for (const x of proposal.excluded) notes.push(`excluded from gates: ${x.name} (${x.why})`);
     add(
       '.agents/harness/gates.yaml',
-      buildGates(root, [...(/^y/i.test(okGates) ? proposal.gates : []), ...chosen]),
+      buildGates(root, [...(gateAns ? proposal.gates : []), ...chosen]),
       'declared gates',
     );
   }

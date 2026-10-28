@@ -6,6 +6,7 @@ import { migrateDetected } from '../lib/bindings.js';
 import { overrides } from '../lib/blocks.js';
 import type { Vendor } from '../lib/detect.js';
 import { repoRoot } from '../lib/git.js';
+import { BACK, EXIT, type Prompter } from '../lib/prompter.js';
 import { harnessVersion, packageHarness, packageVersion } from '../lib/upstream.js';
 import { runInstall, type InstallResult, type Tier } from './install.js';
 
@@ -14,6 +15,12 @@ export interface UpdateOptions {
   dryRun?: boolean;
   now?: Date;
   detectVendors?: () => Vendor[];
+  /**
+   * Confirm before writing (design §9): given only when stdin and stdout are terminals, without
+   * `--yes`, `--dry-run` or `--json`. A dry run is made first, `show` prints its plan, then `confirm` asks.
+   */
+  prompter?: Prompter;
+  show?: (plan: UpdateResult) => void;
 }
 
 export interface UpdateResult {
@@ -31,6 +38,8 @@ export interface UpdateResult {
   /** Vendors whose `detected` moved from bindings.yaml to the local file (design §5). */
   bindingsMoved?: string[];
   install?: InstallResult;
+  /** The user answered no at the confirmation: nothing was written. */
+  declined?: boolean;
 }
 
 /** Numeric dotted-version compare; pre-release suffixes are ignored. */
@@ -62,6 +71,22 @@ export function changesBetween(changelog: string, from: string, to: string): str
  * When the changelog says a project section needs changing, it points to the /reins-update skill.
  */
 export async function runUpdate(o: UpdateOptions): Promise<UpdateResult> {
+  if (o.prompter && !o.dryRun) {
+    const plan = await runUpdate({ ...o, prompter: undefined, dryRun: true });
+    if (plan.refused) return plan;
+    const a = plan.install?.applied;
+    const nothing =
+      !plan.bindingsMoved && (!a || a.created.length + a.changed.length + a.removed.length === 0);
+    if (nothing) return plan;
+    o.show?.(plan);
+    const ok = await o.prompter.confirm({ message: 'Apply this update?', initial: true });
+    if (ok === BACK || ok === EXIT || !ok) return { ...plan, declined: true };
+    return runUpdate({ ...o, prompter: undefined });
+  }
+  return updateNow(o);
+}
+
+async function updateNow(o: UpdateOptions): Promise<UpdateResult> {
   const root = repoRoot(o.cwd ?? process.cwd());
   const res: UpdateResult = { root, changes: [], needsSkill: false, overrides: [] };
   const pinPath = join(root, '.agents/harness/install.yaml');
@@ -102,4 +127,37 @@ export async function runUpdate(o: UpdateOptions): Promise<UpdateResult> {
     retire: true,
   });
   return res;
+}
+
+/** The report `reins update` prints; with `dry` it is the plan shown before the confirmation. */
+export function formatUpdate(r: UpdateResult, dry: boolean): string {
+  const out: string[] = [];
+  const a = r.install?.applied;
+  out.push(
+    `reins update — cli ${r.cliFrom === 'none' ? 'none' : `v${r.cliFrom}`} → v${r.cliTo}, harness v${r.from} → v${r.to}${dry ? ' (dry run)' : ''}`,
+  );
+  for (const c of r.changes) out.push(`  · ${c}`);
+  if (r.bindingsMoved)
+    out.push(
+      `bindings: ${dry ? 'would move' : 'moved'} detected vendors (${r.bindingsMoved.join(', ')}) to .loctx/bindings.local.yaml`,
+    );
+  if (a && a.created.length + a.changed.length + a.removed.length === 0)
+    out.push('already up to date');
+  else if (a) {
+    out.push(
+      `${dry ? 'would write' : 'wrote'}: ${a.created.length} new, ${a.changed.length} changed${a.removed.length ? `, ${a.removed.length} removed` : ''}`,
+    );
+    for (const p of [...a.created, ...a.changed]) out.push(`  ~ ${p}`);
+    for (const p of a.removed) out.push(`  - ${p} (no longer installed by this tier)`);
+  }
+  for (const n of r.overrides)
+    out.push(
+      `• block "${n}" is overridden by the project — compare it with the new upstream block`,
+    );
+  for (const n of r.install?.notes.filter((x) => x.startsWith('left alone')) ?? [])
+    out.push(`• ${n}`);
+  if (r.needsSkill)
+    out.push('• this update needs project sections changed: run /reins-update in your agent');
+  if (r.install?.history) out.push(`recorded: ${r.install.history}`);
+  return `${out.join('\n')}\n`;
 }

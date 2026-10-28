@@ -7,7 +7,7 @@ import { runMigrate } from './commands/migrate.js';
 import { acceptKnowledge, dismissKnowledge, proposeKnowledge } from './commands/knowledge.js';
 import { formatRetro, runRetro } from './commands/retro.js';
 import { runStatus } from './commands/status.js';
-import { runUpdate } from './commands/update.js';
+import { formatUpdate, runUpdate } from './commands/update.js';
 import { configureBindings, configureGates } from './commands/configure.js';
 import { runConfig } from './commands/config.js';
 import { stateLabel } from './lib/bindings.js';
@@ -22,6 +22,7 @@ import {
 } from './commands/metrics.js';
 import { repoRoot } from './lib/git.js';
 import { defaultsAsker, stdinAsker } from './lib/ask.js';
+import { clackPrompter, isInteractive } from './lib/prompter.js';
 import { EXIT } from './lib/verdict.js';
 
 // the version npm installed — cli/dist/reins.js sits two levels below package.json
@@ -67,13 +68,16 @@ program
         );
         process.exit(2);
       }
-      const asker = o.mode === 'auto' ? defaultsAsker : await stdinAsker();
+      // screens only on a terminal, in manual mode, without --json; otherwise the line-based questions
+      const screens = o.mode === 'manual' && !o.json && isInteractive();
+      const asker = o.mode === 'auto' || screens ? defaultsAsker : await stdinAsker();
       const r = await runInstall({
         tier: tier as Tier,
         mode: o.mode,
         hooks: o.hooks,
         dryRun: o.dryRun,
         asker,
+        prompter: screens ? await clackPrompter() : undefined,
       });
       asker.close();
       if (o.json) {
@@ -83,6 +87,10 @@ program
       if (r.refused) {
         process.stderr.write(`reins install: ${r.refused}\n`);
         process.exit(2);
+      }
+      if (r.cancelled) {
+        process.stdout.write('reins install: cancelled — nothing was written\n');
+        process.exit(0);
       }
       const a = r.applied!;
       const verb = o.dryRun ? 'would write' : 'wrote';
@@ -167,9 +175,16 @@ program
     're-apply the packaged harness: upstream files, managed blocks, vendor files, version pin',
   )
   .option('--dry-run', 'show what would change')
+  .option('--yes', 'do not ask for confirmation')
   .option('--json')
-  .action(async (o: { dryRun?: boolean; json?: boolean }) => {
-    const r = await runUpdate({ dryRun: o.dryRun });
+  .action(async (o: { dryRun?: boolean; yes?: boolean; json?: boolean }) => {
+    // on a terminal, show the plan and ask first (design §9); otherwise run as before
+    const confirm = !o.yes && !o.dryRun && !o.json && isInteractive();
+    const r = await runUpdate({
+      dryRun: o.dryRun,
+      prompter: confirm ? await clackPrompter() : undefined,
+      show: (plan) => process.stdout.write(formatUpdate(plan, true)),
+    });
     if (o.json) {
       process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
       process.exit(r.refused ? 2 : 0);
@@ -178,36 +193,11 @@ program
       process.stderr.write(`reins update: ${r.refused}\n`);
       process.exit(2);
     }
-    const a = r.install?.applied;
-    process.stdout.write(
-      `reins update — cli ${r.cliFrom === 'none' ? 'none' : `v${r.cliFrom}`} → v${r.cliTo}, harness v${r.from} → v${r.to}${o.dryRun ? ' (dry run)' : ''}\n`,
-    );
-    for (const c of r.changes) process.stdout.write(`  · ${c}\n`);
-    if (r.bindingsMoved)
-      process.stdout.write(
-        `bindings: ${o.dryRun ? 'would move' : 'moved'} detected vendors (${r.bindingsMoved.join(', ')}) to .loctx/bindings.local.yaml\n`,
-      );
-    if (a && a.created.length + a.changed.length + a.removed.length === 0)
-      process.stdout.write('already up to date\n');
-    else if (a) {
-      process.stdout.write(
-        `${o.dryRun ? 'would write' : 'wrote'}: ${a.created.length} new, ${a.changed.length} changed${a.removed.length ? `, ${a.removed.length} removed` : ''}\n`,
-      );
-      for (const p of [...a.created, ...a.changed]) process.stdout.write(`  ~ ${p}\n`);
-      for (const p of a.removed)
-        process.stdout.write(`  - ${p} (no longer installed by this tier)\n`);
+    if (r.declined) {
+      process.stdout.write('reins update: not applied — nothing was written\n');
+      process.exit(0);
     }
-    for (const n of r.overrides)
-      process.stdout.write(
-        `• block "${n}" is overridden by the project — compare it with the new upstream block\n`,
-      );
-    for (const n of r.install?.notes.filter((x) => x.startsWith('left alone')) ?? [])
-      process.stdout.write(`• ${n}\n`);
-    if (r.needsSkill)
-      process.stdout.write(
-        '• this update needs project sections changed: run /reins-update in your agent\n',
-      );
-    if (r.install?.history) process.stdout.write(`recorded: ${r.install.history}\n`);
+    process.stdout.write(formatUpdate(r, !!o.dryRun));
   });
 
 program

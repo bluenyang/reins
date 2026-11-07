@@ -46,7 +46,7 @@ These complement the reins blocks below; where they are more specific, they win.
 - Public documents: English by default with a Korean `.ko.md` twin, cross-linked (R67). Korean
   documents for the user may be polished with humanize-korean; English ones are not.
 - `CLAUDE.md` contains only `@AGENTS.md`.
-- Spec summaries are accepted without waiting for the maintainer (maintainer's instruction, 2026-10-27): after pm and qa-design review, pm shows `summary_for_user`, sets `status: accepted` with `{role: user, at, kind: summary, auto: true}` and commits it with `Approved-by: BlueNyang (standing instruction 2026-10-27)`. The maintainer can still veto later (G2 → the spec is reopened). Intent approval, knowledge promotion and stable releases stay explicit.
+- Spec summaries wait for the maintainer's 진행 or 수정 every time; there is no standing auto-accept (maintainer, 2026-10-30: a one-time 2026-10-27 instruction had been recorded as standing). Intent approval, knowledge promotion and stable releases stay explicit.
 
 <!-- reins:begin workflow v=0.1.0 -->
 ## Workflow

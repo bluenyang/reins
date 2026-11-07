@@ -39,16 +39,11 @@ The first target is this repository itself.
 
 The 0.2 plan answered "agents do not follow the harness" by putting reins itself into the work: the verifier as the reins package called at every transition, skills that run `npx @bluenyang/reins`, and on the unreleased branch `feat/loop-enforcement` runtime hooks on every prompt and tool call, units of work, approvals and audits owned by the CLI. An applied repository then depends on the reins package while it works: offline it stops, and a compromised package runs in every applied repository. Volatile files (`.loctx/bus`, gate logs, run records) had no working deletion rule. Two independent audits (2026-11-07) traced this back to the first design, where the project-owned check script of the surveyed repositories became "`reins check` is that script".
 
-The maintainer cancelled 0.2.1–0.2.8. The branch `feat/loop-enforcement` (intents 015–018) is kept as a record and is not merged. What is worth keeping from those plans is weighed again in the 0.3 intent.
+The maintainer cancelled 0.2.1–0.2.8. The branch `feat/loop-enforcement` (intents 015–018) is kept as a record and is not merged.
 
-## 0.3 — reins manages the harness, nothing more
+## 0.3 — reset
 
-- **reins manages the harness only.** Its commands are install, migrate, update and configure. No hook and no agent calls reins while the project works; what reins installs works without reins and without a network.
-- **Checks belong to the project.** Stage checks run in ordinary hook tools (lefthook, husky) or independent scripts inside the project; reins installs or proposes them.
-- **Audit at the end of every plan (version).** Whether the stages were followed is checked by an audit when a version ends. AGENTS.md and a harness setting (like the model bindings) make it mandatory unless the user switches it off.
-- **Roles refined and simplified.** A single agent runs the whole loop; multiple agents are a layer on top.
-- **Onboarding.** After installation, the first conversation with the PM reads the project, asks the user, and writes the project's rules and goals into AGENTS.md.
-- **Every file has a lifetime when it is created.** Who deletes it and when is decided with the file, never deferred.
+Planned by the maintainer (2026-11-07) as the break from the 0.2 plan. Its content is written here once it is agreed (intent 019).
 
 ## 0.4 — rollout
 

@@ -30,27 +30,65 @@ The first target is this repository itself.
 - **Documents with every rc.** An rc ends up on the default branch, so its documents should be current there too: the roadmap state, the CHANGELOG section and the README status line move in the same release PR as the code, and T5 warns when they still describe the previous state.
 - **CI on more platforms.** The package declares Node 20 or later, but CI runs only Ubuntu with Node 24. CI runs `pnpm check` on Node 20, 22 and 24 and on Windows and macOS as well, and what fails there is fixed in the same version.
 
-## 0.2 — closed at 0.2.0
+## 0.2 — restructure the loop, carve the loop and harness out of the graph, heterogeneous agents
+
+Input: the metrics recorded in 0.1, and an incident in a repository that uses reins. There an agent skipped the harness entirely: no intent, ticket, approval, review or history, and model bindings bypassed, while pre-commit passed every commit. The cause was structural, not a missing rule: entering the loop, the transition checks, the approval record, the review and the record all depended on the controlled agent calling them itself.
+
+Order set by the maintainer (revised 2026-10-28): **restructuring the loop comes first**, then readiness for adoption, enforcement, budgets and vendors, and the carving last, when its figures exist. No 0.3 rollout before 0.2.1–0.2.3 are done.
 
 | Version | State | Content |
 |---|---|---|
 | 0.2.0 | published | `reins config` TUI (models and roles, local or team scope, roles on and off), install and update as screens |
-| 0.2.1–0.2.8 | cancelled | replaced by 0.3 (maintainer, 2026-11-07) |
+| 0.2.1 | planned | loop enforcement: reins owns the unit of work and its transitions, a commit without a unit of work stops, agent runtime hooks, approvals redesigned, records written by the CLI, the easy tier |
+| 0.2.2 | planned | work tiers and the docs loop: common and complex tiers, one approval per bundle, an evidence-first docs loop, independent review as a closing condition, re-checks at merge and release |
+| 0.2.3 | planned | discussion and leadership: a discussion stage before the roadmap, PM and PL lead together, cross-checks between PLs |
+| 0.2.4 | planned | readiness for adoption: release documents before the merge also for stable, Python gate discovery, migrate splitting work into intents per version, a `.loctx` retention policy and `reins prune` |
+| 0.2.5 | planned | remaining enforcement: the `.env` read block, push, PR, merge and release by the deploy role only (C6), changes outside the plan (C10), T1 refusing tickets of a role that is off |
+| 0.2.6 | planned | budgets and T6: budget stops E1–E3 from `metrics.jsonl`, `configure budget`, the interruption record (G1) and F1 |
+| 0.2.7 | planned | heterogeneous agents: generated files and runtime hooks for Codex, Gemini (Antigravity) and Cursor with drift checks; the command line each role runs on its vendor |
+| 0.2.8 | planned | carving: loop and harness tiers cut out of the graph by cost and stop figures; `reins recall`, `reins doctor`, `configure language`; rehearsed migration of older harness generations |
 
-The 0.2 plan answered "agents do not follow the harness" by putting reins itself into the work: the verifier as the reins package called at every transition, skills that run `npx @bluenyang/reins`, and on the unreleased branch `feat/loop-enforcement` runtime hooks on every prompt and tool call, units of work, approvals and audits owned by the CLI. An applied repository then depends on the reins package while it works: offline it stops, and a compromised package runs in every applied repository. Volatile files (`.loctx/bus`, gate logs, run records) had no working deletion rule. Two independent audits (2026-11-07) traced this back to the first design, where the project-owned check script of the surveyed repositories became "`reins check` is that script".
+For 0.2.1–0.2.3 the design (`docs/design.md` and its Korean edition) changes first, then the code: principle 1 (portability kept apart from independent verification), principle 2 (state-based rules), principle 3 (scripts own execution, transitions and evidence), §4 approval format, §6 generated files, §8 record inputs. "The CLI never calls a model" stays.
 
-The maintainer cancelled 0.2.1–0.2.8. The branch `feat/loop-enforcement` (intents 015–018) is kept as a record and is not merged. What is worth keeping from those plans is weighed again in the 0.3 intent.
+### 0.2.1 — loop enforcement
 
-## 0.3 — reins manages the harness, nothing more
+- **reins owns the unit of work.** The CLI records the active unit of work and its transitions; hooks, T2, T4, T5 and CI read the same state. Reading and analysis that write nothing to the repository need no unit.
+- **A commit without a unit of work stops.** T2 checks the active unit, a valid approval and the scope of the change. Review is required when the unit closes, not at every commit.
+- **Agent runtime hooks.** The hooks design §6 named but generation never wrote: state injected at session start and on each prompt; before a tool call, writes without a unit, subagents other than `reins-*` or on a model other than the binding, and approval writes by the agent are refused; a unit cannot end without its review. Claude Code in this version; other vendors in 0.2.7.
+- **Approvals redesigned.** An approval is only `reins approve`, which runs after the person allows it in the permission prompt. The proof is tied to the revision, scope, person and time it approves; old trailers cannot be reused. Delegated acceptance (spec summaries) uses its own `Accepted-by:`.
+- **The CLI writes the record.** The CLI and hooks append the start, commits, refusals, review and close of each unit; a commit without a unit is recorded as `off-loop` and counted by retro. Agents write only the history narrative, from that record. On close the CLI checks that the history summary exists and deletes the unit's bus files; today agents are meant to delete them, and the bus files of closed tickets piled up.
+- **The easy tier.** A small change opens a unit with one command, and the request itself is the permission. A report afterwards, an independent review and the user's veto remain. It ships with the enforcement: a stop with only the heavy path available pushes agents to go around it.
 
-- **reins manages the harness only.** Its commands are install, migrate, update and configure. No hook and no agent calls reins while the project works; what reins installs works without reins and without a network.
-- **Checks belong to the project.** Stage checks run in ordinary hook tools (lefthook, husky) or independent scripts inside the project; reins installs or proposes them.
-- **Audit at the end of every plan (version).** Whether the stages were followed is checked by an audit when a version ends. AGENTS.md and a harness setting (like the model bindings) make it mandatory unless the user switches it off.
-- **Roles refined and simplified.** A single agent runs the whole loop; multiple agents are a layer on top.
-- **Onboarding.** After installation, the first conversation with the PM reads the project, asks the user, and writes the project's rules and goals into AGENTS.md.
-- **Every file has a lifetime when it is created.** Who deletes it and when is decided with the file, never deferred.
+### 0.2.2 — work tiers and the docs loop
 
-## 0.4 — rollout
+- **easy / common / complex.** The agent only proposes the tier. The CLI checks it at T2 and at close against objective signals (files and paths changed, schema, harness or public API changes, diff size) and raises it on a mismatch; the user can change it at any time. complex is today's intent → spec → plan → ticket; common is lighter.
+- **One approval per bundle.** An approval is given once per intent and plan; parallel tickets inherit it.
+- **The docs loop.** Verifying a document means finding evidence: scope and audience → claims extracted → each claim tied to evidence (code path:line, test, commit, knowledge) → another model locates the evidence again → defects found on the way go to a ledger and tickets → polishing last.
+- **Independent review closes a unit.** Configuration picks the reviewer and reins records the run (vendor, model, commit reviewed). A review on the author's model does not close the unit; without another vendor, another model reviews and the run is recorded as "degraded independence".
+- **Re-checks at merge and release.** T4, T5 and PR CI check approval, review and the final diff again. The enforcement table names the vendors each rule holds on and the ways around it.
+
+### 0.2.3 — discussion and leadership
+
+- **A discussion stage.** Requirements do not arrive ready; they emerge as people explain and discuss. A discussion stage comes before the roadmap: ideas, options, grounds, and what was accepted, rejected or deferred and why. Rejections feed C8, and a similar topic later brings the record back up.
+- **PM and PL lead together.** Simple work: the PM alone. Complex work: the PM weighs the views of several PLs, each of which takes exploration and research from other agents. Agents may propose other directions, methods and possibilities before following the user's instruction; the user accepts or rejects.
+- **Cross-checks between PLs.** On complex work the PLs judge independently without seeing each other's results; the user sees each view and where they differ. Scores surface disagreement and never decide on their own.
+
+### 0.2.4 — readiness for adoption
+
+- **Release documents before the merge, also for stable.** A docs-only stable PR (intent `released`, CHANGELOG `[V]` with its date, roadmap row, README status line) is merged before the stable dispatch. The publish workflow accepts stable when everything changed since the last rc tag is a `release.docs` file or the version's intent status, instead of requiring HEAD to be that tag.
+- **Python gates.** Gate discovery finds `pytest`, `pyproject.toml` and `requirements.txt` projects (proposals, as for subdirectories).
+- **Migrate per version.** `migrate` splits open work into one draft intent per version instead of a single intent 000.
+- **A `.loctx` retention policy.** A policy file gives each path its lifetime (until its unit closes, until the version's stable, permanent) and `reins prune` applies it: `--dry-run` lists, deleting asks first. Gate logs go once the version's stable is out; history, metrics and the release ledger are permanent. Paths reins did not create (another skill's workspace) are listed, never deleted.
+
+### 0.2.5 — remaining enforcement
+
+The advised rules from 0.1.5 (the [table](../README.md#enforced-versus-advised), source [`enforcement.yaml`](../harness/policy/enforcement.yaml)) that 0.2.1–0.2.2 do not cover become enforced: the `.env` read block (examples stay readable), C6, the plan comparison of C10, and T1 refusing a ticket whose role is off. The table moves with each rule.
+
+### 0.2.7 — the CLI still calls no model
+
+The design invariant stays (maintainer, 2026-10-28): reins generates each vendor's files and runtime hooks and prints the exact command line a role runs on its vendor; the agent runs it. reins does not start vendor CLIs itself.
+
+## 0.3 — rollout
 
 - Application to Team Croffle repositories, repository by repository with the owner's permission.
 - Migration of the remaining `.ai/` harnesses.

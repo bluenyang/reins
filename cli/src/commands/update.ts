@@ -251,6 +251,10 @@ async function updateNow(o: UpdateOptions): Promise<UpdateResult> {
   res.removed.push(...legacy.deletes, ...legacy.writes.map((w) => `~ ${w.path}`), ...legacy.notes);
   for (const x of LEGACY_LOCTX)
     if (existsSync(join(root, '.loctx', x))) res.cleanup.push(`.loctx/${x}`);
+  // the 0.x personal layer (detected vendors, role overrides) has no meaning in version 2
+  const local = join(root, '.loctx/bindings.local.yaml');
+  if (existsSync(local) && /^schema: reins\/bindings-local@1$/m.test(readFileSync(local, 'utf8')))
+    res.cleanup.push('.loctx/bindings.local.yaml');
   if (!o.dryRun) {
     if (legacy.agentsPrevious !== undefined) {
       mkdirSync(join(root, '.agents'), { recursive: true });

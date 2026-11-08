@@ -168,6 +168,7 @@ describe('reins update', () => {
       put('.loctx/bus/x.request.yaml', 'a: 1\n');
       put('.loctx/journal.jsonl', '{}\n');
       put('.loctx/history/keep.md', 'keep\n');
+      put('.loctx/bindings.local.yaml', 'schema: reins/bindings-local@1\nvendors: {}\n');
       put(
         'AGENTS.md',
         '# AGENTS.md\n\nMy rules.\n\n<!-- reins:begin workflow v=0.1.0 -->\n## Workflow\n- reins status\n<!-- reins:end workflow -->\n',
@@ -204,6 +205,7 @@ describe('reins update', () => {
       expect(settings).not.toContain('@bluenyang/reins');
       const agents = readFileSync(join(d, 'AGENTS.md'), 'utf8');
       expect(agents).toContain('<!-- reins:reconcile pending -->');
+      expect(agents).not.toContain('<!-- reins:onboarding pending -->'); // one note: onboard handles both
       expect(agents).toContain('My rules.');
       expect(agents).not.toContain('reins status');
       expect(readFileSync(join(d, '.agents/AGENTS.previous.md'), 'utf8')).toContain('reins status');
@@ -212,7 +214,11 @@ describe('reins update', () => {
     it('without --yes the .loctx working files are only listed', async () => {
       const d = await old();
       const r = await runUpdate({ cwd: d, detectVendors: claude });
-      expect(r.cleanup).toEqual(['.loctx/bus', '.loctx/journal.jsonl']);
+      expect(r.cleanup).toEqual([
+        '.loctx/bus',
+        '.loctx/journal.jsonl',
+        '.loctx/bindings.local.yaml',
+      ]);
       expect(existsSync(join(d, '.loctx/bus'))).toBe(true);
     });
 

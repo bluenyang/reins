@@ -413,7 +413,8 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   const blocks = renderBlocks(up, doc ?? defaultBindings([]), String(language ?? 'ko'));
   const br = applyBlocks(before, blocks);
   let agents = br.text;
-  if (!/<!-- reins:onboarding done -->/.test(agents))
+  // a reconcile note already sends the PM to `onboard`; one note is enough
+  if (!/<!-- reins:onboarding done -->/.test(agents) && !agents.includes('<!-- reins:reconcile'))
     agents = placeNote(agents, onboardingNote(tool === null), 'onboarding');
   if (agents !== before)
     add(

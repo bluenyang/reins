@@ -198,6 +198,7 @@ describe('reins update', () => {
       ])
         expect(existsSync(join(d, p)), p).toBe(false);
       expect(readFileSync(join(d, '.loctx/history/keep.md'), 'utf8')).toBe('keep\n');
+      expect(r.cleaned).toBe(true);
       const hook = readFileSync(join(d, '.husky/pre-commit'), 'utf8');
       expect(hook).toContain('echo mine');
       expect(hook).not.toContain('@bluenyang/reins');

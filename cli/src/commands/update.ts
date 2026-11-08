@@ -45,6 +45,8 @@ export interface UpdateResult {
   removed: string[];
   /** 0.x working files under .loctx to delete (after confirmation) */
   cleanup: string[];
+  /** the cleanup list was deleted (--yes or a confirmed update) */
+  cleaned?: boolean;
   /** generated files edited by hand: not overwritten without --force */
   handEdited: string[];
   install?: InstallResult;
@@ -262,7 +264,10 @@ async function updateNow(o: UpdateOptions): Promise<UpdateResult> {
     }
     for (const w of legacy.writes) writeFileSync(join(root, w.path), w.content);
     for (const d of legacy.deletes) rmSync(join(root, d), { recursive: true, force: true });
-    if (o.yes) for (const d of res.cleanup) rmSync(join(root, d), { recursive: true, force: true });
+    if (o.yes && res.cleanup.length) {
+      for (const d of res.cleanup) rmSync(join(root, d), { recursive: true, force: true });
+      res.cleaned = true;
+    }
   }
 
   res.install = await runInstall({
@@ -299,7 +304,7 @@ export function formatUpdate(r: UpdateResult, dry: boolean): string {
   }
   if (r.cleanup.length)
     out.push(
-      `.loctx 0.x working files (${dry ? 'deleted on confirmation' : 'listed'}): ${r.cleanup.join(', ')}`,
+      `.loctx 0.x working files (${dry ? 'deleted on confirmation' : r.cleaned ? 'deleted' : 'listed; --yes deletes them'}): ${r.cleanup.join(', ')}`,
     );
   if (a && a.created.length + a.changed.length + a.removed.length === 0 && !r.removed.length)
     out.push('already up to date');

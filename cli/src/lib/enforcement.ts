@@ -156,6 +156,4 @@ export function applyMarkers(
 export const MARKED_DOCS: { file: string; lang: Lang; pairs: number }[] = [
   { file: 'README.md', lang: 'en', pairs: 1 },
   { file: 'docs/README.ko.md', lang: 'ko', pairs: 1 },
-  { file: 'docs/design.md', lang: 'en', pairs: 2 },
-  { file: 'docs/design.ko.md', lang: 'ko', pairs: 2 },
 ];

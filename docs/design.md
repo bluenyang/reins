@@ -1,216 +1,187 @@
-# reins — design document, v1.0 (2026-10-25)
+# reins design — v2.0 (2026-11-09)
 
-> English edition. The Korean original is [`design.ko.md`](design.ko.md); where the two disagree, the Korean file wins. This is the design for the planning document [`proposal.md`](proposal.md) v1.1 — structure and formats, no code.
+> English edition of [`design.ko.md`](design.ko.md); where the two disagree, the Korean file wins. The design for the requirements in [`proposal.md`](proposal.md) v1.2.
+> v2.0 is the design of 0.3 (intent 019). What changed from v1.0 (2026-10-25) and from what 0.1–0.2.0 added on top is collected in §10. The v1.0 text is in git history (tag `v0.2.0`).
 
-## 0. Principles — five lines that run through the whole design
-1. **Roles are independent of models.** Any role runs on any model; everything works on Claude alone. (R14·R57)
-2. **Prohibitions are enumerated, permissions are described.** The verifier enforces only the "must not" list — which is what keeps it deterministic. (R4·R7)
-3. **Roles judge, scripts enforce.** Neither the verifier nor the CLI reasons. A role writes its verdict to the bus; the verifier applies it. (R5·R7)
-4. **The commit boundary is in the name.** `.agents/` is committed agent context, `.loctx/` is this machine only; the rest of the root is for people and code. (R34·R35)
-5. **Where a standard exists, follow it.** `AGENTS.md` and `SKILL.md` are standards; only roles, permissions and hooks are generated. (R31·R32)
+## 0. Principles
+1. **reins only manages the harness.** It has four commands: `install`, `migrate`, `update`, `config`. Once installed, no hook, skill or agent runs reins while the project works; the installed harness works without reins and without a network. (R5, R7, R20, R30)
+2. **Checks belong to the project.** Stage checks run in the project's hook tool (lefthook, husky, …) or scripts inside the project. reins only proposes or sets them up. (R7, R23)
+3. **Compliance is judged by an audit.** Instead of blocking at run time, an audit judges every version for whether the stages were followed. The audit is mandatory; only the user switches it off. (R5, R9)
+4. **A single agent is the default.** One agent (the PM) carries out the stages. Multi-agent work is switched on by assigning a model to a role group; a group without a model is done by the PM. (R12, R14) Basis: Anthropic, "Building agents: When to fold subagents into your main agent loop" (2026-10-22) and "Building multi-agent systems: When and how to use them" (2026-01-23).
+5. **Every file gets a lifetime when it is created.** No file is created without who deletes it and when. (R15, R35)
+6. **Follow the standard where there is one.** Instructions in `AGENTS.md`, procedures in `SKILL.md`. Only role agent files are generated. (R31, R32)
+7. **The commit boundary is in the name.** `.agents/` = committed agent context, `.loctx/` = this machine only. (R34, R35)
 
-## 1. Layout (= layout v4)
+## 1. Layout
 ```
 <project>/
-├── AGENTS.md                 committed · managed blocks (tool) + project sections
-├── .agents/                  committed · agent context
-│   ├── intent/<id>_<slug>/{intent,spec,plan}.md
-│   ├── knowledge/  harness/{policy,roles,schemas,templates, bindings.yaml, gates.yaml, install.yaml}  SKILLS.md  skills/
-├── .claude/ .codex/ .gemini/ .cursor/   committed · generated
-├── docs/  (ROADMAP.md, planning and design documents, shared benchmarks and research)   test/  (unit · integration · e2e)
-└── .loctx/                   gitignored (plus its own .gitignore) · ROADMAP.local.md ticket/ reports/ pr/ release/ context/ bus/ test/ history/
+├── AGENTS.md                 committed · managed blocks (reins) + project sections
+├── .agents/                  committed
+│   ├── intent/<NNN>_<slug>/{intent,spec}.md
+│   ├── audit/<version>.md    version audit record
+│   ├── knowledge/            explicit knowledge
+│   ├── harness/              bindings.yaml (settings) · gates.yaml · install.yaml · generated.yaml · roles/ · templates/
+│   └── skills/<name>/SKILL.md   eleven stage skills
+├── .claude/agents/rs-*.md    committed · generated (only roles switched on in multi mode)
+├── docs/                     ROADMAP.md and others
+└── .loctx/                   gitignored · ROADMAP.local.md · history/<version>.md · reports/<version>/ · context/ · bindings.local.yaml
 ```
-Know-how (`.loctx/history/`) differs per person and stays local; only the explicit knowledge distilled from it (`knowledge/`) is committed (R54).
+`AGENTS.previous.md` exists in `.agents/` only while a reconcile is pending (§5).
 
-## 2. Roles and red lines (D1)
-### Common red lines C1–C10 — every role
-C1 implementing "to pass" (hard-coding, making things merely look right) · C2 editing `AGENTS.md` managed blocks, `policy/` or `roles/` (PM and `update` only) · C3 editing one's own permission file or generated output · C4 reading secrets · C5 bypassing hooks or massaging gate output (`| tail`) · C6 push/PR/merge/release/tag (deploy role only) · C7 reversing a past decision without the user · C8 re-raising a rejected proposal · C9 touching production servers or clusters · C10 changes outside intent and plan (open a new ticket instead)
+## 2. Roles
+### 2-1. What a model assignment means
+Assigning a model to a role group or a role says which vendor's model does that work. It is not a number of agents: whether that model runs once or in parallel is separate. Roles run headless, so each run starts from a fresh context, and every handoff loses detail. The PM therefore lists the files and decisions it hands over in the instruction, and a role marks any assumption beyond what it received.
 
-How each is held (`held`): **blocked** by a script, hook or deny before it happens · **checked** at a transition or by the drift check · **advised** in role and skill text only. The source is `policy/enforcement.yaml` (one line per rule: C1–C10, A1–G2, T1–T6, every role `must_not` item as `<role>#<n>`, budget scopes); the grade is the strongest part that really holds, and `gap` names what is left open. The table is rendered from it; details in [`violations.md`](violations.md).
+### 2-2. Role groups
+All groups except the PM are optional. Work of a group that is not switched on is done by the PM.
 
-<!-- enforcement:begin redlines -->
-| id | held | by | gap |
-|---|---|---|---|
-| C1 | advised | `role` | judged by reviewers only; nothing detects a hard-coded pass |
-| C2 | blocked | `hook:pre-commit`, `check:drift` | only when the hook is installed; the edit itself is not prevented |
-| C3 | blocked | `hook:pre-commit`, `check:drift` | only when the hook is installed; no deny rule covers .claude/settings.json itself |
-| C4 | blocked | `deny`, `hook:pre-commit` | Claude Code only; .env.* is a finite list, so names such as .env.custom have no deny rule; the hook sees staged paths, not reads |
-| C5 | blocked | `deny`, `gate`, `check:verdict` | combined or later-position forms such as git commit -nm are not denied |
-| C6 | advised | `role` | pre-push holds pushes to the default branch (A4) and the deny rules stop force and --no-verify pushes; any other push, PR, merge, release or tag is not blocked |
-| C7 | advised | `role` | — |
-| C8 | advised | `role` | — |
-| C9 | advised | `role` | — |
-| C10 | advised | `role` | T2 lists it but the pre-commit check does not compare the diff with plan.md |
-<!-- enforcement:end -->
-
-### Twelve roles — default bindings are reference values
-| Role | Default | Does | Must never |
-|---|---|---|---|
-| pm | Opus | talks with the user, proposes intent confirmation, first spec approval plus the user summary, sets budgets, project sections of AGENTS, roadmap | edit code · confirm an intent without the user |
-| planner | Opus | questionnaires, refining intent, **spec.md** | edit code · add out-of-scope requirements |
-| pl | Sonnet | **plan.md**, plan→ticket, directs implementers, judges from results | push/PR/release · judge tests · merge own code |
-| implementer (parallel) | Sonnet | implements a ticket, runs gates, commits | files outside the plan · judge own work |
-| lookup | Haiku | finds decisions, code, docs and hands them over | **write any file** |
-| verify-tool | Haiku | runs gates and scenarios, attaches raw output (R46), summarises failures so the PL grasps them (R51) | edit code · report a failure as a pass · claim a run that did not happen |
-| code-review | GPT | checks diff against plan and spec, **proposes** fixes | edit code · decide merges |
-| qa-design | Gemini Pro | designs scenarios, first review of spec, light review of plan | **read code** · implement |
-| qa-run | Gemini Flash | runs scenarios and judges | pass anything ambiguous (always fail, R17) |
-| deploy | Haiku→Sonnet→Opus | push, PR, rc, publish notes | stable release (explicit request only) · production · force push |
-| docs | Sonnet/Haiku | README and public docs (en + .ko), PR and release-note drafts, the polishing slot | edit code · state unverified behaviour as fact |
-| advisor | Fable | root-cause analysis at the end of the chain | widen its authority without the user |
-Role file `harness/roles/<r>.md`: frontmatter `must_not:` (the enforced source) · `may:` (descriptive) · `covered_by:` · body procedure.
-**On and off.** pm, implementer and verify-tool are fixed: always on. Any other role can be turned off (§5). `covered_by:` names who does a switched-off role's work: planner, pl, qa-design, deploy, docs → pm · code-review → pl · qa-run → verify-tool (which never judges its own run: the judgement moves up the chain) · lookup → `caller` (the role that asked looks itself) · advisor → `user` (the end of the chain). The covering role also keeps the off role's `must_not`; a judgement on its own work moves to the next role of the chain (pl → pm → advisor → user).
-
-## 3. Stop conditions and the verifier (D3·D4)
-### Four grades
-**HOLD** needs the user's answer · **STOP** fixable without a person, resumable · **ESCALATE** the failure chain (pl→pm→advisor→user, R18) · **ABORT** revert — a role's action, not a verifier verdict.
-Every stop records ① where ② why (`reason: <ID>`) ③ how to resume (R48). Re-running the same command continues from that point.
-
-### Twenty-four conditions in seven groups (full table in the draft, D3)
-| Group | IDs | kind |
+| Group | Roles | Work |
 |---|---|---|
-| A irreversible | A1 force push · tag deletion (pre-push: HOLD) · main rewrite / A2 stable release / A3 data · production / A4 leaving the machine outside the pre-release loop | intent |
-| B decision | B1 open `asks:` / B2 invariant change without a decision / B3 conflict with intent or spec / B4 roadmap silent or contradictory / B5 external assumption broken, scope changes | intent |
-| P premise | P1 rationale collapsed (fix plan and ticket first) / P2 diff departs from plan with no update (R45) | knowledge |
-| D failure | D1 two rounds in the same unit (ticket before rc.1, rc after) / D2 red check twice / D3 flaky → isolate, continue, report / D4 suspected false pass (gate output that is empty is a WARN, not a STOP) / D5 pass without evidence | knowledge |
-| E cost | E1 80% warning (not a stop) / E2 scope budget 100% STOP / E3 rc or session 100% HOLD — warning only when no value is set | knowledge |
-| F violation | F1 red-line attempt / F2 drift / F3 rejected proposal re-raised | knowledge |
-| G interrupt | G1 chat · Ctrl+C · session end → record resume info / G2 user vetoes the spec summary | intent |
-`kind` is the distinction kept from the spike: **intent** (a person's call, never automated) / **knowledge** (learned away over time). Metric: knowledge stops per item. Counters (D1·D2) reset on a pass.
-Metrics: the stage skills end every role run with one `reins metrics record --role <role> --tokens <n> --intent <id> [--ticket <id>] --vendor <v> --model <m>` call, and record nothing when the vendor gives no token count. Every `reins check` and `reins gate` run appends a `reins/metric@1` line to `.loctx/reports/metrics.jsonl`; token usage is added by the caller with `reins metrics record`. `reins metrics` summarises tokens by role, vendor, ticket and intent, and knowledge stops per ticket.
-Of these, the surveyed repositories had only A, B1, D1 and D2 — everything else is new.
+| **PM** | — | Talks with the user (PO); asks what is essential and decides the rest; writes the intent (direction and plan); records approvals; assigns and reassigns; owns the flow. Every report goes through the PM |
+| **PL** | control | Coordinates and orders sub-tasks, collects and analyses their reports and research → PM. Switched on for parallel work or when the PM's context degrades |
+| | plan-reviewer · code-reviewer · qa-plan-reviewer · doc-reviewer · retrospector | Reviews the plan (against the user's words, the intent and the product boundary), code, QA plan and documents; the retro. Routine review takes one reviewer |
+| | discussion | For large decisions and disagreements, every assigned model gives an opinion without seeing the others; the PM combines them with the originals attached, keeping grounds, counterexamples and minority views |
+| **Planner** | spec-writer · qa-designer | Approved intent → spec and work units / test methods and checklists (may read code) |
+| **Implementer** | code · qa · doc | Code, test code and scripts, documents (both roadmaps, standard documents, `.loctx` documents; the document language is an input). One run may carry code, tests and documents of the same feature |
+| **Executor** | tool-executor · researcher · qa-runner · deployer | Summaries of large tool logs → PL / research (read-only) / test runs / releases (stable only on the user's instruction) |
+| **Advisor** | committee | Several high-capability models. Requirements that are large, complex or abstract; remedies for major problems such as a procedure not followed |
+| **Auditor** | — | An independent group of one. Audits on the harness and engineering practice only (§3-3) |
 
-### How each condition is held
-Same source and columns as the red lines above (`held`: blocked · checked · advised), for the stop conditions and the six transition points. A stop whose `detect:` says `verifier` can still be `advised` here, because `held` records what the code does today, not what the design intends.
+- With several PL models, the first is control. The reviewer is one model (the first that is not control, else the control model); the control model's review counts as independent. Discussion and the committee use every assigned model.
+- A role never calls another model itself. It returns its result with a reason to the PM, and the PM reassigns.
+- Discussion and the committee are called for: a large decision before an intent is settled, the remedy after an audit finds a violation, an incident of the procedure not being followed, an unresolved disagreement. Never for ticket-level review.
 
-<!-- enforcement:begin stops -->
-| id | held | by | gap |
-|---|---|---|---|
-| A1 | blocked | `deny`, `hook:pre-push` | moving a published tag forward to a descendant passes the ancestry test |
-| A2 | advised | `role` | — |
-| A3 | advised | `role` | — |
-| A4 | blocked | `hook:pre-push` | only a push to the default branch is held; other ways of leaving the machine are not detected |
-| B1 | checked | `check:ticket-start` | — |
-| B2 | advised | `role` | — |
-| B3 | advised | `role`, `check:ticket-start` | the scope conflict is a role's judgement; ticket-start checks only the approval chain |
-| B4 | advised | `role` | — |
-| B5 | advised | `role` | — |
-| P1 | advised | `role` | — |
-| P2 | checked | `check:ticket-start`, `check:rc-close` | only ticket-in-plan; a diff is not compared with plan.md |
-| D1 | checked | `check:verdict` | does not tell a ticket before rc.1 from an rc after |
-| D2 | advised | `role` | no memory across runs |
-| D3 | advised | `role` | no alone-versus-full-run comparison |
-| D4 | blocked | `gate`, `check:verdict` | an empty gate output is only a WARN |
-| D5 | checked | `check:verdict` | — |
-| E1 | advised | `role` | nothing reads a budget or a token count |
-| E2 | advised | `role` | nothing reads a budget or a token count |
-| E3 | advised | `role` | T5 lists it but nothing reads a budget or a token count |
-| F1 | advised | `role` | the deny rules stop some attempts in Claude Code, but no stop is recorded |
-| F2 | blocked | `hook:pre-commit`, `check:drift`, `check:ticket-start`, `check:rc-close` | — |
-| F3 | advised | `role` | — |
-| G1 | advised | `role` | no signal handler and no resume record on an interrupt |
-| G2 | advised | `role` | — |
-| T1 | checked | `check:ticket-start` | budget-left is not implemented |
-| T2 | blocked | `hook:pre-commit` | only when the hook is installed; the P2 and C10 diff checks do not exist |
-| T3 | checked | `check:verdict` | — |
-| T4 | blocked | `hook:pre-push` | implements A1 and the default-branch push (A4); A2, A3, C6 and the loop-step check do not exist |
-| T5 | checked | `check:rc-close` | E3 is not implemented |
-| T6 | advised | `role` | no code runs on an interrupt or a violation signal |
-<!-- enforcement:end -->
+### 2-3. Single mode
+There is no standing delegation. The PM carries out the work above as stages. The PM may use subagents of the same model for read-heavy work (research, large log summaries, review, audit) and, when urgent, for parallel implementation of independent features. Connected work such as planning and implementation stays in one run. When the PM's context grows heavy, a new session picks up from the files. For audits and large decisions the user may ask for an outside review in a separate session or on another vendor. Self-review fills a table of spec item ↔ commit ↔ evidence path, also looks for defects, and states that it is not an independent review.
 
-### Budget scopes — the narrower scope wins
-project default (install, `policy/budget`) < version (PM, plan.md) < **user-defined scopes** (shipped: ticket · rc · session · role; `configure budget`). Unit: tokens. Without defaults, measure on first use.
+### 2-4. Role files and what no role does
+Seven files `harness/roles/<group>.md` (pm, pl, planner, implementer, executor, advisor, auditor). The frontmatter gives every role a `does` (one-sentence goal), `must_not` and `tools` (whether it may write, run a shell, push). Models may be inherited per group, but tool permissions are fixed per role (researcher read-only, only the deployer ships). What a role document forbids and what the host actually prevents (the generated agent file's `tools`) are written apart.
 
-### The verifier = `reins check` — six transition points
-T1 before a ticket starts (B1 · dependencies · budget · bindings · **`asks:` against `decisions:` to stop the same question recurring**) · T2 before commit (P2·C10·F2·C4·C5) · T3 at judgement (D1–D5 · evidence) · T4 before leaving the machine (A · C6 · loop stage · **a push to the default branch is A4 HOLD**, except the publish workflow's `release: v…` commits under `GITHUB_ACTIONS=true`) · T5 at rc close (E3 · zero open tickets, planned and stabilisation · history written · plan-agreement S7 · **reports the next rc number from `.loctx/release/<V>.md`, rc.1 when there is none, and stops F2 when that number is already recorded**) · T6 always (G1·F1).
-Stage names for `reins check --stage`: `ticket-start --ticket <id>` (T1) · `pre-commit` (T2, hook) · `verdict --ticket <id>` (T3) · `pre-push` (T4, hook) · `rc-close --release <version> [--stable]` (T5). Checks without their own id (dependencies, plan agreement, history written) report as F2.
-Verdicts CONTINUE / HOLD / STOP / ESCALATE → bus `stop-report` (reason · resume info · one line in the user's language). Exit codes 0/10/20/30.
-Loop tier: fewer roles, same T and conditions. Harness tier: T2·T4·T6 only.
-Who catches which of the 34 (red lines C1–C10, conditions A1–G2), by the code as it stands, and the scenarios that back it: [`violations.md`](violations.md).
+What no role does (the former C1–C10): implement "to pass" · edit AGENTS.md managed blocks, harness sources or generated files by hand (the user changes them with `config` and `update`) · read secrets · bypass hooks or reshape gate output · push, open PRs, merge, release or tag without the user's instruction (the deployer within its set scope) · reverse a past decision without the user · re-propose a rejected proposal · touch production · change anything outside the intent and spec.
 
-## 4. The five files people and agents exchange (D5·D6·D2)
-Common: YAML frontmatter (machine, schema-validated) + Markdown body (people). Body in the user's language, keys and the bus in English. Empty sections read `—`. **Approval = frontmatter `approvals:` plus the `Approved-by:` trailer on the status-changing commit** — no separate ledger.
+## 3. Flow, stopping, audit
+### 3-1. Flow and stage skills
+`ROADMAP.local.md` (ideas) → settled with the user → `ROADMAP.md` → intent → approval → spec → approval → implementation and commits → review → test → merge → **audit** → rc → (stable) → **retro** → cleanup
 
-| File | Where | Sections | Approval |
-|---|---|---|---|
-| **intent.md** | `.agents/intent/<NNN>_<slug>/` | problem · desired outcome · impact · constraints · open questions · **questionnaire record** · **not doing** | user |
-| **spec.md** | same | reading of requirements (`S-n`) · design (invariant conflicts mandatory) · concerns · acceptance criteria · out of scope. Frontmatter `summary_for_user:` 3–5 lines | pm + qa-design first → **user summary veto** (R64) |
-| **plan.md** | same | files that change · **order of work (→ tickets)** · risks · proof · test checklist · **departure log** (R45). `agents:` roles only, `budget:` | qa-design, light |
-| **ticket** | `.loctx/ticket/<intent>-<n>_<slug>.md` | the surveyed repos' seven work sections unchanged (purpose · current code · tasks · decisions · expected · caveats · verification). Frontmatter `release: planned\|stabilization` · `asks:` · `budget:` · `depends:` | — |
-| **bus** | `.loctx/bus/*.{request,response}.yaml` | request: changes · why · tried · not_tried · deadline · revert · errors (raw output) / response: verdict · grounds · fixes · may_proceed · major_issues · evidence · suggested_next | — |
+| Skill | Work | Next |
+|---|---|---|
+| `onboard` | first-conversation onboarding, AGENTS.md reconcile (§5) | `roadmap` |
+| `roadmap` | local ideas → settled with the user → public roadmap | `intent` |
+| `intent` | direction and plan, approval record | `spec` |
+| `spec` | spec, work units, checks, 진행/수정 on the summary, approval record | `implement` |
+| `implement` | work units, tests, commits, self-review table | `review` |
+| `review` | review (multi: one reviewer / single: self-review); Discussion for large decisions | `implement` or `test` |
+| `test` | run the checks, raw logs | `merge` |
+| `merge` | PR → CI → merge (per the user's instruction or setting) | `audit` |
+| `audit` | version audit → `.agents/audit/<version>.md` | `release` |
+| `release` | rc; stable on the user's instruction | `retro` |
+| `retro` | retro, proposals, cleanup | `roadmap` |
 
-State transitions: T1 passes only when intent is `approved` ∧ spec `accepted` ∧ plan `reviewed`. One item in plan §order of work = one ticket. Intent status is `draft` → `approved` → `released`: the deploy role sets `released` once the stable version of the intent is out, and `reins status` then shows the intent as one `released` line with no next action; `superseded` stays as is. Ticket `done` → one line in history → deleted. Bus files are deleted once the response is summarised in history.
+There is no conductor skill. AGENTS.md's default block holds the order and each skill names the next. Every skill has the same six sections: ① when to use ② procedure ③ delegation (the group's model if one is assigned, else do it yourself; read-heavy or urgent parallel work may use same-model subagents; the files and decisions to hand over) ④ files made and their lifetime ⑤ next skill ⑥ when to stop and ask. Skills are plain text and never call reins. Single and multi mode share the skills, so switching modes does not regenerate them.
 
-### Version and rc convention (maintainer)
-A version is a bundle of intents. **rc.1 = everything planned is complete.** rc.N = stabilisation only (bugs, adjustments, small additional intents). An rc is the pre-release stage for human verification. Keep versions small. Ticket `release:` says planned or stabilisation.
+### 3-2. When to stop and ask
+With no verifier, stop conditions are plain rules the agent keeps and the audit judges (from the former `stops.yaml`, keeping only those that apply during work). They are written in AGENTS.md's default block and in each skill's ⑥.
+- **Ask the user and stop**: an irreversible action (force push, deleting a tag, rewriting the default branch, data or production changes), a stable release, anything that leaves the machine (push, PR, release; unless set up or instructed), scope moving outside the intent and spec, a conflict with a past decision, a next step that needs an approval not yet given.
+- **Stop and find the cause**: two failures in the same work unit (PL or Advisor opinions by severity, else options for the user), empty or doubtful gate output, a pass without evidence.
+- **User interrupt**: on chat, Ctrl+C or session end, stop and write the resume point in history.
 
-**PR flow.** Work reaches the default branch only through a `type/topic` branch → PR → green CI → merge. The deploy role pushes the branch and opens the PR (body drafted by docs), waits with `gh pr checks --watch`, and merges with `gh pr merge --rebase --delete-branch` only when every required check is green; a red check is not merged but returned to the PL (D2). The PL and implementers never merge. T4 enforces this by holding a direct push to the default branch (`master`/`main`, A4); branch protection (PR required, check `ci`) is a repository setting the user turns on.
+### 3-3. Audit
+- **When**: after the merge, before the rc (so the merge is audited). The release itself is looked at in the retro.
+- **Reads**: AGENTS.md and the harness settings as they were, the intent, spec, `ROADMAP.md` and `ROADMAP.local.md`, git history, history, gate and test logs. It receives minimal context and never the working conversation.
+- **Judges**: whether §3-1's flow was followed, against the rules and approved exceptions in force at each action. A generated or harness file changed during the version by a commit that is not an `update` or `config` commit is a violation (drift). No evidence path means "cannot confirm", never a pass.
+- **Skipped steps**: a step or approval the user told the agent to skip passes when it was recorded in the intent's `waivers:` at the time. It applies once.
+- **Violations**: fixed, or accepted by the user. Either way the audit and the retro criticise them precisely and, by severity, give a remedy with PL or Advisor opinions.
+- **Record**: `.agents/audit/<version>.md` (committed). The version's closing report states the audit status.
+- **Mandatory**: `audit.required: true` in `bindings.yaml` by default; only the user switches it off, through `config`. In single mode the user chooses the audit's session and model (recommended: a new run on another vendor, or a new run on the same vendor's top model).
+- Passing a procedural audit does not vouch for direction or code quality; direction is for the plan-reviewer and the user.
 
-**Release settings.** How a repository releases is set in `.agents/harness/install.yaml` under `release:` (optional; `reins/install@1` is unchanged, the key is only added): `workflows:` is a list of `{file, inputs, stages: [rc, stable], approval: npm-staged|none}` (`stages` defaults to both; `{version}` inside an input value becomes the dispatched version). Without `release:` the deploy role stops after the merge and reports "no release settings". `reins install` and `reins update` keep `release:` and every key they do not know when they rewrite the file. When `install.yaml` has no `release:` key, `install` and `migrate` (and their dry runs) scan `.github/workflows/*.yml|yaml` for an `on: workflow_dispatch` trigger (string, list or map form) and print one draft per workflow in the notes: `{file, inputs, approval: none}`, with an input named `version` mapped to `"{version}"`, `tag` to `"v{version}"`, a boolean to `"false"` and any other to `"<fill in>"`. It is a proposal only; reins never writes it, the maintainer decides. **Release documents.** `release:` may also list `docs: [{file, check}]` (optional, no default, additive): `roadmap-row` (a table row whose first cell is `<V>` and whose state cell is not `planned`/`계획`), `changelog-section` (an `## [Unreleased] — <V>` or `## [<V>]` heading for an rc; `## [<V>]` for stable) and `mentions-version` (`<V>` appears in the file as a token of its own, e.g. the README status line). Before T5 the docs role updates these files on the release branch so the change ships in the release PR (rc and stable); T5 then emits one F2 WARN per file that still describes the previous state (`docs: <file> still describes the previous state (<check>)`), never a STOP, and nothing is checked without `release.docs`. This repository lists `docs/ROADMAP.md` and `docs/ROADMAP.ko.md` (roadmap-row), `CHANGELOG.md` (changelog-section), `README.md` and `docs/README.ko.md` (mentions-version). reins' own flow is the value `workflows: [{file: publish.yml, inputs: {version: "{version}", dry_run: "false"}, approval: npm-staged}]`. In this repository `publish.yml` checks out with the `PUBLISH_DEPLOY_KEY` secret when it is set, so its release commit and tag pass a default-branch ruleset whose only bypass is deploy keys; without the secret it falls back to the workflow token.
+### 3-4. Approvals and retro
+- **Approvals**: the PM quotes the user and writes `{ role: user, by, at, words, rev }` into the intent's or spec's `approvals:` and commits it; `rev` is the revision approved. The user may do it directly. A spec summary waits for 진행 or 수정 every time (no auto-accept).
+- **Retro**: after stable (for a version without stable, when the user declares it closed). The retrospector (or the PM) reads the audit and the release and proposes changes to AGENTS.md, skills and the harness, including whether the groups switched on paid for themselves. Only what the user accepts is applied: project sections and knowledge by the PM, harness sources by the user through `config` and `update`. The cleanup (§4-2) follows.
 
-**rc and stable.** The deploy role's scope is the PR, the merge into the repository's default branch, and the configured workflow dispatch. When T5 passes for a version `<V>`, it also prints one `dispatch: gh workflow run <file> -f k=v …` line per workflow whose `stages` include rc (also in `--json`), built from `release:` with the number T5 reported, and the deploy role runs that line as printed; if the dispatch is refused for permissions it does not look for another way but hands the line to the user. It then appends one line (`- rc.<N> <commit> <stage id> <date>`) to `.loctx/release/<V>.md` (a local, git-ignored ledger). Fixes after an rc are tickets with `release: stabilization`; when all are closed, T5 passes again and the next rc is cut. A stable `<V>` is cut only on the user's instruction (A2): `reins check --stage rc-close --release <V> --stable` runs the same checks but prints the stable lines (`dispatch (stable — user's instruction only, A2): gh workflow run …`, also in `--json`) instead of the next rc, and warns `no rc recorded for <V>` when the ledger has none; without `--stable` T5 adds only the line `stable: rerun with --stable on the user's instruction`, so an agent cutting an rc never sees a stable line to run. Behaviour specific to `approval: npm-staged` applies only to workflows with that value: finding the run by its run-name, recording the "staged with id" line in the ledger, the user's approval of the staged version on npm (an rc is staged too and is public only after that approval), and the stable condition that a `v<V>-rc.*` tag sits exactly on the default branch's HEAD (the rc's own release commit; nothing may land between the last rc and stable).
+## 4. Files
+### 4-1. Formats
+YAML frontmatter + Markdown body. The body is in the user's language, keys in English. An empty section is `—`.
 
-### Stage skills
-Ten skills, one per workflow stage; `reins-loop` is the conductor that calls the stage skills in order and holds only the common rules (verdict codes, metrics, interruption record). Each stage skill is a thin entry point: its first step is its own check, it follows the verdict (CONTINUE · HOLD · STOP · ESCALATE) and stops on HOLD or STOP, and called alone it still completes its stage. Judgement stays with the roles and enforcement with the scripts; a skill adds no verdict logic of its own. Stages without a `--stage` check (roadmap, intent, spec, test, retro, and review without a ticket) start with `reins check --drift` and `reins status`; a missing earlier artefact is a HOLD that asks the user.
+| File | Location | Sections |
+|---|---|---|
+| **intent.md** | `.agents/intent/<NNN>_<slug>/` | problem · desired result · **plan** (order of work) · scope · constraints · open questions · questionnaire record · decided by agents · not doing. Frontmatter `status: draft\|approved\|released\|superseded`, `approvals`, `waivers: [{step, words, at, scope: once}]` |
+| **spec.md** | same | interpretation (`S-n`, with grounds) · design · **work units** (`W-n`, checkboxes, finishing commit) · **checks** (`V-n`) · concerns · out of scope. Frontmatter `status: draft\|accepted`, `approvals`, `summary_for_user` |
+| **audit** | `.agents/audit/<version>.md` | range (commits) · what was read · verdict per stage (kept, violated, cannot confirm, skipped on the user's instruction; evidence paths) · criticism · remedy · the user's decision |
+| **history** | `.loctx/history/<version>.md` | one page per version: decisions (`decisions:` line), verdicts, skipped steps, audit and retro summary, a summary of deleted logs (commits, check commands and results, exceptions) |
 
-| Skill | Role | First check | Output | Next |
-|---|---|---|---|---|
-| `reins-roadmap` | pm | status + drift | `docs/ROADMAP.md` (both editions), target version | `reins-intent` |
-| `reins-intent` | pm | drift | approved `intent.md` | `reins-spec` |
-| `reins-spec` | planner → pm, qa-design → pl | drift, intent approved | accepted `spec.md`, `plan.md`, tickets | `reins-implement` |
-| `reins-implement` | implementer | **T1** | commits (hook **T2**) | `reins-review` |
-| `reins-review` | verify-tool → code-review; pl decides | drift; with a ticket, verify exchange then **T3** | bus responses, ticket close | `reins-implement` or `reins-test` |
-| `reins-test` | qa-design → qa-run, verify-tool | status + drift; no open ticket for the version | e2e scenarios, results, build | `reins-release` |
-| `reins-release` | deploy | **T5** (hook **T4** on push) | PR, CI, merge, rc | `reins-retro` |
-| `reins-retro` | pm | status | retrospective summary | `reins-roadmap` or the next intent |
+There is no plan.md, ticket file or bus file. Commit messages name spec items (`S-n`/`W-n`) to tie the plan to the commits.
 
-`reins-review` without a ticket (a range the user edited) runs drift only and leaves a review-only bus pair; it neither calls T3 nor closes a ticket. The diff handed to a reviewer excludes only the installed copies (`.agents/harness`, `.agents/skills`, `.agents/SKILLS.md`, `.claude`) and appends their `git diff --stat`; installed copies are always allowed to change.
+### 4-2. Lifetimes
+| File | Created by | Deleted by, when |
+|---|---|---|
+| intent, spec, audit, knowledge | PM, Planner, Auditor | never (committed) |
+| `.loctx/history/<version>.md` | PM | never (local know-how) |
+| `.loctx/reports/<version>/` (raw gate and test logs, sub-reports) | the role that ran the stage | the PM after the retro, after summarising them in history and the audit record |
+| `.agents/AGENTS.previous.md` | install, migrate, config | the PM when the reconcile is done |
+| `.loctx/context/`, `ROADMAP.local.md` | user, PM | the user |
 
-## 5. The boundary between the project's files and the tool's (D7·D8·D9)
-### `AGENTS.md` managed blocks
-`<!-- reins:begin <block> v=X -->`…`<!-- reins:end <block> -->`, four of them: notice · workflow · skills · language. Outside is the project's. Hand edits → F2; to change one, `reins:override`. **Read markers** `<!-- reins:read invariants|secrets|gates -->` let the verifier read project-owned sections. Hook files get one line, `npx @bluenyang/reins check --stage …`, also inside markers. Nested AGENTS.md: only the installed directory.
-**Two update paths**: the script `reins update` (managed blocks, upstream files, generated output; idempotent) and the skill `reins-update` (the PM proposes → user approves → applies changes that project sections need). The change notes say when the skill is needed.
+install and update never write history. Each skill's ④ follows this table.
+
+## 5. Project versus tool
+### `AGENTS.md`
+Managed blocks `<!-- reins:begin <block> -->`…`<!-- reins:end <block> -->`: ① folder layout ② settings (`.agents/harness/bindings.yaml`; with `audit.required: true` an audit is mandatory every version and only the user switches it off) ③ flow and skill order ④ delegation table (models of the roles switched on; for another vendor's model, that CLI's command line, e.g. `codex exec -m <model> -s read-only`) ⑤ rules for recording approvals and skips ⑥ when to stop and ask (§3-2). Outside the blocks belongs to the project. The blocks state the flow firmly so agents follow it without blocking.
+
+**Onboarding marker.** install and migrate put `<!-- reins:onboarding pending -->` and a to-do list (goals and scope, stack and commands, existing rules and conventions, red lines, document language; choosing a hook tool when none exists) above the project sections. **Reconcile marker.** On a migrate conflict or a mode switch, `<!-- reins:reconcile pending -->` is added and the previous body moves to `.agents/AGENTS.previous.md` (reference material, not instructions), with the resume point of any work in progress. In the next first conversation the PM handles it with the `onboard` skill and sets the marker to `done`.
 
 ### `gates.yaml`
-`gates.<name>.cmd` (**one** command; no pipes or `&&`) · `order` · `optional+needs` (marked manual when unmet) · `mutating_forbidden: true` · `evidence: raw` · `secrets:`. The PM's discovery procedure: read (package.json, Makefile, hooks, CI) → classify (drop mutating commands) → prefer what hooks and CI already call → user confirmation (report in auto mode) → `--dry-run`. **Subdirectories** (monorepos): discovery also reports *proposals* from `package.json`, `Makefile` and `go.mod` up to depth 3 (skipping node_modules, .git, dist, build, vendor, .loctx, .agents), each one command using the tool's own directory option (`pnpm --dir d s`, `make -C d t`, `go -C d test ./...`; runner from the directory's lock file, else the root's), named `<dir-slug>-<script>`, run from the repo root. Manual install lists them and records only the chosen names; auto records root gates and reports proposals in the notes; `reins configure gates [--add <name>…]` lists the ones not yet declared and appends chosen ones after the existing entries, keeping comments. The loop reads gates.yaml only.
+`gates.<name>.cmd` (one command) · `order` · `optional`. Discovery and subdirectory proposals are as in v1.0. Hooks and the `test` skill call these commands as they are.
 
-### `bindings`
-`roles.<r>: {vendor, model, fallback, parallel, enabled}` · `vendors.<v>: {cli, available}` · `escalation` · `limits` (per-role caps). **Two layers.** The committed `bindings.yaml` holds the team defaults; it no longer records `detected` (an old `detected:` key is accepted and ignored; `reins update` moves it, and its timestamp, into the local file — a vendor entry already there is kept — and removes just those keys from `bindings.yaml`, leaving comments and every other key as written; `--dry-run` only lists the move). The git-ignored `.loctx/bindings.local.yaml` (`reins/bindings-local@1`) holds `vendors.<v>: {detected, at}` — written only when install or `configure bindings` runs detection — and per-user `roles.<r>: {model, enabled}` overrides (at least one of the two; `configure bindings --local --set role=model` and `--local --enable|--disable` write `roles` only). **On and off (additive).** `roles.<r>.enabled: false` in either file switches a role off; the binding entry stays, so the model choice survives. A role is on when it is fixed (pm, implementer, verify-tool; an `enabled: false` on one is ignored with a warning) and otherwise by `local enabled ?? team enabled ?? true` — as with the model, the local value wins both ways. `reins configure bindings --disable <role…>|--enable <role…> [--local]` writes it (a local key equal to the team value is removed; a fixed or unknown role is refused, nothing written). **Resolver, per role:** local override → team binding (if its vendor is detected; claude is the floor) → the role file's `fallback_binding` (if its vendor is detected) → the pm model; the result is `{role, vendor, model, source: local|team|fallback|pm, enabled, covered_by?}` (the model is resolved for a switched-off role too, so it is there when the role is switched on again). A vendor missing from the local file is detected live and not written back. `reins status` (`bindings` in `--json`) and `configure bindings --show` print the resolved table, a switched-off role as `off → <covered_by>` and a role on only through the local file as `on (local)` → all twelve roles on Claude alone. manual (pick vendors → default layout → adjust) / auto (detect → apply). `configure bindings` = file plus regenerated output. Model IDs are checked once against the CLI at binding time (`unverified` allowed).
+### `bindings.yaml` (version 2)
+```yaml
+schema: reins/bindings@2
+mode: single            # single | multi
+audit: { required: true }
+default: { vendor: claude, model: claude-opus-5-5 }    # the PM
+tools: { claude: { cli: claude, use: true }, openai: { cli: codex, use: true } }
+groups:                 # a group not listed is off (done by the PM)
+  pl:
+    models: [ { vendor: claude, model: claude-sonnet-5-5 }, { vendor: openai, model: gpt-6.1-terra } ]
+    roles: { doc-reviewer: { vendor: claude, model: claude-sonnet-5-5 } }
+  implementer: { vendor: claude, model: claude-sonnet-5-5 }
+  auditor: { vendor: openai, model: gpt-6.1-sol }
+```
+Inheritance: role > group > off. vendor and model are inherited as one pair. `models` is for pl and advisor only. No key needs interpreting at run time (`escalation`, `limits`, `parallel`, `fallback` are gone). `config` resolves inheritance when it writes and puts the result into the generated files and the delegation table. The local override `.loctx/bindings.local.yaml` (same shape, wins per key) differs per person, so it never reaches generated files; the delegation table says "follow the local settings if present".
 
-## 6. Generation and drift (D10)
-Source → output: `skills/` → `.claude/skills/` **copied** (Codex, Gemini and Cursor read `.agents/skills/` directly) · `roles/` + bindings → `.claude/agents/<r>.md`, `.codex/agents/<r>.toml` + `config.toml` · `policy/` permissions → `.claude/settings.json` (plus SKILL `allowed-tools`), hooks → `settings.json#hooks` (T2·T4·T6). Permissions are generated as the **inverse of the red lines**. Header "generated — do not edit". Round one verifies Claude output only. Generated agent files are built from the committed team defaults only (never from the local file), so one user's override makes no drift for anyone else; a role the team switched off (fixed roles excepted) gets no agent file, and one generated earlier is deleted by `configure` and `update` (by `generated.yaml`); a role the team switched off but a user switched on locally has no agent file, so the loop skill calls it on its resolved model (on Claude, a general subagent given the role file's body); a role whose team vendor is not Claude also gets a Claude agent file, on its `fallback_binding` (else the pm model), headed "fallback for <vendor>" — a user without that vendor runs the role from it. The loop skills take the model a role runs on from `reins status --json` (`bindings`).
-Drift `reins check --drift`, three layers: **format** (`skills-ref validate`) · **match** (regenerate, diff = 0; skill copies byte-identical) · **convention** (schemas · tier · permissions ≤ red lines · managed blocks · override versions · approvals ↔ trailers · no prose in the bus · `.loctx` gitignored). The match layer compares only the files the tier installs; an upstream file the tier no longer installs (e.g. `CHANGELOG.md`) is a WARN pointing to `reins update`, not an F2 STOP. `reins update` deletes such files under `.agents/harness/` (in upstream, outside the tier, not project-owned — `bindings.yaml`, `gates.yaml`, `install.yaml`, `generated.yaml` and files upstream does not ship stay) and lists them; `--dry-run` only lists. Failure = F2. Hooks and CI call the same script.
+## 6. Generation and drift
+Sources → generated files: `harness/roles/` + bindings → `.claude/agents/rs-<group>-<role>.md` (Claude roles switched on in multi mode only; model and `tools` written in) · `skills/` → `.agents/skills/` (copied to `.claude/skills/` for Claude) · templates → AGENTS.md managed blocks. Generated files start with "generated — do not edit". A role assigned to another vendor's model gets a command line in the delegation table instead of an agent file. Single mode has no agent files. install stops rather than overwrite a same-named file not listed in `generated.yaml`.
 
-## 7. Generation detection and migrate (D11)
-Signals (first match in order): none / 1st gen (`.ai/` only) / 2nd (AGENTS only) / 3rd (`.claude/commands/`) / 4th (10+ skills and `work-cicd-to|go-flow`) / reins (markers).
-Mapping: history → `.loctx/history/` as is · open plans → intent folders as `draft` · open work → tickets (frontmatter converted) · ROADMAP.local as is, pub → `docs/ROADMAP.md` · release and pr as is · test reports → reports, **tool files listed only** (possible secrets) · verify/benchmark/artifacts listed only · conversation etc. → context · `<repo>-workflow` and commands **dropped** (project-specific procedures go on a keep list) · `.claude/memory` stays in place; each file gets a draft in `.loctx/knowledge-proposals/memory-<name>.md` (accept with `reins knowledge accept`) · AGENTS sections kept, only Workflow·Skills·Language replaced (original preserved) · 1st gen = install + `_legacy/`.
-Open work items are numbered `000-1…000-N` once per run, in path order, and written as `.loctx/ticket/000-<n>_<slug>.md` (original id as `migrated_id`, source path as `migrated_from`); `depends` is remapped only when exactly one open item in the same subfolder and version carries that id, a finished dependency is dropped, anything else is dropped and written to `asks:`. A ticket whose `migrated_from` already exists is never made again. A run that made tickets writes `.agents/intent/000_migrated/intent.md` as a `draft` listing them (version from `package.json`, else `0.0.0`) when no intent 000 exists; T1 then holds on "intent 000 is a draft" and `status` says "user: approve the intent". Legacy files go to `.loctx/_legacy/` (`--legacy local`, default) or `.agents/legacy/` (`--legacy committed`); files matching a secret pattern stay in `.loctx/_legacy/` either way and the report lists them, with "review before committing" for the rest.
-`migrate --dry-run` (and `install --dry-run`) plans the install step too and writes nothing: the notes list the subdirectory gate proposals install would offer (name and command) and the memory drafts it would write (paths).
-Idempotent. One history page per run. **First target: this repository.**
+**Hooks.** install detects the project's hook tool (lefthook config, `.husky/`, pre-commit config), proposes lines that call `gates.yaml` commands as they are, and adds them when the user confirms (auto mode asks too; non-interactive only with `--hooks`). The lines call project commands only. Without a hook tool, it becomes an onboarding to-do.
 
-## 8. knowledge (D12)
-`.agents/knowledge/<date>_<slug>.md`: frontmatter `kind: decision|failure` · `status` · `supersedes` · `topics` · `decisions` · `symptoms` · `applies_to` · `source` · `approved`. A failure entry adds `symptom · cause · fix · check · verified`. Body in four sections — **decision · reason · applies (including when it does not) · revisit when** — never "how I did it".
-Promotion: the same reason or decision **twice** (or `verified ≥ 2`) → PM proposes → user approves (summary plus veto) → commit → promote candidate if general. A changed decision is a new entry plus `superseded`. Per-stack failure **seeds** ship in `harness/knowledge-seeds/` as `source: preset`.
-Counting (`reins retro`, a script — it counts, the PM writes the sentences): a **key** is `stop:<id>` (stop reasons in `metrics.jsonl`), `reason:<slug>` (the optional `reasons: a, b` line of a history page, placed right after `decisions:`) or `decision:<slug>` (its `decisions:` line). A key seen in **two or more different tickets or history pages** is a candidate (repeats inside one ticket count once; a page with no ticket counts as one); keys already in the `decisions` or `symptoms` of a `status: active` knowledge entry (bare slug; a stop is its id) are left out, superseded entries do not hide them. `reins retro [--release <v>] [--json]` also shows stops per id, failed rounds (HOLD and STOP verdicts) and tokens per role, narrowed to the intents whose `version` is `v`; `reins status` shows the same candidate count. `reins knowledge propose <key|slug> [--from <history>…]` writes a draft from the template to `.loctx/knowledge-proposals/<slug>.md` (no `approved`); only `reins knowledge accept <slug>`, which the retro skill calls after the user answers, moves it to `.agents/knowledge/<date>_<slug>.md` with `approved: {by: user, at: <date>}`. A candidate the PM judges not to be a lesson is recorded with `reins knowledge dismiss <key> --reason <text>` (a line in `.loctx/knowledge-proposals/dismissed.jsonl` with the unit count at that time); retro and status leave it out until it appears in more units than that. A knowledge entry without `approved` (other than `source: preset`) is an F2 STOP in `reins check`.
-Search `reins recall`: grep on the three axes `decisions · topics · symptoms` → the most recent N → vector search as an optional slot.
+**Drift** is a generated file out of step with its source (edited by hand, or not regenerated). ① The audit uses git history to tell whether a commit that changed a generated or harness file during the version was an `update` or `config` commit. ② `update` compares `generated.yaml` hashes with the files, shows hand-edited files and asks before overwriting (non-interactive: lists them, does not overwrite, exits 1; `--force` overwrites). Hooks and CI do not check drift.
 
-## 9. CLI and plugin (D13·D14)
-`npx @bluenyang/reins` — `install <tier> [--mode manual|auto]` · `migrate <tier> [--legacy local|committed]` · `update [--yes]` · `config` (no arguments: on a terminal — stdin and stdout both TTY — the settings screen: a main screen with `models and roles configuration` and `exit`, built on `@clack/prompts` behind an injectable `Prompter`, loaded only when a screen is drawn, Ctrl-C = exit without writing. The models and roles screen lists `< Configuration`, `exit`, the write scope (`local`, the default: `.loctx/bindings.local.yaml`; or `global`: the committed `bindings.yaml`), a roles on/off choice (the fixed roles are shown as always on and not offered) and one line per role — `[ON|OFF] role vendor model (source)`, `(local)` marking a value of the user's own. Choosing a role opens the role screen: only detected vendors (claude always), then models — google and cursor from `agy models` / `cursor-agent models` (10 s; on failure a one-line reason and the known list), claude and openai from the known list (role files' default and fallback bindings, confirmed models, current bindings) — each list ending with `other` (typed model ID). A choice is written at once to the scope through `configure bindings` (global also regenerates the vendor files) and the screen is redrawn. Without a terminal it prints the resolved bindings table — `configure bindings --show` — and a one-line hint naming the `configure …` flag commands, exit 0; `--json` prints `{bindings}`; the same role on/off a screen offers is the flag form `configure bindings --disable|--enable`, which needs no terminal and asks nothing — agents and CI use it) · `configure bindings [--set r=m…] [--vendors …] [--disable <role…>|--enable <role…>] [--local] [--show]|budget|gates [--add <name>…]|language` · `check [--stage] [--drift]` · `gate [<name>…] [--ticket] [--respond]` (runs gates.yaml as declared and keeps the raw output as `$ cmd` … `exit N` in `.loctx/reports/` — the evidence T3 reads; with `--ticket <id> --respond` it also writes the bus response `<id>_<nn>.response.yaml` for the newest `kind: verify` request that has none — verdict pass only when every gate ran and exited 0, `evidence:` the report paths, `may_proceed` — prints one pass/fail line per gate plus a failing gate's signature and file:line, never the raw output, and exits 1 without writing when no verify request is open; verify-tool is therefore `gate --respond` plus `check --stage verdict`) · `new intent <slug> [--version] [--origin]` · `new ticket <intent> <step> <slug> [--title] [--depends] [--release] [--role]` · `new request <ticket> <kind> [--from] [--to]` (create the file from the harness template — the next free number; a ticket first takes the plan's reserved `tickets:` ids that nothing uses yet, the output validated against its schema first, an existing file is never overwritten, exit 1 on refusal, the path on stdout; no prompts) · `metrics [--intent]` (summarises `.loctx/reports/metrics.jsonl`: tokens by role · vendor · ticket · intent, knowledge stops per ticket) with `metrics record --role --tokens [--ticket|--intent]` (the caller reports tokens a role run used; reins calls no model) · `retro [--release <v>]` (stop ids · review reasons · decisions · failed rounds · tokens, repeated keys as knowledge candidates; counts only) · `knowledge propose <key> [--from <history>…]` / `knowledge accept <draft>` (draft to `.loctx/knowledge-proposals/`; accept writes `.agents/knowledge/` with `approved`) / `knowledge dismiss <key> --reason <text>` (a candidate judged not to be a lesson) · `recall` · `status` (also the candidate count) · `doctor`. All take `--dry-run` and `--json`. TypeScript, Node ≥ 22; nothing that ships needs Python (R65 — development and test tooling may use it). **The CLI never calls a model** — agent work belongs to skills (`reins-setup` and friends).
-Install refuses over a 3rd/4th-generation harness and **points to `migrate`**. Over 1st/2nd generation it installs but leaves the old `.ai/` untouched and points to migrate. The version pin and settings live in `.agents/harness/install.yaml` (tier · version · cli · mode · language, and the optional `release` — see §4 "Release settings"; the file is validated by `harness/schemas/install.schema.json` and unknown keys are kept): `version` is the harness version, `cli` the package version that wrote the install, and the stage skills run `npx @bluenyang/reins@<cli>`.
-Install questions (manual): vendors · binding adjustments · gate confirmation · secret patterns · hooks **proposal only** · public repository? · document language · budget (optional). Auto detects, defaults and reports. On a terminal (stdin and stdout TTY) with `--mode manual` and without `--json`, four of them are screens: vendors as a multiselect of claude, openai, google and cursor (detected ones pre-selected, claude fixed), language as a select of `ko`, `en` and `other` (then a typed code), the gate confirmation as a confirm that lists the found gates, and subdirectory gates as a multiselect of the proposals; leaving a screen (Ctrl-C) writes nothing. Without a terminal the same questions are asked as one line each with the same strings and parsing as before, so piped answers keep working; auto mode never asks. `update` on a terminal, without `--yes`, `--dry-run` or `--json`, first makes a dry run, prints the plan (`+`/`~`/`-` files, the bindings move, overridden blocks, changelog entries) and asks `Apply this update?`; no writes nothing and exits 0. With `--yes`, without a terminal or with `--json` it runs at once as before; when nothing would change it says `already up to date` and asks nothing.
-The repository = Claude Code plugin + marketplace + npm package. The repository root is both: `.claude-plugin/plugin.json` (name `reins`; `version` equals package.json; userConfig `language` default `ko` and `default_mode` default `manual`; no `skills`, hooks, agents, MCP or dependencies) and `.claude-plugin/marketplace.json` (marketplace `bluenyang`; one entry whose `skills` is `["./skills/reins-setup"]`, so the plugin exposes only `/reins:reins-setup` — the other nine skills live in the project copy that `reins install` writes for the loop and graph tiers, never twice). `skills/reins-setup/SKILL.md` pins the CLI as `npx @bluenyang/reins@<version>`; `cli/src/scripts/sync-version.ts` (run by the `version` lifecycle script) rewrites plugin.json and that pin from package.json, and a test checks that all three agree. Elsewhere: `skills/` · `agents/` (generated) · `harness/` (the source of sources, plus templates, knowledge-seeds, VERSION) · `cli/` · `codex/ gemini/ cursor/` (unverified in round one) · `hooks/` · `docs/ test/ .agents/ .loctx/`. No `bin/` at the plugin root. The npm package does not ship `.claude-plugin` (the marketplace is fetched through git). Optional dependencies (humanize-korean, diagram-design) are detected and recommended only.
+## 7. Generations, migrate, moving from 0.x
+Generation signals and the `.ai/` mapping are as in v1.0, except that open work moves into intent 000's plan list instead of ticket files. An AGENTS.md conflict is handled by the reconcile in §5.
 
-## 10. `spike/` (D15)
-Ten ideas kept (must_not frontmatter · intent/knowledge stop kinds · failure catalog with verified · seeds · suggested_next · metrics.jsonl · counter reset, and so on — folded into §3, §4 and §8). All code and structure dropped (Python, the state.json state machine, dispatch, the eight stages, gate presets, TOML, Markdown handoffs). **The directory is deleted when implementation starts**, referenced by hash `9ebb597` — confirmed by the maintainer.
+**0.1.x and 0.2.0 → 0.3** (detected by `update`, idempotent): delete the `reins-*` skills and install the new ones · remove the `reins:begin hooks` blocks from hook files (keeping the user's lines) and make §6's hook proposal · remove reins hook entries from `.claude/settings.json` (keeping the user's entries) · delete `.claude/agents/reins-*.md` · bindings version 1 → 2 (roles → groups: pm→pm, planner and pl→pl/planner, implementer→implementer, code-review→pl.code-reviewer, verify-tool, qa-run, deploy, lookup→executor, qa-design→planner.qa-designer, docs→implementer.doc, advisor→advisor; confirmed by the user) · remove `tier` from `install.yaml` · reconcile AGENTS.md · list bus, ticket, dispatch, hook-state, journal, reports and metrics under `.loctx` and delete them after confirmation (history, context and ROADMAP.local stay). A run stopped half-way continues when run again.
 
-## 11. Implementation order for round one (proposal)
-1. `cli/` skeleton plus `check` (verifier T2·T4 and drift format·match) — first, hooked into this repository.
-2. `harness/` sources: 12 roles · policy (C1–C10, A–G) · schemas (5 files) · templates.
-3. `install graph --mode manual` → self-install into this repository → `.agents/` and `.loctx/` created (S5).
-4. `migrate` — this repository's `.ai/` to layout v4 (S1).
-5. Generator (Claude) + `update` + `configure bindings`.
-6. Skill entry points (`reins-setup` and the nine loop-tier stage skills) → run the first intent **through the tool's own loop** (R66).
-7. Measure cost with metrics.jsonl → carve down to the loop and harness tiers (round two).
+## 8. Knowledge
+The format of `.agents/knowledge/<date>_<slug>.md` (decision · why · applies to · if it changes) is as in v1.0. Promotion happens in the retro: the retrospector or the PM finds decisions and failures repeated in history and audits and proposes them; when the user accepts, the PM writes the entry (`approved: {by, at, words}`). Lookup is `grep -l 'decisions:.*<keyword>' .loctx/history/* .agents/knowledge/*`. No CLI counts.
 
-## Appendix — defaults chosen by the author (confirmed together with the design on 2026-10-25)
-Approval recording · generation table · three drift layers · generation signals · migrate mapping · knowledge format and promotion threshold · CLI surface and exit codes · install question table · plugin tree · spike disposal · implementation order.
+## 9. CLI and plugin
+`npx @bluenyang/reins` — four commands, all with `--dry-run` and `--json`. TypeScript, Node ≥ 22, nothing shipped needs Python (R65). The CLI never calls a model.
+- `install [--mode manual|auto] [--hooks]`: place the harness, detect tools, confirm gates, propose hooks, add the onboarding marker. Default mode single. Refuses on 3rd- and 4th-generation harnesses and points to `migrate`.
+- `migrate [--legacy local|committed]`: detect the generation, move it, add the reconcile marker.
+- `update [--yes] [--force]`: sources → generated files, confirm hand edits, move 0.x installs.
+- `config`: on a TTY a screen — `models and roles` (simple or detailed assignment, models per group and per role, groups on and off with when to switch one on: the PM's context degrading, independent work in parallel, review or audit on another model) · `agent tools` (re-detect claude, codex, agy, gemini, copilot, cursor agent and choose which to use) · `mode` (single/multi; switching adds the reconcile marker) · `audit` (switching the requirement off asks once more). Scope local or global; writing global regenerates the generated files. Without a TTY, flags (`config bindings --set …`, `config gates --add …` and so on; today's `configure` flags are accepted as they are).
+- Fetching reins with npx at installation time is fine. Generated files may tell a person how to change settings ("run `npx @bluenyang/reins config` in a terminal"), but no sentence tells an agent to run reins.
+- The repository is an npm package and a Claude Code plugin. The plugin carries only installation guidance (it shows the user `npx @bluenyang/reins install`).
+
+## 10. What changed from v1.0
+| v1.0 / 0.1–0.2.0 | v2.0 | Why |
+|---|---|---|
+| Verifier `reins check` T1–T6; hooks run `npx @bluenyang/reins check` | none; checks are the project's hooks and scripts, compliance is the audit | applied repositories depended on reins while working (offline, supply chain). User 2026-11-07 |
+| `gate`, `new`, `status`, `metrics`, `retro`, `knowledge`, `recall`, `doctor` | none | same |
+| three tiers harness/loop/graph | none; single/multi and groups switched on | user 2026-11-09 |
+| 12 roles, fixed roles, `covered_by`, escalation chain | 7 groups (all but the PM optional), the PM covers groups that are off, PM as hub | user 2026-11-08 |
+| plan.md, tickets, bus, metrics.jsonl | plan inside the intent, work units and checks inside the spec, sub-reports under reports | same; file lifetimes |
+| approval = `approvals` + `Approved-by:` trailer | the user's words quoted `{by, at, words, rev}` | user 2026-11-09 |
+| stop grades (HOLD, STOP, ESCALATE), ids A1–G2, enforcement table | plain stop rules (§3-2), audit criteria | no verifier |
+| qa-design does not read code (R53) | may read code | user 2026-11-09 |
+| drift checked by hooks and CI | audit + update confirmation | user 2026-11-09 |
+| ten `reins-*` stage skills + conductor | eleven skills without a prefix, no conductor | user 2026-11-09 |

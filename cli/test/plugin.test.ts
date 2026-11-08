@@ -115,16 +115,4 @@ describe('publish summary and design paths (C-9)', () => {
     expect(y).toContain('is staged, not live');
     expect(y).toContain('npm stage approve <stage-id>');
   });
-  it.each(['docs/design.md', 'docs/design.ko.md'])(
-    '%s names the real script path and 011 features',
-    (p) => {
-      const d = read(p);
-      expect(d).toContain('`cli/src/scripts/sync-version.ts`');
-      expect(d.replace('`cli/src/scripts/sync-version.ts`', '')).not.toContain(
-        '`scripts/sync-version.ts`',
-      );
-      for (const s of ['`new intent', '`released`', '--respond', '`reins metrics record --role'])
-        expect(d).toContain(s);
-    },
-  );
 });

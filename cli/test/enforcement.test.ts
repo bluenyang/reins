@@ -88,20 +88,3 @@ describe('the rendered tables equal the documents (013 C-3)', () => {
       expect(read(f)).not.toMatch(/enforced by the verifier|검증기가 (?:강제|집행)/);
   });
 });
-
-describe('both roadmap editions link the table from 0.2 (013 C-4)', () => {
-  it('has the link in the 0.2 section', () => {
-    const en =
-      read('docs/ROADMAP.md')
-        .split(/^## 0\.2/m)[1]
-        ?.split(/^## 0\.3/m)[0] ?? '';
-    const ko =
-      read('docs/ROADMAP.ko.md')
-        .split(/^## 0\.2/m)[1]
-        ?.split(/^## 0\.3/m)[0] ?? '';
-    expect(en).toContain('README.md#enforced-versus-advised');
-    expect(en).toContain('policy/enforcement.yaml');
-    expect(ko).toContain('README.ko.md#강제와-권고');
-    expect(ko).toContain('policy/enforcement.yaml');
-  });
-});

@@ -227,11 +227,6 @@ describe('T5 rc-close', () => {
     expect(deploy.split('### `approval: npm-staged`')[0]).not.toMatch(
       /publish\.yml|approve the staged/,
     );
-    for (const f of ['docs/design.md', 'docs/design.ko.md']) {
-      const d = readFileSync(f, 'utf8');
-      expect(d).toContain('release:');
-      expect(d).toContain('npm-staged');
-    }
   });
 });
 

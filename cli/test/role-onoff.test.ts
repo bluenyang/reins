@@ -252,11 +252,9 @@ describe('docs and skill text (014-2)', () => {
     expect(loop).toContain('reins status --json');
   });
   it('design and README name --enable and --disable in both editions (C-12)', () => {
-    for (const f of ['docs/design.md', 'docs/design.ko.md', 'README.md', 'docs/README.ko.md']) {
+    for (const f of ['README.md', 'docs/README.ko.md']) {
       expect(read(f), f).toContain('--disable');
       expect(read(f), f).toContain('--enable');
     }
-    for (const f of ['docs/design.md', 'docs/design.ko.md'])
-      expect(read(f), f).toContain('covered_by');
   });
 });

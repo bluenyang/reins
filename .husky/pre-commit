@@ -1,1 +1,3 @@
+# tests run git in temporary repositories; do not hand them this commit's index
+unset GIT_INDEX_FILE
 pnpm check

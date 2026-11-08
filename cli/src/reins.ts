@@ -163,6 +163,7 @@ program
 
 const config = program
   .command('config')
+  .alias('configure')
   .description('settings: models and roles, agent tools, mode, audit; a screen on a terminal');
 
 config

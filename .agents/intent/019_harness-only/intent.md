@@ -2,9 +2,10 @@
 id: "019"
 slug: harness-only
 version: "0.3.0"
-status: draft
+status: approved
 origin: user
-approvals: []
+approvals:
+  - { role: user, by: BlueNyang, at: 2026-11-09, words: "승인.", rev: 23a7c80 }
 supersedes: null
 ---
 ## 문제

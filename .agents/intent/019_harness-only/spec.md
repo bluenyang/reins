@@ -1,7 +1,8 @@
 ---
 intent: "019"
-status: draft
-approvals: []
+status: accepted
+approvals:
+  - { role: user, by: BlueNyang, at: 2026-11-09, words: "진행", rev: e8c6095, kind: summary }
 summary_for_user: |
   명령은 install·migrate·update·config 넷만 남기고 작업 중 명령과 그 코드는 지운다. 생성물은 어디서도 reins나 npx를 실행하지 않는다.
   설정은 bindings.yaml 2판 한 파일(모드 single 기본, 역할군 모델, 감사 on/off)이고 AGENTS.md가 직접 가리킨다.

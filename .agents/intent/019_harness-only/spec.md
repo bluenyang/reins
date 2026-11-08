@@ -51,7 +51,7 @@ intent 019의 "바라는 결과"와 "계획"을 아래로 옮긴다. 각 줄 끝
 - [x] W-4 (f4d7e4f) 역할 파일 7개와 정책 정리(S-7, S-13), 템플릿·스키마 정리(S-10, S-11). **W-6과 한 단위로 한다**(새 역할 파일이 옛 파일과 이름이 같아 생성기와 함께 바꿔야 함; 2026-11-09 순서 변경: W-7 앞부분 → W-4+W-6 → W-5 → W-7 나머지).
 - [x] W-5 (f4d7e4f; update가 지운 0.x 스킬을 install이 다시 넣지 않도록 W-4·W-6과 같은 커밋) 스킬 11개(S-9).
 - [x] W-6 (f4d7e4f) 생성기와 AGENTS.md 기본 블록(S-2, S-8, S-12), install의 훅 제안(S-3)과 온보딩 표시.
-- [ ] W-7 (f4d7e4f: config·update·migrate 2판 완료. 남은 것: migrate가 열린 work를 아직 `.loctx/ticket`으로 옮김 → intent 000 계획 목록으로 바꾸기; 51f2fcd: 작업 중 명령과 코드 삭제 먼저 끝냄; 나머지 config·update는 W-4+W-6 뒤) CLI 정리: 작업 중 명령과 코드 삭제(S-1), `config` 통합과 새 화면(S-6), `update`의 덮어쓰기 확인과 이전(S-14, S-15).
+- [x] W-7 (51f2fcd: 작업 중 명령과 코드 삭제; f4d7e4f: config·update·migrate 2판; 22cfbbd: configure 별칭; 180f7d8: migrate의 열린 work → intent 000 계획) CLI 정리: 작업 중 명령과 코드 삭제(S-1), `config` 통합과 새 화면(S-6), `update`의 덮어쓰기 확인과 이전(S-14, S-15).
 - [ ] W-8 플러그인(`.claude-plugin`)의 setup 입구, README 양판, `docs/violations*` 정리, CHANGELOG.
 - [ ] W-9 검증: V-1~V-6, 보존한 0.2.0 설치본에서 이전, 이 저장소 자기 이전.
 

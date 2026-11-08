@@ -1,9 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parse, stringify } from 'yaml';
-import { MANIFEST, generateVendorFiles, sha, type Generated } from './generate.js';
+import { MANIFEST, sha, type Generated } from './generate.js';
 import { workTreeReader, type Reader } from './reader.js';
-import type { Finding } from './verdict.js';
 
 /** `.agents/harness/generated.yaml` — which vendor files reins wrote, and what they looked like. */
 interface Manifest {
@@ -97,51 +96,4 @@ export function writeGenerated(root: string, gen: Generated, dryRun: boolean): G
     );
   }
   return res;
-}
-
-/** Drift, match layer for generated files: on disk = what reins wrote = what it would write now. */
-export function driftGenerated(root: string, rd: Reader = workTreeReader(root)): Finding[] {
-  if (rd.read(MANIFEST) === undefined) return [];
-  const findings: Finding[] = [];
-  const recorded = readManifest(root, rd).files;
-  const now = new Map(generateVendorFiles(root, rd).writes.map((w) => [w.path, sha(w.content)]));
-  for (const [path, hash] of Object.entries(recorded)) {
-    const onDisk = rd.read(path);
-    if (onDisk === undefined) {
-      findings.push({
-        reason: 'F2',
-        verdict: 'STOP',
-        path,
-        message: 'generated file is missing',
-        resume: 'run `reins update`',
-      });
-      continue;
-    }
-    if (sha(onDisk) !== hash)
-      findings.push({
-        reason: 'C3',
-        verdict: 'STOP',
-        path,
-        message: 'generated file was edited by hand',
-        resume: 'change .agents/harness instead, then `reins update`',
-      });
-    else if (now.has(path) && now.get(path) !== hash)
-      findings.push({
-        reason: 'F2',
-        verdict: 'STOP',
-        path,
-        message: 'stale — the harness changed since it was generated',
-        resume: 'run `reins update`',
-      });
-  }
-  for (const path of now.keys())
-    if (!(path in recorded) && !existsSync(join(root, path)))
-      findings.push({
-        reason: 'F2',
-        verdict: 'STOP',
-        path,
-        message: 'should be generated but is not',
-        resume: 'run `reins update`',
-      });
-  return findings;
 }

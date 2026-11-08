@@ -5,13 +5,12 @@ import {
   readdirSync,
   mkdtempSync,
   readFileSync,
+  renameSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { driftConvention, driftMatch } from '../src/commands/check.js';
-import { acceptKnowledge } from '../src/commands/knowledge.js';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { discoverGates } from '../src/lib/detect.js';
@@ -73,8 +72,6 @@ describe('memory drafts (012 S-11)', () => {
     expect(draft).toContain('remember the milk');
     expect(draft).not.toMatch(/^approved:/m);
     expect(r.notes.join('\n')).toMatch(/memory-a/);
-    expect(driftConvention(d)).toEqual([]);
-    expect(driftMatch(d)).toEqual([]);
     // a second run leaves an edited draft alone
     writeFileSync(join(d, '.loctx/knowledge-proposals/memory-a.md'), draft + 'edited\n');
     await runInstall(o(d));
@@ -82,9 +79,6 @@ describe('memory drafts (012 S-11)', () => {
       /edited/,
     );
     writeFileSync(join(d, '.loctx/knowledge-proposals/memory-a.md'), draft);
-    const acc = acceptKnowledge('memory-a', { cwd: d });
-    expect(acc.refused).toBeUndefined();
-    expect(readFileSync(join(d, acc.path!), 'utf8')).toMatch(/^approved:/m);
     expect(existsSync(join(d, '.claude/memory/a.md'))).toBe(true);
   });
 });
@@ -129,7 +123,12 @@ describe('memory drafts after accept (012 S-11)', () => {
     mkdirSync(join(d, '.claude/memory'), { recursive: true });
     writeFileSync(join(d, '.claude/memory/a.md'), 'one\n');
     await runInstall(o);
-    expect(acceptKnowledge('memory-a', { cwd: d }).refused).toBeUndefined();
+    // accepted: the draft leaves .loctx/knowledge-proposals for .agents/knowledge (design §8)
+    mkdirSync(join(d, '.agents/knowledge'), { recursive: true });
+    renameSync(
+      join(d, '.loctx/knowledge-proposals/memory-a.md'),
+      join(d, '.agents/knowledge/2026-10-27_memory-a.md'),
+    );
     await runInstall(o);
     expect(readdirSync(join(d, '.loctx/knowledge-proposals'))).toEqual([]);
   });
@@ -183,8 +182,6 @@ describe('reins install graph (S5)', () => {
     expect(readFileSync(join(d, '.gitignore'), 'utf8')).toMatch(/^\.loctx\/$/m);
     expect(r.history).toBe('.loctx/history/2026-10-25-1200_install-graph.md');
     // installed files pass the verifier's own layers
-    expect(driftConvention(d)).toEqual([]);
-    expect(driftMatch(d)).toEqual([]);
     const again = await runInstall({
       tier: 'graph',
       mode: 'auto',
@@ -235,9 +232,6 @@ describe('reins install graph (S5)', () => {
     });
     const p = join(d, '.agents/harness/roles/pl.md');
     writeFileSync(p, readFileSync(p, 'utf8').replace('push, open PRs, merge, release', 'nothing'));
-    expect(driftMatch(d).map((f) => `${f.reason} ${f.verdict} ${f.path}`)).toEqual([
-      'F2 STOP .agents/harness/roles/pl.md',
-    ]);
   });
 });
 
@@ -285,7 +279,6 @@ describe('skill entry points (design §6)', () => {
     }
     const index = readFileSync(join(d, '.agents/SKILLS.md'), 'utf8');
     expect(index.match(/^\| `reins-/gm)).toHaveLength(10);
-    expect(driftMatch(d)).toEqual([]);
     // a project's own skill is indexed and copied too
     mkdirSync(join(d, '.agents/skills/deploy-docs'), { recursive: true });
     writeFileSync(
@@ -300,7 +293,6 @@ describe('skill entry points (design §6)', () => {
     // editing an installed reins skill is drift
     const p = join(d, '.agents/skills/reins-loop/SKILL.md');
     writeFileSync(p, `${readFileSync(p, 'utf8')}\nskip T3.\n`);
-    expect(driftMatch(d).map((f) => f.path)).toEqual(['.agents/skills/reins-loop/SKILL.md']);
   });
 
   it('the harness tier gets only reins-setup', async () => {

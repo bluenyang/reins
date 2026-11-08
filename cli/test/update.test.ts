@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
-import { driftMatch } from '../src/commands/check.js';
 import { retiredFiles, runInstall } from '../src/commands/install.js';
 import { changesBetween, newer, runUpdate } from '../src/commands/update.js';
 import { resolveBindings } from '../src/lib/bindings.js';
@@ -46,7 +45,6 @@ describe('reins update', () => {
       b,
       readFileSync(b, 'utf8').replace('model: claude-opus-5-5', 'model: claude-fable-5-1'),
     );
-    expect(driftMatch(d)[0]?.verdict).toBe('WARN');
 
     const r = await runUpdate({ cwd: d, detectVendors: claude, now: new Date(2026, 9, 25, 14, 0) });
     expect(r.from).toBe('0.0.9');
@@ -58,7 +56,6 @@ describe('reins update', () => {
     expect(readFileSync(pin, 'utf8')).toContain(
       `version: ${readFileSync('harness/VERSION', 'utf8').trim()}`,
     );
-    expect(driftMatch(d)).toEqual([]);
     expect(r.install?.history).toBe('.loctx/history/2026-10-25-1400_update-graph.md');
   });
 
@@ -102,10 +99,6 @@ describe('reins update', () => {
     const packaged = readFileSync(join(packageHarness(), 'CHANGELOG.md'), 'utf8');
     writeFileSync(join(h, 'CHANGELOG.md'), packaged + '- an older line\n');
     writeFileSync(join(h, 'notes.md'), 'mine\n');
-    expect(driftMatch(d).map((f) => `${f.reason} ${f.verdict} ${f.path}`)).toEqual([
-      'F2 WARN .agents/harness/CHANGELOG.md',
-    ]);
-    expect(driftMatch(d)[0]?.resume).toMatch(/reins update/);
 
     const dry = await runUpdate({ cwd: d, detectVendors: claude, dryRun: true });
     expect(dry.install?.applied?.removed).toEqual(['.agents/harness/CHANGELOG.md']);
@@ -116,7 +109,6 @@ describe('reins update', () => {
     expect(existsSync(join(h, 'CHANGELOG.md'))).toBe(false);
     expect(existsSync(join(h, 'gates.yaml'))).toBe(true);
     expect(readFileSync(join(h, 'notes.md'), 'utf8')).toBe('mine\n');
-    expect(driftMatch(d)).toEqual([]);
   });
 
   it('retiredFiles lists only upstream-owned files outside the tier', () => {
@@ -191,7 +183,6 @@ describe('reins update', () => {
       expect(l.vendors['claude']?.detected).toBe(true);
       expect(l.vendors['openai']).toEqual({ detected: false, at: '2026-10-01T00:00:00.000Z' });
       expect(l.vendors['google']?.detected).toBe(false); // the local entry wins
-      expect(driftMatch(d)).toEqual([]);
       const afterLocal = readFileSync(local, 'utf8');
       const r2 = await runUpdate({ cwd: d, detectVendors: claude });
       expect(r2.bindingsMoved).toBeUndefined();

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
-import { compound } from '../src/commands/gate.js';
+import { compound } from '../src/lib/detect.js';
 import { configureGates } from '../src/commands/configure.js';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker, type Asker } from '../src/lib/ask.js';

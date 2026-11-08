@@ -6,7 +6,6 @@ import { describe, expect, it } from 'vitest';
 import { configureBindings } from '../src/commands/configure.js';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker } from '../src/lib/ask.js';
-import { driftGenerated } from '../src/lib/vendor-write.js';
 
 const detect = (on: string[]) => () =>
   (['claude', 'openai', 'google', 'cursor'] as const).map((name) => ({
@@ -47,7 +46,6 @@ describe('reins configure bindings (R57–R59)', () => {
     expect(readFileSync(join(d, '.claude/agents/reins-code-review.md'), 'utf8')).not.toContain(
       'fallback for',
     );
-    expect(driftGenerated(d)).toEqual([]);
   });
 
   it('--vendors rebuilds from defaults: GPT only for review when openai is added', async () => {

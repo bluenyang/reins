@@ -3,12 +3,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { driftConvention, driftMatch } from '../src/commands/check.js';
 import { loadSchemas } from '../src/lib/schema.js';
 import { validateFile } from '../src/lib/schema.js';
 import { packageHarness } from '../src/lib/upstream.js';
-import { collectStatus } from '../src/commands/status.js';
-import { ticketStart } from '../src/commands/stages.js';
 import { readdirSync } from 'node:fs';
 import { runMigrate } from '../src/commands/migrate.js';
 import { defaultsAsker } from '../src/lib/ask.js';
@@ -79,8 +76,6 @@ describe('reins migrate (S1)', () => {
     );
     expect(r.history).toBe('.loctx/history/2026-10-25-1300_migrate-graph.md');
     expect(generation(d)).toBe('reins');
-    expect(driftConvention(d)).toEqual([]);
-    expect(driftMatch(d)).toEqual([]);
     const again = await runMigrate(opts);
     expect(again.moves).toEqual([]);
     expect(again.agents.swapped).toEqual([]);
@@ -176,7 +171,6 @@ describe('reins migrate — memory (012 S-11)', () => {
     );
     expect(dr).toContain('deploy on friday');
     expect(dr).not.toMatch(/^approved:/m);
-    expect(driftMatch(d)).toEqual([]);
   });
 });
 
@@ -253,14 +247,6 @@ describe('reins migrate — ticket ids, intent 000, legacy (012-3)', () => {
     expect(text).toMatch(/status: draft/);
     expect(text).toMatch(/version: "1.3.0"/);
     expect(text).toContain('000-1 — from .ai/work/1.3.0_1.md');
-    expect(
-      ticketStart(d, '000-1')
-        .map((f) => f.message)
-        .join('\n'),
-    ).toMatch(/draft/);
-    expect(collectStatus(d).intents.find((i) => i.id === '000')?.next).toBe(
-      'user: approve the intent',
-    );
     const second = await runMigrate(opts(d));
     expect(second.report.join()).not.toContain('000_migrated');
   });

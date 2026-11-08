@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
-import { parse } from 'yaml';
+import { parse, stringify } from 'yaml';
 import { defaultsAsker } from '../lib/ask.js';
 import { convertV1, readTeam, writeBindings } from '../lib/bindings.js';
 import { placeNote, reconcileNote } from '../lib/agents-md.js';
@@ -269,10 +269,12 @@ async function updateNow(o: UpdateOptions): Promise<UpdateResult> {
 
   // bindings version 1 → 2 (design §7): the converted file stays single until the user switches
   const team = readTeam(root);
+  const pending: { path: string; content: string }[] = [];
   if (team.v1) {
     const { doc, notes } = convertV1(team.v1);
     res.converted = notes;
     if (!o.dryRun) writeBindings(root, doc, 'global');
+    else pending.push({ path: '.agents/harness/bindings.yaml', content: stringify(doc) });
   }
   // 0.x pieces
   const legacy = planLegacy(root);
@@ -310,6 +312,8 @@ async function updateNow(o: UpdateOptions): Promise<UpdateResult> {
     detectVendors: o.detectVendors,
     retire: true,
     force: o.force,
+    pending,
+    pendingDeletes: o.dryRun ? legacy.deletes : [],
   });
   res.handEdited = (res.install.generated?.refused ?? [])
     .filter((r) => r.why.startsWith('edited by hand'))

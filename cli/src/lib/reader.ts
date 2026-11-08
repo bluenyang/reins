@@ -52,3 +52,26 @@ export function indexReader(root: string): Reader {
         .filter(Boolean),
   };
 }
+
+/**
+ * The working tree as it will be once `writes` land and `deletes` go: a dry run plans the generated
+ * files from this, so its preview matches the real run (design §6).
+ */
+export function overlayReader(
+  base: Reader,
+  writes: { path: string; content: string }[],
+  deletes: string[] = [],
+): Reader {
+  const added = new Map(writes.map((w) => [w.path, w.content]));
+  // a deleted path takes everything under it (update deletes whole skill folders)
+  const isGone = (rel: string) => deletes.some((d) => rel === d || rel.startsWith(`${d}/`));
+  return {
+    read: (rel) => (isGone(rel) ? undefined : (added.get(rel) ?? base.read(rel))),
+    list: (relDir) => {
+      const dir = `${relDir.replace(/\/$/, '')}/`;
+      const all = new Set(base.list(relDir));
+      for (const p of added.keys()) if (p.startsWith(dir)) all.add(p);
+      return [...all].filter((p) => !isGone(p));
+    },
+  };
+}

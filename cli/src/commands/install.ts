@@ -3,7 +3,6 @@ import { dirname, join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import type { Asker } from '../lib/ask.js';
 import { askerPrompter, BACK, EXIT, type Prompter } from '../lib/prompter.js';
-import { planMemoryProposals } from '../lib/memory.js';
 import { draftRelease, releaseDraftNotes } from '../lib/release.js';
 import { applyBlocks } from '../lib/blocks.js';
 import {
@@ -27,6 +26,8 @@ export interface InstallOptions {
   dryRun?: boolean;
   /** add the hook lines to an existing husky setup instead of proposing them */
   hooks?: boolean;
+  /** on a terminal (any mode): ask before adding the hook lines (design §6); without it they are only proposed */
+  confirmHooks?: Prompter;
   cwd?: string;
   asker: Asker;
   /**
@@ -134,7 +135,6 @@ const LOCTX_README = `# .loctx — 이 머신·이 개발자만 (gitignore)
 | bindings.local.yaml | 나만 쓰는 모델 할당 (있으면 팀 설정보다 우선) | 사용자 |
 `;
 
-const pad = (n: number) => String(n).padStart(2, '0');
 type Tool = Vendor['name'];
 const TOOL_NAMES: Tool[] = ['claude', 'openai', 'google', 'gemini', 'copilot', 'cursor'];
 
@@ -355,16 +355,11 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
       'keep .loctx out of git',
     );
 
-  // 4b. .claude/memory is never moved: each file becomes a knowledge draft (design §7)
-  {
-    const d = o.now ?? new Date();
-    const memory = planMemoryProposals(
-      root,
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+  // 4b. .claude/memory is never moved or drafted (design §8): the PM proposes knowledge in the retro
+  if (existsSync(join(root, '.claude/memory')))
+    notes.push(
+      '.claude/memory found — left as it is; the PM can propose knowledge entries from it in a retro',
     );
-    writes.push(...memory.writes);
-    notes.push(...memory.notes);
-  }
 
   // 4c. a release: draft from dispatchable workflows — proposal only, never written
   notes.push(...releaseDraftNotes(draftRelease(root)));
@@ -385,8 +380,17 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
           .map((x) => x!.cmd);
       })()
     : cmds;
+  let addHooks = !!o.hooks;
+  if (lines.length && tool === 'husky' && !addHooks && o.confirmHooks && !o.dryRun) {
+    const yes = await o.confirmHooks.confirm({
+      message: `Add the project gates to husky pre-commit and pre-push? (${lines.join(' && ')})`,
+      initial: true,
+    });
+    if (yes === EXIT) return cancelled();
+    addHooks = yes === true;
+  }
   if (lines.length) {
-    if (tool === 'husky' && o.hooks) {
+    if (tool === 'husky' && addHooks) {
       for (const stage of ['pre-commit', 'pre-push']) {
         const p = join(root, '.husky', stage);
         const cur = existsSync(p) ? readFileSync(p, 'utf8') : '';
@@ -402,7 +406,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
       }
     } else if (tool)
       notes.push(
-        `hook proposal (${tool}): run the project gates in pre-commit and pre-push — ${lines.join(' && ')}${tool === 'husky' ? '; re-run with --hooks to add them' : ''}`,
+        `hook proposal (${tool}): run the project gates in pre-commit and pre-push — ${lines.join(' && ')}${tool === 'husky' ? '; re-run with --hooks to add them' : ` (reins proposes ${tool} lines only; add them to its config yourself)`}`,
       );
     else notes.push('no hook tool found — the PM asks which one to use during onboarding');
   }
@@ -455,9 +459,8 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   }
 
   // 9. generated files from the installed harness (design §6) — never over a file reins did not write
-  const generated = o.dryRun
-    ? undefined
-    : writeGenerated(root, generateVendorFiles(root), false, !!o.force);
+  // a dry run computes the same plan without writing, so update can show hand-edited files first
+  const generated = writeGenerated(root, generateVendorFiles(root), !!o.dryRun, !!o.force);
   if (generated) {
     applied.created.push(...generated.written.filter((p) => !applied.created.includes(p)));
     applied.removed.push(...generated.removed);

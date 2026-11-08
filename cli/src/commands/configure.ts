@@ -80,7 +80,10 @@ export function refreshAgents(root: string, doc: BindingsV2, modeChanged: boolea
     : 'ko';
   let text = applyBlocks(before, renderBlocks(packageHarness(), doc, language)).text;
   if (modeChanged) {
-    writeFileSync(join(root, '.agents/AGENTS.previous.md'), before);
+    // a previous text the PM has not reconciled yet is older and stays; the current one is still in AGENTS.md
+    const prev = join(root, '.agents/AGENTS.previous.md');
+    if (!(existsSync(prev) && before.includes('<!-- reins:reconcile pending -->')))
+      writeFileSync(prev, before);
     text = placeNote(
       text,
       reconcileNote(`The user switched the mode to ${doc.mode ?? 'single'}.`),
@@ -169,8 +172,14 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
   for (const name of o.off ?? []) {
     const group = groupOf(name);
     if (!group) return refuse(`unknown group "${name}" — groups: ${GROUPS.join(', ')}`);
-    if (next.groups?.[group]) {
-      next.groups = { ...next.groups };
+    next.groups = { ...next.groups };
+    if (o.local) {
+      // an empty group in the personal file hides the team's (mergeLocal replaces a group as a whole)
+      if (JSON.stringify(next.groups[group]) !== '{}') {
+        next.groups[group] = {};
+        changed.push(group);
+      }
+    } else if (next.groups[group]) {
       delete next.groups[group];
       changed.push(group);
     }

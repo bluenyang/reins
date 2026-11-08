@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { defaultsAsker } from '../lib/ask.js';
@@ -87,11 +95,13 @@ const LEGACY_LOCTX = [
   'audit',
   'journal.jsonl',
   'knowledge-proposals/dismissed.jsonl',
-  'reports/metrics.jsonl',
   'pr',
   'release',
   'test',
 ];
+
+/** A command that runs reins: what 0.x put into hooks and settings. */
+const RUNS_REINS = /@bluenyang\/reins|reins\.js\b|(^|[\s;&|])reins\s+(check|hook|gate|status)\b/;
 
 /** Hook files 0.x may have written a `reins:begin hooks` block into. */
 const HOOK_FILES = [
@@ -128,7 +138,12 @@ function planLegacy(root: string): Legacy {
     if (!existsSync(p)) continue;
     const cur = readFileSync(p, 'utf8');
     if (!cur.includes('# reins:begin hooks')) continue;
-    const next = cur.replace(/\n?# reins:begin hooks\n[\s\S]*?# reins:end hooks\n?/g, '\n');
+    // only a block that runs reins is 0.x; a 0.3 block holds the project's own gate commands and stays
+    const next = cur.replace(
+      /\n?# reins:begin hooks\n([\s\S]*?)# reins:end hooks\n?/g,
+      (block, body: string) => (RUNS_REINS.test(body) ? '\n' : block),
+    );
+    if (next === cur) continue;
     out.writes.push({ path: f, content: next.replace(/^\n+/, '').replace(/\n{3,}/g, '\n\n') });
   }
   // runtime hook entries in .claude/settings.json: the user's own entries stay
@@ -140,13 +155,14 @@ function planLegacy(root: string): Legacy {
       if (hooks) {
         let touched = false;
         for (const [ev, list] of Object.entries(hooks)) {
-          const kept = list.filter(
-            (h) =>
-              !(h.hooks ?? []).some((x) =>
-                /reins(\.js)?\b|@bluenyang\/reins/.test(x.command ?? ''),
-              ),
-          );
-          if (kept.length !== list.length) touched = true;
+          // drop the reins commands only; a matcher keeps the user's commands and goes only when empty
+          const kept = list
+            .map((h) => {
+              const inner = (h.hooks ?? []).filter((x) => !RUNS_REINS.test(x.command ?? ''));
+              if (inner.length !== (h.hooks ?? []).length) touched = true;
+              return { ...h, hooks: inner };
+            })
+            .filter((h) => h.hooks.length > 0);
           if (kept.length) hooks[ev] = kept;
           else delete hooks[ev];
         }
@@ -199,12 +215,22 @@ export async function runUpdate(o: UpdateOptions): Promise<UpdateResult> {
       !plan.converted &&
       plan.removed.length === 0 &&
       plan.cleanup.length === 0 &&
+      plan.handEdited.length === 0 &&
       (!a || a.created.length + a.changed.length + a.removed.length === 0);
     if (nothing) return plan;
     o.show?.(plan);
     const ok = await o.prompter.confirm({ message: 'Apply this update?', initial: true });
     if (ok === BACK || ok === EXIT || !ok) return { ...plan, declined: true };
-    return runUpdate({ ...o, prompter: undefined, yes: true });
+    let force = o.force;
+    if (plan.handEdited.length && !force) {
+      const over = await o.prompter.confirm({
+        message: `Overwrite ${plan.handEdited.length} generated file(s) edited by hand (${plan.handEdited.join(', ')})?`,
+        initial: false,
+      });
+      if (over === EXIT) return { ...plan, declined: true };
+      force = over === true;
+    }
+    return runUpdate({ ...o, prompter: undefined, yes: true, force });
   }
   return updateNow(o);
 }
@@ -253,6 +279,11 @@ async function updateNow(o: UpdateOptions): Promise<UpdateResult> {
   res.removed.push(...legacy.deletes, ...legacy.writes.map((w) => `~ ${w.path}`), ...legacy.notes);
   for (const x of LEGACY_LOCTX)
     if (existsSync(join(root, '.loctx', x))) res.cleanup.push(`.loctx/${x}`);
+  // 0.x gate logs sat directly in .loctx/reports/; 0.3 keeps them in reports/<version>/
+  const reports = join(root, '.loctx/reports');
+  if (existsSync(reports))
+    for (const n of readdirSync(reports))
+      if (statSync(join(reports, n)).isFile()) res.cleanup.push(`.loctx/reports/${n}`);
   // the 0.x personal layer (detected vendors, role overrides) has no meaning in version 2
   const local = join(root, '.loctx/bindings.local.yaml');
   if (existsSync(local) && /^schema: reins\/bindings-local@1$/m.test(readFileSync(local, 'utf8')))

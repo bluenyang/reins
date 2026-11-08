@@ -146,12 +146,12 @@ groups:                 # 적지 않은 군 = 꺼짐(PM이 함)
   implementer: { vendor: claude, model: claude-sonnet-5-5 }
   auditor: { vendor: openai, model: gpt-6.1-sol }
 ```
-상속: 상세 역할 > 군 > 꺼짐. vendor와 model은 한 묶음으로 상속한다. `models`는 pl·advisor만. 실행 중 해석이 필요한 키(`escalation`, `limits`, `parallel`, `fallback`)는 없다. `config`가 쓸 때 상속을 풀어 생성물과 위임 표에 적는다. 로컬 덮어쓰기 `.loctx/bindings.local.yaml`(같은 모양, 키 단위로 이김)은 사람마다 다를 수 있으므로 생성물에는 쓰지 않고, 위임 표에 "로컬 설정이 있으면 그것을 따른다"를 적는다.
+상속: 상세 역할 > 군 > 꺼짐. 로컬 파일의 빈 군(`{}`)은 팀이 켠 군을 그 사람에게만 끈다. vendor와 model은 한 묶음으로 상속한다. `models`는 pl·advisor만. 실행 중 해석이 필요한 키(`escalation`, `limits`, `parallel`, `fallback`)는 없다. `config`가 쓸 때 상속을 풀어 생성물과 위임 표에 적는다. 로컬 덮어쓰기 `.loctx/bindings.local.yaml`(같은 모양, 키 단위로 이김)은 사람마다 다를 수 있으므로 생성물에는 쓰지 않고, 위임 표에 "로컬 설정이 있으면 그것을 따른다"를 적는다.
 
 ## 6. 생성과 드리프트
-원본 → 생성물: `harness/roles/` + bindings → `.claude/agents/rs-<group>-<role>.md`(멀티에서 켜진 Claude 역할만; 모델·`tools`가 박힘) · `skills/` → `.agents/skills/`(Claude는 `.claude/skills/`에 복사) · 템플릿 → AGENTS.md 관리 블록. 생성물 머리에 "generated — do not edit". 다른 벤더 모델이 할당된 역할은 에이전트 파일 대신 위임 표의 실행 줄로 다룬다. 단일 모드면 에이전트 파일이 없다. install은 `generated.yaml`에 없는 같은 이름 파일을 덮어쓰지 않고 멈춘다.
+원본 → 생성물: `harness/roles/` + bindings → `.claude/agents/rs-<group>-<role>.md`(멀티에서 켜진 Claude 역할만; 모델·`tools`가 박힘) · `skills/` → `.agents/skills/`(Claude는 `.claude/skills/`에 복사) · 템플릿 → AGENTS.md 관리 블록. 생성물 머리에 "generated — do not edit". 다른 벤더 모델이 할당된 역할은 에이전트 파일 대신 위임 표의 실행 줄로 다룬다. 한 역할에 Claude 모델이 여럿이면(discussion, committee) 모델마다 번호를 붙인 파일(`rs-advisor-committee-1` …)을 만든다. 단일 모드면 에이전트 파일이 없다. install은 `generated.yaml`에 없는 같은 이름 파일을 덮어쓰지 않는다. 그 파일만 건너뛰고 알리며, 나머지 설치는 계속한다.
 
-**훅.** install은 프로젝트의 훅 도구(lefthook 설정, `.husky/`, pre-commit 설정)를 감지해 `gates.yaml` 명령을 그대로 부르는 줄을 제안하고, 사용자가 확인하면 넣는다(auto 모드도 묻는다; 비대화형은 `--hooks`일 때만). 넣는 줄은 프로젝트 명령만 부른다. 훅 도구가 없으면 온보딩 할 일로 남긴다.
+**훅.** install은 프로젝트의 훅 도구(lefthook 설정, `.husky/`, pre-commit 설정)를 감지해 `gates.yaml` 명령을 그대로 부르는 줄을 제안한다. husky면 터미널에서 묻고 확인하면 넣는다(auto 모드도 묻는다; 비대화형은 `--hooks`일 때만). lefthook과 pre-commit은 줄을 제안만 하고 사용자가 그 설정에 넣는다. 넣는 줄은 프로젝트 명령만 부른다. 훅 도구가 없으면 온보딩 할 일로 남긴다.
 
 **드리프트.** 생성 파일과 원본이 어긋난 것(손 수정, 다시 만들지 않음)이다. ① 감사가 버전 동안 생성 파일·하네스 파일을 바꾼 커밋이 `update`·`config` 커밋인지 git 이력으로 가린다. ② `update`는 `generated.yaml` 해시와 현재 파일을 비교해 손으로 고친 파일을 보여 주고 확인받는다(비대화형은 덮어쓰지 않고 목록과 exit 1, `--force`로 덮어씀). 훅과 CI에서는 검사하지 않는다.
 
@@ -164,7 +164,7 @@ groups:                 # 적지 않은 군 = 꺼짐(PM이 함)
 `.agents/knowledge/<date>_<slug>.md` 형식(결정 · 이유 · 적용 · 바뀌면)은 v1.0과 같다. 승격은 회고에서: retrospector나 PM이 history·감사에서 반복된 결정·실패를 찾아 제안하고, 사용자가 받아들이면 PM이 쓴다(`approved: {by, at, words}`). 찾기는 `grep -l 'decisions:.*<keyword>' .loctx/history/* .agents/knowledge/*`. 세는 CLI는 없다.
 
 ## 9. CLI와 플러그인
-`npx @bluenyang/reins` — 네 명령. 모두 `--dry-run`·`--json`. TS, Node ≥ 22, 배포물에 Python 불필요(R65). CLI는 모델을 부르지 않는다.
+`npx @bluenyang/reins` — 네 명령. `install`·`migrate`·`update`는 `--dry-run`, 넷 모두 `--json`. TS, Node ≥ 22, 배포물에 Python 불필요(R65). CLI는 모델을 부르지 않는다.
 - `install [--mode manual|auto] [--hooks]`: 하네스 배치, 도구 감지, 게이트 확인, 훅 제안, 온보딩 표시. 기본 모드 single. 3·4세대 위에서는 거부하고 `migrate`로 안내.
 - `migrate [--legacy local|committed]`: 세대 판별 후 이전, 재구성 표시.
 - `update [--yes] [--force]`: 원본 → 생성물, 손 수정 확인, 0.x 이전.

@@ -1,5 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
+  chmodSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -88,10 +89,14 @@ describe('what reins installs never runs reins (019 V-1)', () => {
           'pl=claude-sonnet-5-5,openai:gpt-6.1-terra',
           'advisor=claude-fable-5-1,openai:gpt-6.1-sol',
         );
-      const offenders = files(d)
-        .filter((f) => !PEOPLE_ONLY.has(f))
-        .filter((f) => RUNS_REINS.test(readFileSync(join(d, f), 'utf8')));
-      expect(offenders).toEqual([]);
+      const offenders = () =>
+        files(d)
+          .filter((f) => !PEOPLE_ONLY.has(f))
+          .filter((f) => RUNS_REINS.test(readFileSync(join(d, f), 'utf8')));
+      expect(offenders()).toEqual([]);
+      // and after an update over it
+      reins(d, 'update', '--yes');
+      expect(offenders()).toEqual([]);
       const hook = readFileSync(join(d, '.husky/pre-commit'), 'utf8');
       expect(hook).toContain('npm run check');
     });
@@ -100,7 +105,7 @@ describe('what reins installs never runs reins (019 V-1)', () => {
 describe('the installed harness works without reins and without a network (019 V-2)', () => {
   // a POSIX shell with a narrowed PATH; Windows runners are covered by V-1
   it.skipIf(process.platform === 'win32')(
-    'a commit through the installed hook runs with reins off PATH and no npm registry',
+    'a commit through the installed hook runs with reins off PATH and an unreachable npm registry',
     () => {
       const d = repo();
       reins(d, 'install', '--mode', 'auto', '--hooks');
@@ -118,11 +123,30 @@ describe('the installed harness works without reins and without a network (019 V
         npm_config_registry: 'http://127.0.0.1:9',
         npm_config_offline: 'true',
       };
-      const hook = readFileSync(join(d, '.husky/pre-commit'), 'utf8').replace(/^#.*$/gm, '').trim();
-      const r = spawnSync('sh', ['-c', hook], { cwd: d, env, encoding: 'utf8' });
-      expect(r.status, r.stderr).toBe(0);
+      // the installed husky file runs as a real git hook (what husky's own wrapper does)
+      mkdirSync(join(d, '.githooks'));
+      writeFileSync(join(d, '.githooks/pre-commit'), '#!/bin/sh\nset -e\n. ./.husky/pre-commit\n');
+      chmodSync(join(d, '.githooks/pre-commit'), 0o755);
+      git(d, 'config', 'core.hooksPath', '.githooks');
       git(d, 'add', '-A');
-      git(d, 'commit', '-q', '-m', 'installed');
+      const c = spawnSync(
+        'git',
+        ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'installed'],
+        { cwd: d, env, encoding: 'utf8' },
+      );
+      expect(c.status, c.stderr).toBe(0);
+      // a failing gate stops the commit: the hook really ran
+      writeFileSync(
+        join(d, 'package.json'),
+        JSON.stringify({ scripts: { check: 'node -e "process.exit(3)"' } }),
+      );
+      git(d, 'add', '-A');
+      const f = spawnSync(
+        'git',
+        ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'broken'],
+        { cwd: d, env, encoding: 'utf8' },
+      );
+      expect(f.status).not.toBe(0);
       expect(spawnSync('git', ['log', '--oneline'], { cwd: d, encoding: 'utf8' }).stdout).toContain(
         'installed',
       );

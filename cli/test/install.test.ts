@@ -5,7 +5,6 @@ import {
   readdirSync,
   mkdtempSync,
   readFileSync,
-  renameSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -13,6 +12,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker } from '../src/lib/ask.js';
+import { scriptedPrompter } from '../src/lib/prompter.js';
 import { discoverGates } from '../src/lib/detect.js';
 
 function repo(): string {
@@ -51,99 +51,20 @@ describe('gate discovery (design §5)', () => {
   });
 });
 
-describe('memory drafts (012 S-11)', () => {
-  const o = (d: string) => ({
-    mode: 'auto' as const,
-    asker: defaultsAsker,
-    cwd: d,
-    detectVendors: onlyClaude,
-    now: new Date(2026, 9, 27, 9, 0),
-  });
-  it('keeps .claude/memory, drafts it as a proposal, passes drift, and accept promotes it', async () => {
+describe('.claude/memory (design §8)', () => {
+  it('is left alone and drafted nowhere; a note points to the retro', async () => {
     const d = repo();
     mkdirSync(join(d, '.claude/memory'), { recursive: true });
-    writeFileSync(join(d, '.claude/memory/a.md'), 'remember the milk\n');
-    const r = await runInstall(o(d));
-    expect(readFileSync(join(d, '.claude/memory/a.md'), 'utf8')).toBe('remember the milk\n');
-    const draft = readFileSync(join(d, '.loctx/knowledge-proposals/memory-a.md'), 'utf8');
-    expect(draft).toContain('source: ".claude/memory/a.md"');
-    expect(draft).toContain('remember the milk');
-    expect(draft).not.toMatch(/^approved:/m);
-    expect(r.notes.join('\n')).toMatch(/memory-a/);
-    // a second run leaves an edited draft alone
-    writeFileSync(join(d, '.loctx/knowledge-proposals/memory-a.md'), draft + 'edited\n');
-    await runInstall(o(d));
-    expect(readFileSync(join(d, '.loctx/knowledge-proposals/memory-a.md'), 'utf8')).toMatch(
-      /edited/,
-    );
-    writeFileSync(join(d, '.loctx/knowledge-proposals/memory-a.md'), draft);
-    expect(existsSync(join(d, '.claude/memory/a.md'))).toBe(true);
-  });
-});
-
-describe('memory draft names (012 S-11)', () => {
-  it('names a draft by its source: a later a.md does not collide with a.txt', async () => {
-    const d = repo();
-    const o = {
-      mode: 'auto' as const,
-      asker: defaultsAsker,
-      cwd: d,
-      detectVendors: onlyClaude,
-      now: new Date(2026, 9, 27, 9, 0),
-    };
-    mkdirSync(join(d, '.claude/memory'), { recursive: true });
-    writeFileSync(join(d, '.claude/memory/a.txt'), 'one\n');
-    await runInstall(o);
-    const p = (n: string) => join(d, `.loctx/knowledge-proposals/${n}.md`);
-    expect(readFileSync(p('memory-a'), 'utf8')).toContain('a.txt');
-    writeFileSync(join(d, '.claude/memory/a.md'), 'two\n');
-    await runInstall(o);
-    expect(readFileSync(p('memory-a-2'), 'utf8')).toContain('source: ".claude/memory/a.md"');
-    expect(readFileSync(p('memory-a'), 'utf8')).toContain('a.txt');
-    const before = readdirSync(join(d, '.loctx/knowledge-proposals')).toSorted();
-    await runInstall(o);
-    expect(readdirSync(join(d, '.loctx/knowledge-proposals')).toSorted()).toEqual(before);
-  });
-});
-
-describe('memory drafts after accept (012 S-11)', () => {
-  it('does not draft again once the draft was accepted', async () => {
-    const d = repo();
-    const o = {
-      mode: 'auto' as const,
-      asker: defaultsAsker,
-      cwd: d,
-      detectVendors: onlyClaude,
-      now: new Date(2026, 9, 27, 9, 0),
-    };
-    mkdirSync(join(d, '.claude/memory'), { recursive: true });
-    writeFileSync(join(d, '.claude/memory/a.md'), 'one\n');
-    await runInstall(o);
-    // accepted: the draft leaves .loctx/knowledge-proposals for .agents/knowledge (design §8)
-    mkdirSync(join(d, '.agents/knowledge'), { recursive: true });
-    renameSync(
-      join(d, '.loctx/knowledge-proposals/memory-a.md'),
-      join(d, '.agents/knowledge/2026-10-27_memory-a.md'),
-    );
-    await runInstall(o);
-    expect(readdirSync(join(d, '.loctx/knowledge-proposals'))).toEqual([]);
-  });
-
-  it('an entry that cannot be read does not stop the install and keeps its name', async () => {
-    const d = repo();
-    mkdirSync(join(d, '.claude/memory'), { recursive: true });
-    writeFileSync(join(d, '.claude/memory/a.md'), 'one\n');
-    mkdirSync(join(d, '.loctx/knowledge-proposals/memory-a.md'), { recursive: true });
-    mkdirSync(join(d, '.agents/knowledge/odd.md'), { recursive: true });
-    await runInstall({
+    writeFileSync(join(d, '.claude/memory/a.md'), 'keep this\n');
+    const r = await runInstall({
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
       detectVendors: onlyClaude,
-      now: new Date(2026, 9, 27, 9, 0),
     });
-    const p = join(d, '.loctx/knowledge-proposals/memory-a-2.md');
-    expect(readFileSync(p, 'utf8')).toContain('source: ".claude/memory/a.md"');
+    expect(readFileSync(join(d, '.claude/memory/a.md'), 'utf8')).toBe('keep this\n');
+    expect(existsSync(join(d, '.loctx/knowledge-proposals'))).toBe(false);
+    expect(r.notes.some((n) => n.startsWith('.claude/memory found'))).toBe(true);
   });
 });
 
@@ -245,6 +166,21 @@ describe('hooks: the project gates in the project hook tool (019 S-3)', () => {
     expect(hook).toContain('echo mine');
     expect(hook).toContain('pnpm check');
     expect(hook.replace(/# reins:(begin|end) hooks/g, '')).not.toContain('reins');
+  });
+
+  it('on a terminal it asks before adding the hooks', async () => {
+    const d = repo();
+    mkdirSync(join(d, '.husky'), { recursive: true });
+    const p = scriptedPrompter([true]);
+    await runInstall({
+      mode: 'auto',
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: onlyClaude,
+      confirmHooks: p,
+    });
+    expect(p.asked.map((q) => q.kind)).toEqual(['confirm']);
+    expect(readFileSync(join(d, '.husky/pre-commit'), 'utf8')).toContain('pnpm check');
   });
 
   it('without a hook tool, onboarding asks for one', async () => {

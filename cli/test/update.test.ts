@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { retiredFiles, runInstall } from '../src/commands/install.js';
 import { changesBetween, newer, runUpdate } from '../src/commands/update.js';
 import { defaultsAsker } from '../src/lib/ask.js';
+import { scriptedPrompter } from '../src/lib/prompter.js';
 import { packageHarness } from '../src/lib/upstream.js';
 
 const claude = () =>
@@ -131,6 +132,44 @@ describe('reins update', () => {
     expect((await runUpdate({ cwd: d })).refused).toMatch(/not installed/);
   });
 
+  it('keeps a 0.3 hook block with the project gates (review: update deleted it)', async () => {
+    const d = mkdtempSync(join(tmpdir(), 'reins-up-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    writeFileSync(join(d, 'package.json'), JSON.stringify({ scripts: { check: 'node -e 0' } }));
+    mkdirSync(join(d, '.husky'));
+    await runInstall({
+      mode: 'auto',
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: claude,
+      hooks: true,
+    });
+    const before = readFileSync(join(d, '.husky/pre-commit'), 'utf8');
+    expect(before).toContain('npm run check');
+    const r = await runUpdate({ cwd: d, detectVendors: claude, yes: true });
+    expect(r.removed).toEqual([]);
+    expect(readFileSync(join(d, '.husky/pre-commit'), 'utf8')).toBe(before);
+  });
+
+  it('on a terminal, a hand-edited generated file is shown and overwritten only on yes', async () => {
+    const d = mkdtempSync(join(tmpdir(), 'reins-up-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    writeFileSync(join(d, 'package.json'), '{}');
+    await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: d, detectVendors: claude });
+    const p = join(d, '.claude/settings.json');
+    const mine = `${readFileSync(p, 'utf8').trimEnd()} \n`;
+    writeFileSync(p, mine);
+    const keep = await runUpdate({
+      cwd: d,
+      detectVendors: claude,
+      prompter: scriptedPrompter([true, false]),
+    });
+    expect(keep.handEdited).toEqual(['.claude/settings.json']);
+    expect(readFileSync(p, 'utf8')).toBe(mine);
+    await runUpdate({ cwd: d, detectVendors: claude, prompter: scriptedPrompter([true, true]) });
+    expect(readFileSync(p, 'utf8')).not.toBe(mine);
+  });
+
   describe('moving a 0.2.0 install to 0.3 (019 S-15, design §7)', () => {
     async function old(): Promise<string> {
       const d = mkdtempSync(join(tmpdir(), 'reins-up02-'));
@@ -159,7 +198,12 @@ describe('reins update', () => {
         JSON.stringify({
           hooks: {
             PreToolUse: [
-              { hooks: [{ command: 'npx -y @bluenyang/reins@0.2.0 hook pre-tool-use' }] },
+              {
+                hooks: [
+                  { command: 'npx -y @bluenyang/reins@0.2.0 hook pre-tool-use' },
+                  { command: 'echo same-matcher' },
+                ],
+              },
               { hooks: [{ command: 'echo mine' }] },
             ],
           },
@@ -204,6 +248,8 @@ describe('reins update', () => {
       expect(hook).not.toContain('@bluenyang/reins');
       const settings = readFileSync(join(d, '.claude/settings.json'), 'utf8');
       expect(settings).not.toContain('@bluenyang/reins');
+      expect(settings).toContain('echo same-matcher');
+      expect(settings).toContain('echo mine');
       const agents = readFileSync(join(d, 'AGENTS.md'), 'utf8');
       expect(agents).toContain('<!-- reins:reconcile pending -->');
       expect(agents).not.toContain('<!-- reins:onboarding pending -->'); // one note: onboard handles both

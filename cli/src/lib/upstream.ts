@@ -26,21 +26,3 @@ export function harnessVersion(dir: string): string {
 export function packageSkills(): string {
   return join(packageHarness(), '..', 'skills');
 }
-
-/** Which packaged skills a tier installs: the harness tier has no loop to run. */
-export function tierSkills(tier: string): string[] {
-  return tier === 'harness'
-    ? ['reins-setup']
-    : [
-        'reins-setup',
-        'reins-roadmap',
-        'reins-intent',
-        'reins-spec',
-        'reins-implement',
-        'reins-review',
-        'reins-test',
-        'reins-release',
-        'reins-retro',
-        'reins-loop',
-      ];
-}

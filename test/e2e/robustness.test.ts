@@ -35,8 +35,8 @@ describe('robustness of the built cli', () => {
   it('a closed stdout ends any command quietly, not only check (install, update)', async () => {
     const d = repo();
     for (const args of [
-      ['install', 'graph', '--mode', 'auto', '--dry-run'],
-      ['install', 'graph', '--mode', 'auto'],
+      ['install', '--mode', 'auto', '--dry-run'],
+      ['install', '--mode', 'auto'],
       ['update', '--dry-run'],
     ]) {
       const spawned = spawn(process.execPath, [CLI, ...args], {

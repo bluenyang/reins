@@ -1,7 +1,8 @@
-import { resolveBindings, stateLabel, type ResolvedBinding } from '../lib/bindings.js';
+import { effectiveBindings, resolveRoles, type BindingsV2 } from '../lib/bindings.js';
 import { newModelCache, vendors, type ModelCache, type Vendor } from '../lib/detect.js';
 import { repoRoot } from '../lib/git.js';
 import { modelsScreen } from './config-models.js';
+import { configureBindings } from './configure.js';
 import { clackPrompter, isInteractive, type Prompter } from '../lib/prompter.js';
 
 export interface ConfigOptions {
@@ -18,41 +19,119 @@ export interface ConfigOptions {
 }
 
 export const CONFIG_HINT =
-  'change with: reins configure bindings --set <role>=<model> [--local]  (see: reins configure bindings --help)';
+  'change with: reins config bindings --set <default|group|group.role>=<model> [--local]  (see: reins config bindings --help)';
 
-export function formatBindings(rows: ResolvedBinding[]): string {
-  return rows
-    .map(
-      (t) =>
-        `  ${t.role.padEnd(12)} ${t.vendor.padEnd(7)} ${t.model} (${t.source}: ${t.reason})${stateLabel(t) ? ` ${stateLabel(t)}` : ''}`,
-    )
-    .join('\n');
+/** The effective settings as text: mode, audit, the PM, each role that is on. */
+export function formatBindings(doc: BindingsV2): string {
+  const lines = [
+    `  mode: ${doc.mode ?? 'single'}`,
+    `  audit: ${doc.audit?.required === false ? 'off (switched off by the user)' : 'required every version'}`,
+    `  PM: ${doc.default ? `${doc.default.vendor} ${doc.default.model}` : 'claude claude-opus-5-5'}`,
+  ];
+  const on = resolveRoles(doc).filter((r) => r.on);
+  if (on.length === 0) lines.push('  every role: the PM');
+  for (const r of on)
+    lines.push(
+      `  ${`${r.group}/${r.role}`.padEnd(26)} ${r.models.map((b) => `${b.vendor} ${b.model}`).join(', ')} (${r.source})`,
+    );
+  const tools = Object.entries(doc.tools ?? {})
+    .map(([n, t]) => `${n}${t?.use === false ? ' (unused)' : ''}`)
+    .join(', ');
+  if (tools) lines.push(`  tools: ${tools}`);
+  return lines.join('\n');
 }
 
-/** `reins config` (design §9): the settings screen on a terminal, the resolved table otherwise. Returns the exit code. */
+/** `reins config` (design §9): the settings screen on a terminal, the effective table otherwise. Returns the exit code. */
 export async function runConfig(o: ConfigOptions = {}): Promise<number> {
   const write = o.write ?? ((s: string) => void process.stdout.write(s));
   const root = repoRoot(o.cwd ?? process.cwd());
   const interactive = o.interactive ?? isInteractive();
   if (!interactive || o.json) {
-    const bindings = resolveBindings(root, o.detectVendors);
-    if (o.json) write(`${JSON.stringify({ bindings }, null, 2)}\n`);
-    else write(`${formatBindings(bindings)}\n${CONFIG_HINT}\n`);
+    const doc = effectiveBindings(root);
+    if (!doc) {
+      write('no version-2 bindings.yaml — run `reins install` or `reins update`\n');
+      return 2;
+    }
+    if (o.json) write(`${JSON.stringify({ bindings: doc, roles: resolveRoles(doc) }, null, 2)}\n`);
+    else write(`${formatBindings(doc)}\n${CONFIG_HINT}\n`);
     return 0;
   }
   const prompter = o.prompter ?? (await clackPrompter());
   const modelCache = o.modelCache ?? newModelCache();
   const detect = o.detectVendors ?? vendors;
   for (;;) {
-    const v = await prompter.select<'models' | 'exit'>({
+    const doc = effectiveBindings(root);
+    const v = await prompter.select<'models' | 'tools' | 'mode' | 'audit' | 'exit'>({
       message: 'Configuration',
       options: [
         { value: 'models', label: 'models and roles configuration' },
+        { value: 'tools', label: 'agent tools', hint: 'detect again, use or not' },
+        { value: 'mode', label: `mode: ${doc?.mode ?? 'single'}` },
+        {
+          value: 'audit',
+          label: `audit: ${doc?.audit?.required === false ? 'off' : 'required'}`,
+        },
         { value: 'exit', label: 'exit' },
       ],
     });
-    if (v !== 'models') return 0; // exit, EXIT (Ctrl-C) or BACK: nothing more is written
-    const r = await modelsScreen({ root, prompter, detectVendors: detect, modelCache });
-    if (r === 'exit') return 0;
+    if (typeof v !== 'string' || v === 'exit') return 0; // EXIT (Ctrl-C) or BACK: nothing more is written
+    if (v === 'models') {
+      const r = await modelsScreen({ root, prompter, detectVendors: detect, modelCache });
+      if (r === 'exit') return 0;
+      continue;
+    }
+    if (v === 'tools') {
+      const found = detect();
+      const picked = await prompter.multiselect<string>({
+        message: 'Agent tools to use (detected tools are marked)',
+        options: found.map((t) => ({
+          value: t.name,
+          label: t.name,
+          hint: t.detected ? `detected (${t.cli})` : `not found (${t.cli})`,
+        })),
+        initial: found.filter((t) => doc?.tools?.[t.name]?.use ?? t.detected).map((t) => t.name),
+      });
+      if (typeof picked === 'symbol') return 0;
+      const r = await configureBindings({
+        cwd: root,
+        detect: true,
+        detectVendors: () => found,
+        tools: found.map((t) => `${t.name}=${picked.includes(t.name) ? 'on' : 'off'}`),
+      });
+      prompter.note(
+        r.refused ? `not changed: ${r.refused}` : 'agent tools written — commit bindings.yaml',
+      );
+      continue;
+    }
+    if (v === 'mode') {
+      const m = await prompter.select<'single' | 'multi'>({
+        message: 'Mode',
+        initial: doc?.mode ?? 'single',
+        options: [
+          { value: 'single', label: 'single', hint: 'the PM does every role (default)' },
+          { value: 'multi', label: 'multi', hint: 'role groups with a model do their work' },
+        ],
+      });
+      if (typeof m === 'symbol') return 0;
+      const r = await configureBindings({ cwd: root, mode: m });
+      prompter.note(
+        r.refused
+          ? `not changed: ${r.refused}`
+          : r.reconcile
+            ? `mode ${m}: AGENTS.md has a reconcile note — the PM merges it in the next conversation`
+            : `mode ${m}: already so`,
+      );
+      continue;
+    }
+    const off = doc?.audit?.required !== false;
+    if (off) {
+      const sure = await prompter.confirm({
+        message: 'Switch the per-version audit off? Nothing will check that the flow was followed.',
+        initial: false,
+      });
+      if (sure !== true) continue;
+    }
+    const r = await configureBindings({ cwd: root, audit: off ? 'off' : 'on' });
+    prompter.note(r.refused ? `not changed: ${r.refused}` : `audit ${off ? 'off' : 'required'}`);
   }
 }

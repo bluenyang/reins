@@ -1,5 +1,3 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
 import {
   CONFIRMED_MODELS,
   listModels,
@@ -8,17 +6,18 @@ import {
   type Vendor,
 } from '../lib/detect.js';
 import {
-  FIXED_ROLES,
-  readLocal,
-  teamEnabled,
-  resolveBindings,
-  type ResolvedBinding,
+  GROUP_ROLES,
+  GROUPS,
+  effectiveBindings,
+  readLocalBindings,
+  readTeam,
+  type Binding,
+  type BindingsV2,
+  type Group,
+  type GroupSpec,
 } from '../lib/bindings.js';
 import { BACK, EXIT, type Option, type Prompter } from '../lib/prompter.js';
-import { splitFrontmatter } from '../lib/skills.js';
-import { configureBindings } from './configure.js';
-
-export type Scope = 'local' | 'global';
+import { configureBindings, type ConfigureBindingsOptions, type Scope } from './configure.js';
 
 export interface ModelsScreenOptions {
   root: string;
@@ -29,60 +28,66 @@ export interface ModelsScreenOptions {
 
 const LISTER_CLI = { google: 'agy', cursor: 'cursor-agent' } as const;
 
-/** One line per role: `[ON] planner  claude claude-opus-5-5 (team)`; `(local)` marks a value of this user's own. */
-export function roleLine(b: ResolvedBinding, scope: Scope): string {
-  const mark = scope === 'local' && b.enabled_source === 'local' ? ' state (local)' : '';
-  const fixed = b.enabled_source === 'fixed' ? ' always on' : '';
-  return `[${b.enabled ? 'ON ' : 'OFF'}] ${b.role.padEnd(12)} ${b.vendor.padEnd(7)} ${b.model} (${b.source})${mark}${fixed}`;
+/** When switching a group on pays for itself (design §9; Anthropic 2026-10-22). */
+export const WHEN_TO_SWITCH_ON =
+  'switch a group on when the PM context degrades, independent work can run in parallel, or review/audit should run on another model';
+
+const show = (b: Binding | undefined) => (b ? `${b.vendor} ${b.model}` : 'off (PM)');
+
+/** One line per group: `pl  claude claude-sonnet-5-5, openai gpt-6.1-terra  +1 role`. */
+export function groupLine(group: Group, spec: GroupSpec | undefined): string {
+  if (!spec) return `${group.padEnd(12)} off — the PM does it`;
+  const models = spec.models?.length
+    ? spec.models.map(show).join(', ')
+    : spec.vendor && spec.model
+      ? show({ vendor: spec.vendor, model: spec.model })
+      : '—';
+  const n = Object.keys(spec.roles ?? {}).length;
+  return `${group.padEnd(12)} ${models}${n ? `  +${n} role${n > 1 ? 's' : ''}` : ''}`;
 }
 
-/** Models of `vendor` already known to this repository: role defaults and fallbacks, confirmed, current. */
-export function knownModels(root: string, vendor: Vendor['name'], current: string[]): string[] {
-  const out: string[] = [];
-  const dir = join(root, '.agents/harness/roles');
-  if (existsSync(dir))
-    for (const f of readdirSync(dir)
-      .filter((x) => x.endsWith('.md'))
-      .toSorted()) {
-      const { data } = splitFrontmatter(readFileSync(join(dir, f), 'utf8'));
-      for (const k of ['default_binding', 'fallback_binding'])
-        if (typeof data?.[k] === 'string') out.push(data[k]);
+/** Models of `vendor` already known here: confirmed ones and those in the current files. */
+export function knownModels(vendor: string, current: BindingsV2[]): string[] {
+  const out: string[] = [...CONFIRMED_MODELS];
+  for (const d of current) {
+    if (d.default) out.push(d.default.model);
+    for (const g of Object.values(d.groups ?? {})) {
+      if (!g) continue;
+      if (g.model) out.push(g.model);
+      for (const m of g.models ?? []) out.push(m.model);
+      for (const r of Object.values(g.roles ?? {})) out.push(r.model);
     }
-  out.push(...CONFIRMED_MODELS, ...current);
-  return [...new Set(out)].filter((m) => vendorOf(m) === vendor);
+  }
+  return [...new Set(out)].filter((m) => vendorOf(m) === vendor || !vendorOf(m));
 }
 
 /**
- * The models and roles screen (spec S-3) and the role screen under it (S-5). Every choice is written at
- * once through `configureBindings` (the same writer as `reins configure bindings`); EXIT writes nothing more.
+ * The models-and-roles screen (design §9): scope, the PM's model, each group (off, one model, several for
+ * pl and advisor, per-role models). Every choice is written at once through `configureBindings`.
  * Returns `exit` when the user left reins config, `back` for `< Configuration`.
  */
 export async function modelsScreen(o: ModelsScreenOptions): Promise<'back' | 'exit'> {
   const { root, prompter } = o;
   let scope: Scope = 'local';
-  const write = async (
-    opts: { set?: string[]; enable?: string[]; disable?: string[] },
-    label: string,
-  ): Promise<void> => {
-    const r = await configureBindings({
-      cwd: root,
-      local: scope === 'local',
-      detectVendors: o.detectVendors,
-      modelCache: o.modelCache,
-      ...opts,
-    });
+  const write = async (opts: Omit<ConfigureBindingsOptions, 'cwd' | 'local'>, label: string) => {
+    const r = await configureBindings({ cwd: root, local: scope === 'local', ...opts });
     if (r.refused) prompter.note(`not changed: ${r.refused}`);
     else if (r.changed.length === 0) prompter.note(`${label}: already so — nothing changed`);
     else if (scope === 'local')
       prompter.note(`${label}: written to .loctx/bindings.local.yaml (this user only)`);
     else
       prompter.note(
-        `${label}: written to .agents/harness/bindings.yaml, vendor files regenerated — commit bindings.yaml`,
+        `${label}: written to .agents/harness/bindings.yaml, generated files and AGENTS.md refreshed — commit them`,
       );
   };
 
   for (;;) {
-    const rows = resolveBindings(root, o.detectVendors);
+    const doc = effectiveBindings(root);
+    if (!doc) {
+      prompter.note('no version-2 bindings.yaml here — run `reins install` or `reins update`');
+      return 'back';
+    }
+    prompter.note(WHEN_TO_SWITCH_ON);
     const options: Option<string>[] = [
       { value: 'back', label: '< Configuration' },
       { value: 'exit', label: 'exit' },
@@ -90,13 +95,15 @@ export async function modelsScreen(o: ModelsScreenOptions): Promise<'back' | 'ex
         value: 'scope',
         label: `scope: ${scope === 'local' ? 'local | global' : 'global | local'}`,
       },
-      { value: 'toggle', label: 'switch roles on or off' },
-      ...rows.map((b) => ({ value: b.role, label: roleLine(b, scope) })),
+      { value: 'default', label: `${'PM'.padEnd(12)} ${show(doc.default)}` },
+      ...GROUPS.map((g) => ({ value: g, label: groupLine(g, doc.groups?.[g]) })),
     ];
-    const v = await prompter.select<string>({ message: 'Models and roles', options });
-    if (v === EXIT) return 'exit';
+    const v = await prompter.select<string>({
+      message: `Models and roles (mode: ${doc.mode ?? 'single'})`,
+      options,
+    });
+    if (v === EXIT || v === 'exit') return 'exit';
     if (v === BACK || v === 'back') return 'back';
-    if (v === 'exit') return 'exit';
     if (v === 'scope') {
       const s: Scope | typeof BACK | typeof EXIT = await prompter.select<Scope>({
         message: 'Write changes to',
@@ -110,104 +117,144 @@ export async function modelsScreen(o: ModelsScreenOptions): Promise<'back' | 'ex
       if (s !== BACK) scope = s;
       continue;
     }
-    if (v === 'toggle') {
-      const names = rows.filter((b) => !FIXED_ROLES.includes(b.role));
-      prompter.note(`always on: ${FIXED_ROLES.join(', ')}`);
-      const on = await prompter.multiselect<string>({
-        message: 'Roles that are on',
-        initial: names
-          .filter((b) => (scope === 'global' ? (teamEnabled(root)[b.role] ?? true) : b.enabled))
-          .map((b) => b.role),
-        options: names.map((b) => ({ value: b.role, label: b.role })),
-      });
-      if (on === EXIT) return 'exit';
-      if (on === BACK) continue;
-      // the list and the diff use the chosen scope's own value: global = the team file, local = effective
-      const team = teamEnabled(root);
-      const isOn = (b: ResolvedBinding): boolean =>
-        scope === 'global' ? (team[b.role] ?? true) : b.enabled;
-      const enable = names.filter((b) => !isOn(b) && on.includes(b.role)).map((b) => b.role);
-      const disable = names.filter((b) => isOn(b) && !on.includes(b.role)).map((b) => b.role);
-      if (enable.length + disable.length > 0)
-        await write({ enable, disable }, `roles ${[...enable, ...disable].join(', ')}`);
+    if (v === 'default') {
+      const b = await pickModel(o, 'PM', doc.default);
+      if (b === EXIT) return 'exit';
+      if (b) await write({ set: [`default=${b.vendor}:${b.model}`] }, `PM → ${show(b)}`);
       continue;
     }
-    const row = rows.find((b) => b.role === v);
-    if (!row) continue;
-    const r = await roleScreen(o, row, scope);
-    if (r === EXIT) return 'exit';
-    if (r !== undefined) await write({ set: [`${row.role}=${r}`] }, `${row.role} → ${r}`);
+    const r = await groupScreen(o, v as Group, doc.groups?.[v as Group], write);
+    if (r === 'exit') return 'exit';
   }
 }
 
-/** S-5: vendor (detected only), then model. Returns the chosen model ID, `undefined` for back, or EXIT. */
-async function roleScreen(
+async function groupScreen(
   o: ModelsScreenOptions,
-  row: ResolvedBinding,
-  scope: Scope,
-): Promise<string | typeof EXIT | undefined> {
+  group: Group,
+  spec: GroupSpec | undefined,
+  write: (opts: Omit<ConfigureBindingsOptions, 'cwd' | 'local'>, label: string) => Promise<void>,
+): Promise<'back' | 'exit'> {
   const { prompter } = o;
-  const detected = o.detectVendors().filter((v) => v.detected || v.name === 'claude');
+  const many = group === 'pl' || group === 'advisor';
+  const roles = GROUP_ROLES[group];
+  const pick = await prompter.select<string>({
+    message: `${group}: ${groupLine(group, spec).slice(12).trim()}`,
+    options: [
+      { value: 'back', label: '< back' },
+      { value: 'one', label: many ? 'one model' : 'set the model' },
+      ...(many ? [{ value: 'many', label: 'several models', hint: 'first = control (pl)' }] : []),
+      ...(roles.length ? [{ value: 'role', label: 'a model for one role' }] : []),
+      { value: 'off', label: 'switch off', hint: 'the PM does it' },
+    ],
+  });
+  if (pick === EXIT) return 'exit';
+  if (pick === BACK || pick === 'back') return 'back';
+  if (pick === 'off') {
+    await write({ off: [group] }, `${group} off`);
+    return 'back';
+  }
+  if (pick === 'one') {
+    const b = await pickModel(
+      o,
+      group,
+      spec?.vendor && spec.model ? { vendor: spec.vendor, model: spec.model } : spec?.models?.[0],
+    );
+    if (b === EXIT) return 'exit';
+    if (b) await write({ set: [`${group}=${b.vendor}:${b.model}`] }, `${group} → ${show(b)}`);
+    return 'back';
+  }
+  if (pick === 'many') {
+    const list: Binding[] = [];
+    for (;;) {
+      const b = await pickModel(o, `${group} #${list.length + 1}`, undefined);
+      if (b === EXIT) return 'exit';
+      if (!b) break;
+      list.push(b);
+      const more = await prompter.confirm({ message: 'Add another model?', initial: false });
+      if (more === EXIT) return 'exit';
+      if (more !== true) break;
+    }
+    if (list.length)
+      await write(
+        { models: [`${group}=${list.map((b) => `${b.vendor}:${b.model}`).join(',')}`] },
+        `${group} → ${list.map(show).join(', ')}`,
+      );
+    return 'back';
+  }
+  const role = await prompter.select<string>({
+    message: `${group}: which role`,
+    options: [
+      { value: 'back', label: '< back' },
+      ...roles.map((r) => ({ value: r, label: r, hint: show(spec?.roles?.[r]) })),
+    ],
+  });
+  if (role === EXIT) return 'exit';
+  if (role === BACK || role === 'back') return 'back';
+  const b = await pickModel(o, `${group}.${role}`, spec?.roles?.[role]);
+  if (b === EXIT) return 'exit';
+  if (b)
+    await write(
+      { set: [`${group}.${role}=${b.vendor}:${b.model}`] },
+      `${group}.${role} → ${show(b)}`,
+    );
+  return 'back';
+}
+
+/** Tool (used tools only), then model. Returns the binding, `undefined` for back, or EXIT. */
+async function pickModel(
+  o: ModelsScreenOptions,
+  label: string,
+  current: Binding | undefined,
+): Promise<Binding | typeof EXIT | undefined> {
+  const { prompter, root } = o;
+  const team = readTeam(root).doc;
+  const local = readLocalBindings(root);
+  const docs = [team, local].filter((d): d is BindingsV2 => !!d);
+  const used = Object.entries(effectiveBindings(root)?.tools ?? { claude: { use: true } })
+    .filter(([, t]) => t?.use !== false)
+    .map(([n]) => n);
+  if (!used.includes('claude')) used.unshift('claude');
   for (;;) {
     const vendor = await prompter.select<string>({
-      message: `${row.role} (${scope}): vendor`,
-      initial: row.vendor,
-      options: [
-        { value: 'back', label: '< back' },
-        ...detected.map((v) => ({ value: v.name as string, label: v.name })),
-      ],
+      message: `${label}: tool`,
+      initial: current?.vendor,
+      options: [{ value: 'back', label: '< back' }, ...used.map((v) => ({ value: v, label: v }))],
     });
     if (vendor === EXIT) return EXIT;
     if (vendor === BACK || vendor === 'back') return undefined;
-    const model = await modelPicker(o, row, vendor as Vendor['name']);
-    if (model === EXIT) return EXIT;
-    if (model === undefined) continue; // back to the vendor list
-    return model;
-  }
-}
-
-async function modelPicker(
-  o: ModelsScreenOptions,
-  row: ResolvedBinding,
-  vendor: Vendor['name'],
-): Promise<string | typeof EXIT | undefined> {
-  const { prompter, root } = o;
-  const team = (
-    await configureBindings({ cwd: root, show: true, detectVendors: o.detectVendors })
-  ).table.map((t) => t.model);
-  const local = Object.values(readLocal(root).roles).flatMap((r) => (r.model ? [r.model] : []));
-  let ids = knownModels(root, vendor, [...team, ...local, row.model]);
-  if (vendor === 'google' || vendor === 'cursor') {
-    let res: ReturnType<typeof listModels>;
-    try {
-      res = listModels(vendor, o.modelCache.run);
-    } catch (e) {
-      res = { failed: (e as Error).message };
+    let ids = knownModels(vendor, docs);
+    if (vendor === 'google' || vendor === 'cursor') {
+      let res: ReturnType<typeof listModels>;
+      try {
+        res = listModels(vendor, o.modelCache.run);
+      } catch (e) {
+        res = { failed: (e as Error).message };
+      }
+      if ('failed' in res)
+        prompter.note(`${LISTER_CLI[vendor]} models failed (${res.failed}) — showing known models`);
+      else ids = res.ids;
     }
-    if ('failed' in res)
-      prompter.note(`${LISTER_CLI[vendor]} models failed (${res.failed}) — showing known models`);
-    else ids = res.ids;
-  }
-  for (;;) {
-    const pick = await prompter.select<string>({
-      message: `${row.role}: ${vendor} model`,
-      initial: row.model,
-      options: [
-        { value: 'back', label: '< back' },
-        ...ids.map((m) => ({
-          value: m,
-          label: m,
-          ...(m === row.model ? { hint: 'current' } : {}),
-        })),
-        { value: 'other', label: 'other (type a model ID)' },
-      ],
-    });
-    if (pick === EXIT) return EXIT;
-    if (pick === BACK || pick === 'back') return undefined;
-    if (pick !== 'other') return pick;
-    const t = await prompter.text({ message: 'Model ID' });
-    if (t === EXIT) return EXIT;
-    if (t === BACK || !t.trim()) continue;
-    return t.trim();
+    for (;;) {
+      const pick = await prompter.select<string>({
+        message: `${label}: ${vendor} model`,
+        initial: current?.model,
+        options: [
+          { value: 'back', label: '< back' },
+          ...ids.map((m) => ({
+            value: m,
+            label: m,
+            ...(m === current?.model ? { hint: 'current' } : {}),
+          })),
+          { value: 'other', label: 'other (type a model ID)' },
+        ],
+      });
+      if (pick === EXIT) return EXIT;
+      if (pick === BACK || pick === 'back') break;
+      if (pick !== 'other') return { vendor, model: pick };
+      const t = await prompter.text({ message: 'Model ID' });
+      if (t === EXIT) return EXIT;
+      if (t === BACK || !t.trim()) continue;
+      return { vendor, model: t.trim() };
+    }
   }
 }

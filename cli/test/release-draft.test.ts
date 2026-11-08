@@ -94,7 +94,6 @@ describe('release: draft from dispatchable workflows (012-8)', () => {
   it('install and its dry run report the draft and never write it', async () => {
     const d = repo();
     const r = await runInstall({
-      tier: 'loop',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -107,7 +106,6 @@ describe('release: draft from dispatchable workflows (012-8)', () => {
       '{file: release.yml, inputs: {version: "{version}", dry_run: "false", note: "<fill in>"}, approval: none}',
     );
     const real = await runInstall({
-      tier: 'loop',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -120,7 +118,6 @@ describe('release: draft from dispatchable workflows (012-8)', () => {
   it('migrate and its dry run report the draft', async () => {
     const d = repo({ '.ai/README.md': '# old' });
     const r = await runMigrate({
-      tier: 'loop',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,

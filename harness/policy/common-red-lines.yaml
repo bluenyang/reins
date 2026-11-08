@@ -1,10 +1,10 @@
 schema: reins/policy/red-lines@1
-# Common prohibitions for every role (design §2). The verifier enforces these; roles add their own must_not.
+# What no role does (design §2-4). Agents keep these; the audit judges them; C4 patterns also become deny rules.
 rules:
   - id: C1
     text: Implementing "to pass" — hard-coding, or making only some paths look right. Fix the cause.
   - id: C2
-    text: Editing AGENTS.md managed blocks, harness/policy/ or harness/roles/ (pm and `reins update` only).
+    text: Editing AGENTS.md managed blocks or harness sources by hand (the user changes them with `reins config` and `reins update`).
   - id: C3
     text: Editing one's own permission file or any generated vendor file.
   - id: C4
@@ -14,7 +14,7 @@ rules:
   - id: C5
     text: Bypassing hooks (--no-verify) or massaging gate output (pipes that hide the exit code).
   - id: C6
-    text: push, PR, merge, release, tag — deploy role only, inside the pre-release loop.
+    text: push, PR, merge, release, tag without the user's instruction or a setting that allows it (the deployer within that scope).
   - id: C7
     text: Reversing a recorded decision (knowledge/) without the user.
   - id: C8
@@ -22,4 +22,4 @@ rules:
   - id: C9
     text: Touching running servers, clusters or network devices.
   - id: C10
-    text: Changing files or behaviour outside the intent and plan — open a ticket instead.
+    text: Changing files or behaviour outside the intent and spec — ask the PM.

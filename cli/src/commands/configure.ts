@@ -1,228 +1,226 @@
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parse, parseDocument, stringify } from 'yaml';
-import type { Asker } from '../lib/ask.js';
+import { parse, parseDocument } from 'yaml';
+import { subdirProposals, vendorOf, vendors, type SubdirGate, type Vendor } from '../lib/detect.js';
 import {
-  CONFIRMED_MODELS,
-  checkBinding,
-  newModelCache,
-  subdirProposals,
-  type SubdirGate,
-  vendorOf,
-  vendors,
-  type ModelCache,
-  type Vendor,
-} from '../lib/detect.js';
-import {
-  readLocal,
-  recordDetection,
-  resolveBindings,
-  roleEnabledRefusal,
-  setRoleEnabled,
-  teamRoles,
-  writeLocal,
-  type ResolvedBinding,
+  GROUP_ROLES,
+  GROUPS,
+  effectiveBindings,
+  readLocalBindings,
+  readTeam,
+  resolveRoles,
+  validateBindings,
+  writeBindings,
+  type Binding,
+  type BindingsV2,
+  type Group,
+  type ResolvedRole,
 } from '../lib/bindings.js';
+import { placeNote, reconcileNote, renderBlocks } from '../lib/agents-md.js';
+import { applyBlocks } from '../lib/blocks.js';
 import { generateVendorFiles } from '../lib/generate.js';
 import { repoRoot } from '../lib/git.js';
 import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
 import { packageHarness } from '../lib/upstream.js';
-import { buildBindings } from './install.js';
 
-interface Binding {
-  vendor: string;
-  model: string;
-  [k: string]: unknown;
-}
-
-interface BindingsDoc {
-  schema: string;
-  mode?: string;
-  vendors?: Record<string, unknown>;
-  roles: Record<string, Binding>;
-  [k: string]: unknown;
-}
+export type Scope = 'local' | 'global';
 
 export interface ConfigureBindingsOptions {
   cwd?: string;
-  /** role=model pairs, e.g. ["pm=claude-fable-5-1", "code-review=claude-opus-5-5"] */
+  /** `target=model` or `target=vendor:model`; target is `default` (the PM), `<group>` or `<group>.<role>` */
   set?: string[];
-  /** rebuild every role from its defaults for this set of available vendors */
-  vendors?: string[];
-  asker?: Asker;
-  detectVendors?: () => Vendor[];
-  modelCache?: ModelCache;
-  /** with `set`: write the per-user override file instead of bindings.yaml (no regeneration) */
+  /** `<group>=m1,m2` — several models (pl and advisor) */
+  models?: string[];
+  /** switch these groups off (the PM does their work) */
+  off?: string[];
+  mode?: 'single' | 'multi';
+  /** `on` | `off` — whether the per-version audit is required */
+  audit?: 'on' | 'off';
+  /** `<tool>=on|off` — which agent tools are used */
+  tools?: string[];
+  /** re-detect the agent tools and record what is on PATH */
+  detect?: boolean;
+  /** write the personal override `.loctx/bindings.local.yaml` (no regeneration) */
   local?: boolean;
-  /** only print the resolved table */
+  /** only report the effective table */
   show?: boolean;
-  /** switch these roles off / on (with `local`: for this user only); combinable with `set` */
-  disable?: string[];
-  enable?: string[];
+  detectVendors?: () => Vendor[];
 }
 
 export interface ConfigureResult {
   refused?: string;
-  /** exit code for a refusal: 1 = a bad role name or a fixed role (nothing written), 2 (default) = cannot run */
+  /** 1 = a bad name (nothing written), 2 = cannot run */
   code?: 1 | 2;
-  /** roles switched on or off by this call */
-  toggled?: { role: string; enabled: boolean }[];
   changed: string[];
-  table: { role: string; vendor: string; model: string }[];
+  /** the effective settings after the call (team + personal override) */
+  doc?: BindingsV2;
+  roles: ResolvedRole[];
   generated?: GenWriteResult;
-  /** what each role actually runs on (local → team → fallback → pm) */
-  resolved?: ResolvedBinding[];
+  /** the mode changed: AGENTS.md got a reconcile note */
+  reconcile?: boolean;
 }
 
-/** `reins configure bindings` (R57–R59): any role, any model, any vendor; then the vendor files follow. */
+/** A model given alone, or `vendor:model`. */
+export function parseBinding(v: string): Binding | null {
+  const s = v.trim();
+  if (!s) return null;
+  const i = s.indexOf(':');
+  if (i > 0) return { vendor: s.slice(0, i), model: s.slice(i + 1) };
+  return { vendor: vendorOf(s), model: s };
+}
+
+/** Rewrite AGENTS.md's managed blocks for these settings (design §5); a mode change adds the reconcile note. */
+export function refreshAgents(root: string, doc: BindingsV2, modeChanged: boolean): boolean {
+  const ap = join(root, 'AGENTS.md');
+  if (!existsSync(ap)) return false;
+  const before = readFileSync(ap, 'utf8');
+  const pin = join(root, '.agents/harness/install.yaml');
+  const language = existsSync(pin)
+    ? String((parse(readFileSync(pin, 'utf8')) as { language?: string } | null)?.language ?? 'ko')
+    : 'ko';
+  let text = applyBlocks(before, renderBlocks(packageHarness(), doc, language)).text;
+  if (modeChanged) {
+    writeFileSync(join(root, '.agents/AGENTS.previous.md'), before);
+    text = placeNote(
+      text,
+      reconcileNote(`The user switched the mode to ${doc.mode ?? 'single'}.`),
+      'reconcile',
+    );
+  }
+  if (text !== before) writeFileSync(ap, text);
+  return text !== before;
+}
+
+/** `reins config bindings` (design §9): the flag form of the models-and-roles screen. */
 export async function configureBindings(o: ConfigureBindingsOptions): Promise<ConfigureResult> {
   const root = repoRoot(o.cwd ?? process.cwd());
-  const path = join(root, '.agents/harness/bindings.yaml');
-  if (!existsSync(path))
-    return { refused: 'no bindings.yaml — install the graph tier first', changed: [], table: [] };
-  const roles = new Set(
-    readdirSync(join(root, '.agents/harness/roles'))
-      .filter((f) => f.endsWith('.md'))
-      .map((f) => f.slice(0, -3)),
-  );
-  let doc = parse(readFileSync(path, 'utf8')) as BindingsDoc;
-  const changed: string[] = [];
-  const cache = o.modelCache ?? newModelCache();
-  const detect = o.detectVendors ?? vendors;
-  const teamTable = () =>
-    Object.entries(doc.roles)
-      .map(([role, b]) => ({ role, vendor: b.vendor, model: b.model }))
-      .toSorted((a, b) => a.role.localeCompare(b.role));
-
-  if (o.show) return { changed, table: teamTable(), resolved: resolveBindings(root, detect) };
-
-  // on/off requests are checked as a whole before anything is written
-  const wanted = [
-    ...(o.disable ?? []).map((role) => ({ role, enabled: false })),
-    ...(o.enable ?? []).map((role) => ({ role, enabled: true })),
-  ];
-  for (const w of wanted) {
-    const why = roleEnabledRefusal(root, w.role, w.enabled);
-    if (why) return { refused: why, code: 1, changed: [], table: [] };
-  }
-  if ((o.disable ?? []).some((r) => (o.enable ?? []).includes(r)))
+  const team = readTeam(root);
+  if (!team.doc)
     return {
-      refused: 'a role cannot be both --disable and --enable',
-      code: 1,
+      refused: team.v1
+        ? 'bindings.yaml is version 1 — run `reins update` to convert it'
+        : 'no bindings.yaml — run `reins install` first',
+      code: 2,
       changed: [],
-      table: [],
+      roles: [],
     };
-  const toggled: { role: string; enabled: boolean }[] = [];
-  const toggle = (scope: 'global' | 'local') => {
-    for (const w of wanted)
-      if (setRoleEnabled(root, w.role, w.enabled, scope).changed) {
-        toggled.push(w);
-        if (!changed.includes(w.role)) changed.push(w.role);
-      }
-  };
-
-  if (o.local) {
-    // per-user overrides: roles only; the team file and generated files stay untouched
-    const local = readLocal(root);
-    for (const pair of o.set ?? []) {
-      const [role, model] = pair.split('=').map((s) => s.trim());
-      if (!role || !model)
-        return { refused: `"${pair}" is not role=model`, changed: [], table: [] };
-      if (!roles.has(role))
-        return {
-          refused: `unknown role "${role}" — roles: ${[...roles].toSorted().join(', ')}`,
-          changed: [],
-          table: [],
-        };
-      if (teamRoles(root)[role]?.model === model) {
-        // the same as the team: no override to keep (the role follows the team again)
-        if (local.roles[role]?.model !== undefined) {
-          const { model: _drop, ...rest } = local.roles[role]!;
-          if (Object.keys(rest).length) local.roles[role] = rest;
-          else delete local.roles[role];
-          changed.push(role);
-        }
-      } else if (local.roles[role]?.model !== model) {
-        local.roles[role] = { ...local.roles[role], model };
-        changed.push(role);
-      }
-    }
-    if (changed.length) writeLocal(root, local);
-    toggle('local');
-    return { changed, toggled, table: teamTable(), resolved: resolveBindings(root, detect) };
+  const effective = () => effectiveBindings(root)!;
+  if (o.show) {
+    const doc = effective();
+    return { changed: [], doc, roles: resolveRoles(doc) };
   }
+  const base: Partial<BindingsV2> = o.local
+    ? (readLocalBindings(root) ?? {})
+    : structuredClone(team.doc);
+  const next: Partial<BindingsV2> = structuredClone(base);
+  const changed: string[] = [];
+  const refuse = (why: string): ConfigureResult => ({
+    refused: why,
+    code: 1,
+    changed: [],
+    roles: [],
+  });
+  const groupOf = (name: string): Group | null =>
+    (GROUPS as string[]).includes(name) ? (name as Group) : null;
 
-  if (o.vendors?.length) {
-    const vs = detect();
-    recordDetection(root, vs);
-    const avail = new Set<Vendor['name']>([
-      'claude',
-      ...(o.vendors.filter((v) => ['openai', 'google', 'cursor'].includes(v)) as Vendor['name'][]),
-    ]);
-    const rebuilt = parse(
-      buildBindings(packageHarness(), avail, vs, doc.mode ?? 'manual', cache),
-    ) as BindingsDoc;
-    for (const r of Object.keys(rebuilt.roles)) {
-      const kept = doc.roles[r]?.['enabled'];
-      if (typeof kept === 'boolean') rebuilt.roles[r]!['enabled'] = kept;
+  for (const pair of o.set ?? []) {
+    const eq = pair.indexOf('=');
+    const target = pair.slice(0, eq).trim();
+    const b = eq > 0 ? parseBinding(pair.slice(eq + 1)) : null;
+    if (!target || !b) return refuse(`"${pair}" is not target=model`);
+    if (target === 'default') {
+      next.default = b;
+    } else {
+      const [g, role] = target.split('.');
+      const group = groupOf(g ?? '');
+      if (!group) return refuse(`unknown group "${g}" — groups: default, ${GROUPS.join(', ')}`);
+      const roles = GROUP_ROLES[group];
+      next.groups = { ...next.groups };
+      const spec = { ...next.groups[group] };
+      if (role) {
+        if (!roles.includes(role))
+          return refuse(`unknown role "${role}" in ${group} — roles: ${roles.join(', ') || group}`);
+        spec.roles = { ...spec.roles, [role]: b };
+      } else {
+        delete spec.models;
+        spec.vendor = b.vendor;
+        spec.model = b.model;
+      }
+      next.groups[group] = spec;
     }
-    for (const r of Object.keys(rebuilt.roles))
-      if (JSON.stringify(rebuilt.roles[r]) !== JSON.stringify(doc.roles[r])) changed.push(r);
-    doc = rebuilt;
+    changed.push(target);
   }
-
-  let pairs = o.set ?? [];
-  if (!pairs.length && !o.vendors?.length && o.asker) {
-    const ans = await o.asker.ask(
-      'change bindings as role=model, comma-separated (empty: keep)',
-      '',
-    );
-    pairs = ans
+  for (const pair of o.models ?? []) {
+    const eq = pair.indexOf('=');
+    const group = groupOf(pair.slice(0, eq).trim());
+    if (!group || (group !== 'pl' && group !== 'advisor'))
+      return refuse(`"${pair}": several models are for pl and advisor only`);
+    const list = pair
+      .slice(eq + 1)
       .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
+      .map(parseBinding)
+      .filter((x): x is Binding => x !== null);
+    if (!list.length) return refuse(`"${pair}" names no model`);
+    next.groups = { ...next.groups };
+    const { vendor: _v, model: _m, ...rest } = next.groups[group] ?? {};
+    next.groups[group] = { ...rest, models: list };
+    changed.push(group);
   }
-  for (const pair of pairs) {
-    const [role, model] = pair.split('=').map((s) => s.trim());
-    if (!role || !model) return { refused: `"${pair}" is not role=model`, changed: [], table: [] };
-    if (!roles.has(role))
-      return {
-        refused: `unknown role "${role}" — roles: ${[...roles].toSorted().join(', ')}`,
-        changed: [],
-        table: [],
-      };
-    const entry: Binding = { vendor: vendorOf(model), model };
-    if (typeof doc.roles[role]?.['enabled'] === 'boolean')
-      entry['enabled'] = doc.roles[role]['enabled'];
-    if (role === 'implementer') entry['parallel'] = doc.roles[role]?.['parallel'] ?? 4;
-    const chk = checkBinding(model, entry.vendor as Vendor['name'], cache);
-    if (chk) {
-      if (chk.unverified) entry['unverified'] = true;
-      if (chk.note) entry['note'] = chk.note;
-    } else if (!CONFIRMED_MODELS.has(model)) entry['unverified'] = true;
-    if (JSON.stringify(doc.roles[role]) !== JSON.stringify(entry)) {
-      doc.roles[role] = entry;
-      if (!changed.includes(role)) changed.push(role);
+  for (const name of o.off ?? []) {
+    const group = groupOf(name);
+    if (!group) return refuse(`unknown group "${name}" — groups: ${GROUPS.join(', ')}`);
+    if (next.groups?.[group]) {
+      next.groups = { ...next.groups };
+      delete next.groups[group];
+      changed.push(group);
     }
   }
+  if (o.mode && next.mode !== o.mode) {
+    next.mode = o.mode;
+    changed.push('mode');
+  }
+  if (o.audit) {
+    const required = o.audit === 'on';
+    if ((next.audit?.required ?? true) !== required) {
+      next.audit = { ...next.audit, required };
+      changed.push('audit');
+    }
+  }
+  if (o.detect || o.tools?.length) {
+    const vs = (o.detectVendors ?? vendors)();
+    next.tools = { ...next.tools };
+    if (o.detect)
+      for (const v of vs)
+        next.tools[v.name] = {
+          ...next.tools[v.name],
+          cli: v.cli,
+          use: next.tools[v.name]?.use ?? v.detected,
+        };
+    for (const pair of o.tools ?? []) {
+      const [name, state] = pair.split('=').map((s) => s.trim());
+      if (!name || (state !== 'on' && state !== 'off'))
+        return refuse(`"${pair}" is not tool=on|off`);
+      const cli = vs.find((v) => v.name === name)?.cli ?? next.tools[name]?.cli ?? name;
+      next.tools[name] = { ...next.tools[name], cli, use: state === 'on' };
+    }
+    changed.push('tools');
+  }
 
-  if (changed.length)
-    writeFileSync(
-      path,
-      `# generated by reins — change with \`reins configure bindings\`\n${stringify(doc)}`,
-    );
-  const wrote = changed.length > 0;
-  toggle('global');
-  if (toggled.length > 0) doc = parse(readFileSync(path, 'utf8')) as BindingsDoc;
-  const generated =
-    wrote || toggled.length ? writeGenerated(root, generateVendorFiles(root), false) : undefined;
-  return {
-    changed,
-    toggled,
-    table: teamTable(),
-    generated,
-    resolved: resolveBindings(root, detect),
-  };
+  const problems = o.local ? [] : validateBindings({ ...next, schema: 'reins/bindings@2' });
+  if (problems.length) return refuse(`the result would not be valid: ${problems.join('; ')}`);
+  const wrote = JSON.stringify(next) !== JSON.stringify(base);
+  if (!wrote) {
+    const doc = effective();
+    return { changed: [], doc, roles: resolveRoles(doc) };
+  }
+  writeBindings(root, next, o.local ? 'local' : 'global');
+  const doc = effective();
+  if (o.local) return { changed, doc, roles: resolveRoles(doc) };
+  const teamNow = readTeam(root).doc!;
+  const modeChanged = (team.doc.mode ?? 'single') !== (teamNow.mode ?? 'single');
+  const generated = writeGenerated(root, generateVendorFiles(root), false);
+  refreshAgents(root, teamNow, modeChanged);
+  return { changed, doc, roles: resolveRoles(doc), generated, reconcile: modeChanged || undefined };
 }
 
 export interface ConfigureGatesOptions {

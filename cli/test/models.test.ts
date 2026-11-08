@@ -1,12 +1,4 @@
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parse } from 'yaml';
-import { configureBindings } from '../src/commands/configure.js';
-import { buildBindings, runInstall } from '../src/commands/install.js';
-import { defaultsAsker } from '../src/lib/ask.js';
 import {
   checkBinding,
   listModels,
@@ -14,9 +6,7 @@ import {
   spawnModels,
   vendorOf,
   type ModelsRunner,
-  type Vendor,
 } from '../src/lib/detect.js';
-import { packageHarness } from '../src/lib/upstream.js';
 
 const AGY =
   '\u001b[1mAvailable models\u001b[0m\ngemini-3-pro\tGemini 3 Pro\ngemini-3-flash\tFlash\n';
@@ -35,12 +25,6 @@ function fake(out: Record<string, string>, calls: string[][] = []) {
 
 const run1 = (r: ReturnType<ModelsRunner>) =>
   checkBinding('x', 'google', newModelCache({ run: () => r, onPath: () => true }));
-const detectOnlyClaude = () =>
-  (['claude', 'openai', 'google', 'cursor'] as const).map((name) => ({
-    name,
-    cli: name,
-    detected: name === 'claude',
-  }));
 
 describe('no real vendor CLI under test', () => {
   it('the real runner refuses to spawn, and the default cache sees every CLI as absent', () => {
@@ -109,52 +93,5 @@ describe('listModels / checkBinding (C-3)', () => {
       onPath: () => false,
     });
     expect(checkBinding('gemini-3-pro', 'google', absent)).toBeNull();
-  });
-
-  it('buildBindings joins the fallback note and records the check', () => {
-    const vs: Vendor[] = [{ name: 'claude', cli: 'claude', detected: true }];
-    const { cache } = fake({ agy: AGY });
-    const doc = parse(
-      buildBindings(packageHarness(), new Set(['claude', 'google']), vs, 'auto', cache),
-    ) as {
-      roles: Record<string, Record<string, unknown>>;
-    };
-    for (const r of Object.values(doc.roles))
-      if (r['vendor'] === 'google') expect(r['model']).toBeTypeOf('string');
-  });
-});
-
-describe('configure --set (C-4)', () => {
-  it('keeps an unknown ID, warns, exits cleanly', async () => {
-    const d = mkdtempSync(join(tmpdir(), 'reins-models-'));
-    execFileSync('git', ['init', '-q'], { cwd: d });
-    writeFileSync(join(d, 'package.json'), '{}');
-    const { cache: c0 } = fake({});
-    await runInstall({
-      tier: 'graph',
-      mode: 'auto',
-      asker: defaultsAsker,
-      cwd: d,
-      detectVendors: detectOnlyClaude,
-      modelCache: c0,
-    });
-    const { cache, warns } = fake({ agy: AGY });
-    const r = await configureBindings({
-      cwd: d,
-      set: ['qa-run=gemini-nope', 'pm=gemini-3-pro'],
-      modelCache: cache,
-    });
-    expect(r.refused).toBeUndefined();
-    const doc = parse(readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8')) as {
-      roles: Record<string, Record<string, unknown>>;
-    };
-    expect(doc.roles['qa-run']).toEqual({
-      vendor: 'google',
-      model: 'gemini-nope',
-      unverified: true,
-      note: 'not in agy models',
-    });
-    expect(doc.roles['pm']).toEqual({ vendor: 'google', model: 'gemini-3-pro' });
-    expect(warns).toHaveLength(1);
   });
 });

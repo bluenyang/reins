@@ -11,17 +11,16 @@ import {
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { Asker } from '../lib/ask.js';
-import { applyBlocks, parseBlocks, swapSections } from '../lib/blocks.js';
 import { relPath } from '../lib/fsx.js';
 import { generation, type Generation, type Vendor } from '../lib/detect.js';
 import { repoRoot } from '../lib/git.js';
 import { convertWorkToTicket, planMigration, type Move } from '../lib/migrate-plan.js';
 import { splitFrontmatter } from '../lib/skills.js';
 import { packageHarness } from '../lib/upstream.js';
-import { ROADMAP_STUB, runInstall, type Tier } from './install.js';
+import { ROADMAP_STUB, runInstall } from './install.js';
+import { placeNote, reconcileNote } from '../lib/agents-md.js';
 
 export interface MigrateOptions {
-  tier: Tier;
   mode: 'manual' | 'auto';
   dryRun?: boolean;
   /** where legacy files go: local = .loctx/_legacy/ (default), committed = .agents/legacy/ */
@@ -39,12 +38,7 @@ export interface MigrateResult {
   moves: (Move & { result: 'moved' | 'converted' | 'kept-both' | 'same' | 'planned' })[];
   agents: { swapped: string[]; inserted: string[] };
   report: string[];
-  history?: string;
 }
-
-const pad = (n: number) => String(n).padStart(2, '0');
-const stampOf = (d: Date) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
 
 function removeEmptyDirs(dir: string): void {
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return;
@@ -96,7 +90,7 @@ function writeMigratedIntent(root: string, moves: MigrateResult['moves']): strin
   return '.agents/intent/000_migrated/intent.md written as a draft listing the migrated tickets — the user approves it before any of them starts';
 }
 
-/** `reins migrate <tier>` (design §7): install if needed, move the old workspace, swap AGENTS.md sections. Idempotent. */
+/** `reins migrate` (design §7): install, move the old workspace, set AGENTS.md aside for the PM to reconcile. Idempotent. */
 export async function runMigrate(o: MigrateOptions): Promise<MigrateResult> {
   const root = repoRoot(o.cwd ?? process.cwd());
   const gen = generation(root);
@@ -110,10 +104,14 @@ export async function runMigrate(o: MigrateOptions): Promise<MigrateResult> {
   if (gen === 'none')
     return { ...res, refused: 'no existing harness or workspace here — use `reins install`' };
 
+  // the project's own AGENTS.md before reins touches it: the PM reconciles it in the next conversation
+  const agentsPath = join(root, 'AGENTS.md');
+  const original =
+    existsSync(agentsPath) && gen !== 'reins' ? readFileSync(agentsPath, 'utf8') : undefined;
+
   // 1. make sure the target layout exists (install is idempotent)
   {
     const inst = await runInstall({
-      tier: o.tier,
       mode: o.mode,
       asker: o.asker,
       cwd: root,
@@ -180,57 +178,24 @@ export async function runMigrate(o: MigrateOptions): Promise<MigrateResult> {
     if (made) res.report.push(made);
   }
 
-  // 3. AGENTS.md: sections reins owns become managed blocks; the originals are kept locally
-  const agentsPath = join(root, 'AGENTS.md');
-  if (existsSync(agentsPath)) {
-    const up = parseBlocks(
-      readFileSync(join(packageHarness(), 'templates/agents-md-blocks.md'), 'utf8'),
-    );
-    const before = readFileSync(agentsPath, 'utf8');
-    const swap = swapSections(before, up);
-    const placed = applyBlocks(swap.text, up);
-    res.agents = { swapped: swap.swapped, inserted: placed.inserted };
-    if (placed.text !== before && !o.dryRun) {
-      writeFileSync(agentsPath, placed.text);
-      if (swap.removed) {
-        const keep = join(root, '.loctx/context/agents-md.before.md');
-        mkdirSync(dirname(keep), { recursive: true });
-        const prev = existsSync(keep) ? `${readFileSync(keep, 'utf8')}\n\n` : '';
-        writeFileSync(
-          keep,
-          `${prev}<!-- replaced by reins migrate, ${stampOf(o.now ?? new Date())} -->\n${swap.removed}\n`,
-        );
-        res.report.push(
-          'AGENTS.md: the replaced sections are in .loctx/context/agents-md.before.md — move project-specific rules back outside the blocks',
-        );
-      }
+  // 3. AGENTS.md (design §5): the previous text is kept aside as reference; the PM merges what applies
+  if (original !== undefined && original.trim() && !o.dryRun) {
+    const prev = join(root, '.agents/AGENTS.previous.md');
+    if (!existsSync(prev)) {
+      mkdirSync(dirname(prev), { recursive: true });
+      writeFileSync(prev, original);
+      const now = readFileSync(agentsPath, 'utf8');
+      const next = placeNote(
+        now,
+        reconcileNote('reins migrate replaced the harness this repository used.'),
+        'reconcile',
+      );
+      if (next !== now) writeFileSync(agentsPath, next);
+      res.agents.inserted.push('reconcile');
+      res.report.push(
+        'AGENTS.md: the previous text is in .agents/AGENTS.previous.md — the PM reconciles it in the next conversation',
+      );
     }
-  }
-
-  // 4. record, only when something happened
-  const happened = res.moves.length > 0 || res.agents.swapped.length > 0;
-  if (happened && !o.dryRun) {
-    res.history = `.loctx/history/${stampOf(o.now ?? new Date())}_migrate-${o.tier}.md`;
-    const count = (r: string) => res.moves.filter((m) => m.result === r).length;
-    writeFileSync(
-      join(root, res.history),
-      [
-        `decisions: migrate-${o.tier}`,
-        'source: tool',
-        '',
-        `# reins migrate ${o.tier} — from ${gen}`,
-        '',
-        `- moved ${count('moved')} · converted to tickets ${count('converted')} · identical ${count('same')} · kept both ${count('kept-both')}`,
-        `- AGENTS.md: swapped ${res.agents.swapped.join(', ') || 'none'}; inserted ${res.agents.inserted.join(', ') || 'none'}`,
-        '',
-        '## for a person to look at',
-        ...res.report.map((r) => `- ${r}`),
-        '',
-        '## moves',
-        ...res.moves.map((m) => `- ${m.from} → ${m.to} (${m.result})`),
-        '',
-      ].join('\n'),
-    );
   }
   return res;
 }

@@ -25,7 +25,7 @@ export function generation(root: string): Generation {
 }
 
 export interface Vendor {
-  name: 'claude' | 'openai' | 'google' | 'cursor';
+  name: 'claude' | 'openai' | 'google' | 'gemini' | 'copilot' | 'cursor';
   cli: string;
   detected: boolean;
 }
@@ -43,7 +43,9 @@ export function vendors(): Vendor[] {
   return [
     { name: 'claude', cli: 'claude', detected: onPath('claude') },
     { name: 'openai', cli: 'codex', detected: onPath('codex') },
-    { name: 'google', cli: 'agy', detected: onPath('agy') || onPath('gemini') },
+    { name: 'google', cli: 'agy', detected: onPath('agy') },
+    { name: 'gemini', cli: 'gemini', detected: onPath('gemini') },
+    { name: 'copilot', cli: 'copilot', detected: onPath('copilot') },
     { name: 'cursor', cli: 'cursor-agent', detected: onPath('cursor-agent') },
   ];
 }

@@ -62,7 +62,6 @@ describe('manual install screens (spec S-8)', () => {
     const b = fixture();
     const probe = scriptedPrompter([['claude', 'openai'], 'en', true, ['server-test-go']]);
     await runInstall({
-      tier: 'graph',
       mode: 'manual',
       asker: defaultsAsker,
       cwd: a,
@@ -75,12 +74,18 @@ describe('manual install screens (spec S-8)', () => {
       'confirm',
       'multiselect',
     ]);
-    expect(probe.asked[0]?.values).toEqual(['claude', 'openai', 'google', 'cursor']);
+    expect(probe.asked[0]?.values).toEqual([
+      'claude',
+      'openai',
+      'google',
+      'gemini',
+      'copilot',
+      'cursor',
+    ]);
     expect(probe.asked[3]?.values).toContain('server-test-go');
     expect(probe.remaining()).toBe(0);
 
     await runInstall({
-      tier: 'graph',
       mode: 'manual',
       asker: lines(['claude,openai', 'en', 'y', 'server-test-go']),
       cwd: b,
@@ -95,7 +100,6 @@ describe('manual install screens (spec S-8)', () => {
     const d = fixture();
     const p = scriptedPrompter([['claude'], 'other', 'ja', false, []]);
     const r = await runInstall({
-      tier: 'graph',
       mode: 'manual',
       asker: defaultsAsker,
       cwd: d,
@@ -112,7 +116,6 @@ describe('manual install screens (spec S-8)', () => {
       const d = fixture();
       const before = snapshot(d);
       const r = await runInstall({
-        tier: 'graph',
         mode: 'manual',
         asker: defaultsAsker,
         cwd: d,
@@ -128,7 +131,6 @@ describe('manual install screens (spec S-8)', () => {
     const d = fixture();
     const p = scriptedPrompter([]);
     await runInstall({
-      tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -143,7 +145,6 @@ describe('update confirmation (spec S-9)', () => {
   async function old(): Promise<string> {
     const d = fixture();
     await runInstall({
-      tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -153,7 +154,7 @@ describe('update confirmation (spec S-9)', () => {
     writeFileSync(pin, readFileSync(pin, 'utf8').replace(/version: .*/, 'version: 0.0.9'));
     const role = join(d, '.agents/harness/roles/pl.md');
     writeFileSync(role, `${readFileSync(role, 'utf8')}\nold text\n`);
-    rmSync(join(d, '.agents/harness/roles/docs.md')); // update recreates it: a created line
+    rmSync(join(d, '.agents/harness/roles/auditor.md')); // update recreates it: a created line
     return d;
   }
   const opts = { detectVendors: detect, now: new Date(2026, 9, 28, 9, 0) };
@@ -174,8 +175,8 @@ describe('update confirmation (spec S-9)', () => {
     expect(shown).toMatch(/^reins update — cli .* → v.*, harness v0\.0\.9 → v/);
     expect(shown).toContain('(dry run)');
     expect(shown).toContain('  ~ .agents/harness/roles/pl.md');
-    expect(shown).toContain('  + .agents/harness/roles/docs.md');
-    expect(shown).not.toContain('  ~ .agents/harness/roles/docs.md');
+    expect(shown).toContain('  + .agents/harness/roles/auditor.md');
+    expect(shown).not.toContain('  ~ .agents/harness/roles/auditor.md');
     expect(snapshot(d)).toEqual(before);
   });
 
@@ -196,29 +197,33 @@ describe('update confirmation (spec S-9)', () => {
     expect(sa['.agents/harness/roles/pl.md']).not.toContain('old text');
   });
 
-  it('plan shows a removed file and the bindings move', () => {
+  it('plan shows a removed file, the bindings conversion and the 0.x pieces', () => {
     const text = formatUpdate(
       {
         root: '/x',
-        from: '0.1.5',
-        to: '0.2.0',
-        cliFrom: '0.1.5',
-        cliTo: '0.2.0',
+        from: '0.2.0',
+        to: '0.3.0',
+        cliFrom: '0.2.0',
+        cliTo: '0.3.0',
         changes: [],
-        needsSkill: false,
         overrides: [],
-        bindingsMoved: ['claude'],
+        converted: ['role pl → pl (openai gpt-6.1-sol)'],
+        removed: ['.agents/skills/reins-loop'],
+        cleanup: ['.loctx/bus'],
+        handEdited: [],
         install: {
           root: '/x',
-          generation: 'gen5' as never,
+          generation: 'reins',
           notes: [],
           applied: { created: ['a'], changed: ['b'], unchanged: [], removed: ['c'] },
         },
       },
       true,
     );
-    expect(text).toContain('bindings: would move detected vendors (claude)');
-    expect(text).toContain('  - c (no longer installed by this tier)');
+    expect(text).toContain('bindings: would convert version 1 → 2');
+    expect(text).toContain('  - .agents/skills/reins-loop');
+    expect(text).toContain('.loctx/bus');
+    expect(text).toContain('  - c');
   });
 
   it('already up to date asks nothing; no prompter (--yes, non-TTY) asks nothing', async () => {

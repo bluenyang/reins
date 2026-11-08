@@ -2,37 +2,39 @@ import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } fr
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { redLines, stops } from '../src/lib/harness.js';
+import { redLines } from '../src/lib/harness.js';
 import { splitFrontmatter } from '../src/lib/skills.js';
 
 const ROOT = join(import.meta.dirname, '..', '..');
 const HARNESS = join(ROOT, 'harness');
 
 describe('harness sources match the design (docs/design.md)', () => {
-  it('has the twelve roles of §2, each with a non-empty must_not', () => {
-    const roles = readdirSync(join(HARNESS, 'roles'))
+  it('has the seven role groups of §2-2, each role with does, must_not and tools', () => {
+    const groups = readdirSync(join(HARNESS, 'roles'))
       .map((f) => f.replace(/\.md$/, ''))
       .toSorted();
-    expect(roles).toEqual([
+    expect(groups).toEqual([
       'advisor',
-      'code-review',
-      'deploy',
-      'docs',
+      'auditor',
+      'executor',
       'implementer',
-      'lookup',
       'pl',
       'planner',
       'pm',
-      'qa-design',
-      'qa-run',
-      'verify-tool',
     ]);
-    for (const r of roles) {
-      const { data } = splitFrontmatter(readFileSync(join(HARNESS, 'roles', `${r}.md`), 'utf8'));
-      expect(data?.['role']).toBe(r);
-      expect(
-        Array.isArray(data?.['must_not']) && (data['must_not'] as unknown[]).length,
-      ).toBeTruthy();
+    for (const g of groups) {
+      const { data } = splitFrontmatter(readFileSync(join(HARNESS, 'roles', `${g}.md`), 'utf8'));
+      expect(data?.['group']).toBe(g);
+      const roles = data?.['roles'] as Record<
+        string,
+        { does?: string; must_not?: unknown[]; tools?: object }
+      >;
+      expect(Object.keys(roles).length).toBeGreaterThan(0);
+      for (const [r, spec] of Object.entries(roles)) {
+        expect(spec.does, `${g}/${r}`).toBeTruthy();
+        expect(spec.must_not?.length, `${g}/${r}`).toBeTruthy();
+        expect(spec.tools, `${g}/${r}`).toBeTruthy();
+      }
     }
   });
 
@@ -51,20 +53,6 @@ describe('harness sources match the design (docs/design.md)', () => {
       'C10',
     ]);
     expect(rules.find((r) => r.id === 'C4')?.patterns).toContain('.env.*');
-  });
-
-  it('has the twenty-four stop conditions of §3, each tagged with kind and grade', () => {
-    const s = stops(HARNESS);
-    expect(s).toHaveLength(24);
-    const groups = new Map<string, number>();
-    for (const c of s) {
-      expect(['intent', 'knowledge']).toContain(c.kind);
-      expect(['HOLD', 'STOP', 'ESCALATE', 'WARN']).toContain(c.grade);
-      groups.set(c.id[0] ?? '', (groups.get(c.id[0] ?? '') ?? 0) + 1);
-    }
-    expect(Object.fromEntries(groups)).toEqual({ A: 4, B: 5, P: 2, D: 5, E: 3, F: 3, G: 2 });
-    // A, B, G are a person's call; C–F are learned away
-    for (const c of s) expect(c.kind).toBe('ABG'.includes(c.id[0] ?? '') ? 'intent' : 'knowledge');
   });
 
   it('templates and knowledge seeds pass their own schemas (convention layer)', () => {

@@ -14,7 +14,6 @@ import { describe, expect, it } from 'vitest';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { discoverGates } from '../src/lib/detect.js';
-import { tierSkills } from '../src/lib/upstream.js';
 
 function repo(): string {
   const d = mkdtempSync(join(tmpdir(), 'reins-install-'));
@@ -54,7 +53,6 @@ describe('gate discovery (design §5)', () => {
 
 describe('memory drafts (012 S-11)', () => {
   const o = (d: string) => ({
-    tier: 'graph' as const,
     mode: 'auto' as const,
     asker: defaultsAsker,
     cwd: d,
@@ -87,7 +85,6 @@ describe('memory draft names (012 S-11)', () => {
   it('names a draft by its source: a later a.md does not collide with a.txt', async () => {
     const d = repo();
     const o = {
-      tier: 'graph' as const,
       mode: 'auto' as const,
       asker: defaultsAsker,
       cwd: d,
@@ -113,7 +110,6 @@ describe('memory drafts after accept (012 S-11)', () => {
   it('does not draft again once the draft was accepted', async () => {
     const d = repo();
     const o = {
-      tier: 'graph' as const,
       mode: 'auto' as const,
       asker: defaultsAsker,
       cwd: d,
@@ -140,7 +136,6 @@ describe('memory drafts after accept (012 S-11)', () => {
     mkdirSync(join(d, '.loctx/knowledge-proposals/memory-a.md'), { recursive: true });
     mkdirSync(join(d, '.agents/knowledge/odd.md'), { recursive: true });
     await runInstall({
-      tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -152,11 +147,10 @@ describe('memory drafts after accept (012 S-11)', () => {
   });
 });
 
-describe('reins install graph (S5)', () => {
-  it('installs into a fresh repository with Claude only, and a second run changes nothing', async () => {
+describe('reins install (019, design §9)', () => {
+  it('installs into a fresh repository in single mode, and a second run changes nothing', async () => {
     const d = repo();
     const r = await runInstall({
-      tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -165,25 +159,40 @@ describe('reins install graph (S5)', () => {
     });
     expect(r.refused).toBeUndefined();
     for (const p of [
-      '.agents/harness/policy/stops.yaml',
+      '.agents/harness/policy/common-red-lines.yaml',
+      '.agents/harness/roles/pm.md',
+      '.agents/harness/templates/audit.md',
       '.agents/harness/bindings.yaml',
       '.agents/harness/gates.yaml',
+      '.agents/audit/.gitkeep',
       '.loctx/.gitignore',
       'CLAUDE.md',
     ])
       expect(existsSync(join(d, p)), p).toBe(true);
+    expect(existsSync(join(d, '.agents/SKILLS.md'))).toBe(false);
+    expect(existsSync(join(d, '.loctx/history'))).toBe(false); // install never writes history
     const agents = readFileSync(join(d, 'AGENTS.md'), 'utf8');
-    for (const b of ['notice', 'workflow', 'skills', 'language'])
+    for (const b of [
+      'notice',
+      'layout',
+      'settings',
+      'flow',
+      'delegation',
+      'records',
+      'stops',
+      'language',
+    ])
       expect(agents).toContain(`reins:begin ${b}`);
-    // every role runs on Claude when no other vendor is available (R14, R22)
+    expect(agents).toContain('<!-- reins:onboarding pending -->');
+    expect(agents).toContain('Mode: **single**');
+    expect(agents).not.toMatch(/reins (check|gate|status|unit|approve|audit request)\b/);
     const bindings = readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8');
-    expect(bindings).not.toMatch(/vendor: (openai|google)/);
-    expect(bindings).toMatch(/qa-run:\n\s+vendor: claude\n\s+model: claude-haiku-5-5/);
+    expect(bindings).toContain('schema: reins/bindings@2');
+    expect(bindings).toContain('mode: single');
+    expect(bindings).toMatch(/audit:\n\s+required: true/);
+    expect(readFileSync(join(d, '.agents/harness/install.yaml'), 'utf8')).not.toMatch(/^tier:/m);
     expect(readFileSync(join(d, '.gitignore'), 'utf8')).toMatch(/^\.loctx\/$/m);
-    expect(r.history).toBe('.loctx/history/2026-10-25-1200_install-graph.md');
-    // installed files pass the verifier's own layers
     const again = await runInstall({
-      tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -191,14 +200,12 @@ describe('reins install graph (S5)', () => {
     });
     expect(again.applied?.created).toEqual([]);
     expect(again.applied?.changed).toEqual([]);
-    expect(again.history).toBeUndefined();
   });
 
   it('refuses over a 3rd/4th-generation harness and points to migrate', async () => {
     const d = repo();
     mkdirSync(join(d, '.claude/commands'), { recursive: true });
     const r = await runInstall({
-      tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -207,31 +214,43 @@ describe('reins install graph (S5)', () => {
     expect(r.refused).toMatch(/migrate/);
   });
 
-  it('the harness tier installs only policy, gates and blocks', async () => {
+  it('an onboarding marker set to done stays done', async () => {
     const d = repo();
-    await runInstall({
-      tier: 'harness',
-      mode: 'auto',
-      asker: defaultsAsker,
-      cwd: d,
-      detectVendors: onlyClaude,
-    });
-    expect(existsSync(join(d, '.agents/harness/policy/stops.yaml'))).toBe(true);
-    expect(existsSync(join(d, '.agents/harness/roles'))).toBe(false);
-    expect(existsSync(join(d, '.loctx'))).toBe(false);
+    const opts = { mode: 'auto' as const, asker: defaultsAsker, cwd: d, detectVendors: onlyClaude };
+    await runInstall(opts);
+    const p = join(d, 'AGENTS.md');
+    writeFileSync(
+      p,
+      readFileSync(p, 'utf8').replace('reins:onboarding pending', 'reins:onboarding done'),
+    );
+    await runInstall(opts);
+    const text = readFileSync(p, 'utf8');
+    expect(text).toContain('reins:onboarding done');
+    expect(text).not.toContain('reins:onboarding pending');
+  });
+});
+
+describe('hooks: the project gates in the project hook tool (019 S-3)', () => {
+  it('proposes the gate commands, adds them to husky with --hooks, and never a reins line', async () => {
+    const d = repo();
+    mkdirSync(join(d, '.husky'), { recursive: true });
+    writeFileSync(join(d, '.husky/pre-commit'), 'echo mine\n');
+    const opts = { mode: 'auto' as const, asker: defaultsAsker, cwd: d, detectVendors: onlyClaude };
+    const r = await runInstall(opts);
+    expect(
+      r.notes.some((n) => n.startsWith('hook proposal (husky)') && n.includes('pnpm check')),
+    ).toBe(true);
+    await runInstall({ ...opts, hooks: true });
+    const hook = readFileSync(join(d, '.husky/pre-commit'), 'utf8');
+    expect(hook).toContain('echo mine');
+    expect(hook).toContain('pnpm check');
+    expect(hook.replace(/# reins:(begin|end) hooks/g, '')).not.toContain('reins');
   });
 
-  it('a hand edit to an installed harness file is drift (F2)', async () => {
+  it('without a hook tool, onboarding asks for one', async () => {
     const d = repo();
-    await runInstall({
-      tier: 'graph',
-      mode: 'auto',
-      asker: defaultsAsker,
-      cwd: d,
-      detectVendors: onlyClaude,
-    });
-    const p = join(d, '.agents/harness/roles/pl.md');
-    writeFileSync(p, readFileSync(p, 'utf8').replace('push, open PRs, merge, release', 'nothing'));
+    await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: d, detectVendors: onlyClaude });
+    expect(readFileSync(join(d, 'AGENTS.md'), 'utf8')).toContain('which hook tool runs the gates');
   });
 });
 
@@ -239,7 +258,6 @@ describe('re-running install keeps what the project owns', () => {
   it('does not reset customised bindings or gates', async () => {
     const d = repo();
     const opts = {
-      tier: 'graph' as const,
       mode: 'auto' as const,
       asker: defaultsAsker,
       cwd: d,
@@ -263,49 +281,30 @@ describe('re-running install keeps what the project owns', () => {
 });
 
 describe('skill entry points (design §6)', () => {
-  it('installs the packaged skills, indexes them and copies them for Claude Code', async () => {
+  it('installs the packaged skills (not the plugin-only one) and copies them for Claude Code', async () => {
     const d = repo();
     const opts = {
-      tier: 'graph' as const,
       mode: 'auto' as const,
       asker: defaultsAsker,
       cwd: d,
       detectVendors: onlyClaude,
     };
     await runInstall(opts);
-    for (const s of tierSkills('graph')) {
+    const shipped = readdirSync('skills').filter((s) => s !== 'reins-setup');
+    expect(shipped.length).toBeGreaterThan(0);
+    for (const s of shipped) {
       const src = readFileSync(join(d, `.agents/skills/${s}/SKILL.md`), 'utf8');
       expect(readFileSync(join(d, `.claude/skills/${s}/SKILL.md`), 'utf8')).toBe(src);
     }
-    const index = readFileSync(join(d, '.agents/SKILLS.md'), 'utf8');
-    expect(index.match(/^\| `reins-/gm)).toHaveLength(10);
-    // a project's own skill is indexed and copied too
+    expect(existsSync(join(d, '.agents/skills/reins-setup'))).toBe(false);
+    // a project's own skill is copied too
     mkdirSync(join(d, '.agents/skills/deploy-docs'), { recursive: true });
     writeFileSync(
       join(d, '.agents/skills/deploy-docs/SKILL.md'),
       '---\nname: deploy-docs\ndescription: Publish the docs site. Use on release.\n---\n# x\n',
     );
     await runInstall(opts);
-    expect(readFileSync(join(d, '.agents/SKILLS.md'), 'utf8')).toContain(
-      '| `deploy-docs` | Publish the docs site. |',
-    );
     expect(existsSync(join(d, '.claude/skills/deploy-docs/SKILL.md'))).toBe(true);
-    // editing an installed reins skill is drift
-    const p = join(d, '.agents/skills/reins-loop/SKILL.md');
-    writeFileSync(p, `${readFileSync(p, 'utf8')}\nskip T3.\n`);
-  });
-
-  it('the harness tier gets only reins-setup', async () => {
-    const d = repo();
-    await runInstall({
-      tier: 'harness',
-      mode: 'auto',
-      asker: defaultsAsker,
-      cwd: d,
-      detectVendors: onlyClaude,
-    });
-    expect(existsSync(join(d, '.agents/skills/reins-setup/SKILL.md'))).toBe(true);
-    expect(existsSync(join(d, '.agents/skills/reins-loop'))).toBe(false);
   });
 });
 
@@ -313,7 +312,6 @@ describe('install.yaml pins the CLI (0.1.3 rc.3)', () => {
   it('records the package version as cli next to the harness version', async () => {
     const d = repo();
     await runInstall({
-      tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -323,13 +321,5 @@ describe('install.yaml pins the CLI (0.1.3 rc.3)', () => {
     const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string };
     expect(pin).toContain(`cli: ${pkg.version}`);
     expect(pin).toMatch(/^version: \d+\.\d+\.\d+$/m);
-  });
-
-  it('every stage skill reads cli, not version, from install.yaml', () => {
-    for (const s of tierSkills('graph').filter((n) => n !== 'reins-setup')) {
-      const text = readFileSync(join('skills', s, 'SKILL.md'), 'utf8');
-      expect(text, s).toContain('is `cli` in `.agents/harness/install.yaml`');
-      expect(text, s).not.toContain('is `version` in `.agents/harness/install.yaml`');
-    }
   });
 });

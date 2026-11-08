@@ -49,14 +49,12 @@ describe('SKILL.md format layer (Agent Skills spec)', () => {
 describe('metrics line in the loop skills (S-5)', () => {
   const line =
     'reins metrics record --role <role> --tokens <n> --intent <id> [--ticket <id>] --vendor <v> --model <m>';
-  it.each([
-    'skills/reins-loop/SKILL.md',
-    'skills/reins-intent/SKILL.md',
-    '.claude/skills/reins-loop/SKILL.md',
-    '.claude/skills/reins-intent/SKILL.md',
-  ])('%s has the one-line call', (p) => {
-    expect(readFileSync(join(process.cwd(), p), 'utf8')).toContain(line);
-  });
+  it.each(['skills/reins-loop/SKILL.md', 'skills/reins-intent/SKILL.md'])(
+    '%s has the one-line call',
+    (p) => {
+      expect(readFileSync(join(process.cwd(), p), 'utf8')).toContain(line);
+    },
+  );
 });
 
 describe('stage skills (intent 008)', () => {

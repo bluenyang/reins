@@ -7,12 +7,27 @@ everything planned for it is done, later `rc.N` are stabilisation only (see
 [docs/design.md](docs/design.md) §4).
 
 This file is about the package. The harness that `reins update` re-applies to installed projects
-has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md); an entry there tagged `[skill]`
-needs the `/reins-update` skill.
+has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md).
 
-## [Unreleased] — 0.2.1
+## [Unreleased] — 0.3.0
 
-Planned; see the roadmap.
+reins manages the harness only (intent 019). 0.2.1–0.2.8 were cancelled.
+
+### Removed
+- The commands used during work: `check`, `gate`, `new`, `status`, `metrics`, `retro`, `knowledge`,
+  `recall`, `doctor`. Nothing reins installs runs reins while a project works.
+- The harness/loop/graph tiers, plan.md, ticket files, the bus, metrics.jsonl, the stop grades and ids,
+  the enforcement table.
+
+### Changed
+- Four commands: `install`, `migrate`, `update`, `config` (`configure` is an alias).
+- Single agent by default; seven role groups switched on by assigning models (`bindings.yaml` version 2).
+- Eleven stage skills (`onboard` … `retro`) without a conductor; AGENTS.md blocks state the flow, the
+  delegation table, approvals and when to stop.
+- Hooks are the project's gate commands in the project's hook tool; the audit after every merge judges
+  whether the flow was followed.
+- `update` moves 0.1.x and 0.2.0 installs: bindings 1 → 2, old skills, agent files, hook blocks and runtime
+  hook entries out (the user's stay), AGENTS.md reconciled by the PM.
 
 ## [0.2.0] — 2026-10-29
 

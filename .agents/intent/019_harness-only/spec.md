@@ -45,7 +45,7 @@ intent 019의 "바라는 결과"와 "계획"을 아래로 옮긴다. 각 줄 끝
 - 지우는 코드는 해당 테스트와 함께 지운다. 지운 뒤 `pnpm check`가 통과해야 한다(작업 단위마다).
 
 ## 작업 단위
-- [ ] W-1 이 저장소 운영 전환: `.husky/pre-commit`·`pre-push`를 `pnpm check`만 부르게, AGENTS.md에서 reins 블록·`reins status`/`check` 지시를 빼고 "0.3 개발 동안 intent 019의 흐름을 손으로 따른다(단일 모드, 큰 결정은 외부 검토)"를 적는다, `.claude/` 생성물·`.agents/skills`의 reins 호출을 걷어낸다(0.2.0 스킬은 비활성 표시), CI의 `reins check` 줄을 뺀다.
+- [x] W-1 (75fb004; `.agents/harness`는 W-3·W-4에서, publish 워크플로의 reins 줄은 W-8에서) 이 저장소 운영 전환: `.husky/pre-commit`·`pre-push`를 `pnpm check`만 부르게, AGENTS.md에서 reins 블록·`reins status`/`check` 지시를 빼고 "0.3 개발 동안 intent 019의 흐름을 손으로 따른다(단일 모드, 큰 결정은 외부 검토)"를 적는다, `.claude/` 생성물·`.agents/skills`의 reins 호출을 걷어낸다(0.2.0 스킬은 비활성 표시), CI의 `reins check` 줄을 뺀다.
 - [ ] W-2 설계서 양판 재작성(S-1~S-15 반영, 0.2 원칙의 바뀐 것 표), 기획서의 바뀌는 요구(R5·R7 해석, R53, R46 관련 문장) 같은 커밋.
 - [ ] W-3 bindings 2판 스키마·해석(`bindings.ts`), 로컬 덮어쓰기, 1판 → 2판 변환 함수(S-4, S-5, S-15 일부).
 - [ ] W-4 역할 파일 7개와 정책 정리(S-7, S-13), 템플릿·스키마 정리(S-10, S-11).

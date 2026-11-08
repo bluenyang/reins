@@ -1,7 +1,7 @@
 {
   "name": "reins",
   "version": "0.2.0",
-  "description": "Installs, migrates and updates the reins agent harness; exposes /reins:reins-setup.",
+  "description": "Shows how to install, migrate, update and configure the reins agent harness; exposes /reins:reins-setup. reins never runs while your project works.",
   "author": {
     "name": "BlueNyang"
   },
@@ -11,9 +11,9 @@
   "keywords": [
     "agent-harness",
     "harness",
-    "loop",
     "roles",
-    "handoff"
+    "audit",
+    "single-agent"
   ],
   "userConfig": {
     "language": {

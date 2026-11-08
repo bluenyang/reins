@@ -62,9 +62,9 @@ describe('reins migrate (S1)', () => {
     expect(existsSync(join(d, '.ai'))).toBe(false);
     expect(readFileSync(join(d, '.loctx/ROADMAP.local.md'), 'utf8')).toContain('offline export'); // replaced the install stub
     expect(existsSync(join(d, '.loctx/history/2026-10-01-0900_x.md'))).toBe(true);
-    expect(readFileSync(join(d, '.loctx/ticket/000-1_1-3-0-2-export.md'), 'utf8')).toMatch(
-      /release: "planned"/,
-    );
+    expect(
+      readFileSync(join(d, '.loctx/context/migrated-work/000-1_1-3-0-2-export.md'), 'utf8'),
+    ).toMatch(/release: "planned"/);
     expect(existsSync(join(d, '.loctx/_legacy/test/compose-test.env'))).toBe(true);
     const agents = readFileSync(join(d, 'AGENTS.md'), 'utf8');
     expect(agents).toContain('## Project\nmine');
@@ -175,7 +175,7 @@ describe('reins migrate — ticket ids, intent 000, legacy (012-3)', () => {
     now: new Date(2026, 9, 27, 9, 0),
     legacy,
   });
-  const tickets = (d: string) => readdirSync(join(d, '.loctx/ticket')).toSorted();
+  const tickets = (d: string) => readdirSync(join(d, '.loctx/context/migrated-work')).toSorted();
   const read = (d: string, p: string) => readFileSync(join(d, p), 'utf8');
 
   it('numbers open work once, remaps depends inside a version, asks for the rest', async () => {
@@ -189,7 +189,7 @@ describe('reins migrate — ticket ids, intent 000, legacy (012-3)', () => {
     const by = (from: string) =>
       read(
         d,
-        `.loctx/ticket/${names.find((n) => read(d, `.loctx/ticket/${n}`).includes(`migrated_from: "${from}"`))}`,
+        `.loctx/context/migrated-work/${names.find((n) => read(d, `.loctx/context/migrated-work/${n}`).includes(`migrated_from: "${from}"`))}`,
       );
     // 1.3.0_3 depends on 1 (open), 2 (done) and 9 (nowhere): only 1 maps, 9 is asked
     const t3 = by('1.3.0_3.md');
@@ -235,6 +235,7 @@ describe('reins migrate — ticket ids, intent 000, legacy (012-3)', () => {
     expect(text).toMatch(/status: draft/);
     expect(text).toMatch(/version: "1.3.0"/);
     expect(text).toContain('000-1 — from .ai/work/1.3.0_1.md');
+    expect(text).toMatch(/## 계획\n- 000-1 — from \.ai\/work\//);
     const second = await runMigrate(opts(d));
     expect(second.report.join()).not.toContain('000_migrated');
   });
@@ -269,16 +270,16 @@ describe('reins migrate — ticket ids, intent 000, legacy (012-3)', () => {
     const d = repo(CROFFLE);
     await runMigrate(opts(d));
     const first = tickets(d).find((n) =>
-      read(d, `.loctx/ticket/${n}`).includes('migrated_from: "1.3.1_1.md"'),
+      read(d, `.loctx/context/migrated-work/${n}`).includes('migrated_from: "1.3.1_1.md"'),
     )!;
     const id = first.split('_')[0];
     mkdirSync(join(d, '.ai/work'), { recursive: true });
     writeFileSync(join(d, '.ai/work/1.3.1_4.md'), work(4, '1.3.1', 'todo', [1]));
     await runMigrate(opts(d));
     const added = tickets(d).find((n) =>
-      read(d, `.loctx/ticket/${n}`).includes('migrated_from: "1.3.1_4.md"'),
+      read(d, `.loctx/context/migrated-work/${n}`).includes('migrated_from: "1.3.1_4.md"'),
     )!;
-    const text = read(d, `.loctx/ticket/${added}`);
+    const text = read(d, `.loctx/context/migrated-work/${added}`);
     expect(text).toContain(`depends: ["${id}"]`);
     expect(text).toMatch(/asks: \[\]/);
   });

@@ -36,7 +36,7 @@ describe('migrate plan (design §7)', () => {
       '.ai/ROADMAP.local.md': 'move:.loctx/ROADMAP.local.md',
       '.ai/ROADMAP.pub.md': 'move:docs/ROADMAP.md',
       '.ai/history/2026-10-01-0900_x.md': 'move:.loctx/history/2026-10-01-0900_x.md',
-      '.ai/work/1.2.0_3_fix.md': 'ticket:.loctx/ticket/000-1_1-2-0-3-fix.md',
+      '.ai/work/1.2.0_3_fix.md': 'ticket:.loctx/context/migrated-work/000-1_1-2-0-3-fix.md',
       '.ai/work/1.1.0_1_old.md': 'move:.loctx/history/work/1.1.0_1_old.md',
       '.ai/test/2026-10-02_1.2.0.md': 'move:.loctx/reports/2026-10-02_1.2.0.md',
       '.ai/test/compose-test.env': 'legacy:.loctx/_legacy/test/compose-test.env',

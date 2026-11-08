@@ -46,7 +46,7 @@ function removeEmptyDirs(dir: string): void {
   if (readdirSync(dir).length === 0) rmdirSync(dir);
 }
 
-/** Intent 000 (draft) that the migrated tickets point at — only when this run made tickets and none exists. */
+/** Intent 000 (draft) whose plan lists the migrated work — only when this run moved work and none exists. */
 function writeMigratedIntent(root: string, moves: MigrateResult['moves']): string | null {
   const made = moves.filter((m) => m.result === 'converted');
   const dir = join(root, '.agents/intent');
@@ -67,14 +67,16 @@ function writeMigratedIntent(root: string, moves: MigrateResult['moves']): strin
   const list = made
     .map(
       (m) =>
-        `- ${m.to.slice('.loctx/ticket/'.length, m.to.indexOf('_'))} — from .ai/work/${m.from.slice('.ai/work/'.length)}`,
+        `- ${m.to.slice('.loctx/context/migrated-work/'.length, m.to.indexOf('_'))} — from .ai/work/${m.from.slice('.ai/work/'.length)} (${m.to})`,
     )
     .join('\n');
-  const text = body.replace(
-    /## 문제\n—/,
-    () =>
-      `## 문제\nOpen work items that \`reins migrate\` moved out of \`.ai/work/\`. They point at this intent until the PL plans them again:\n\n${list}`,
-  );
+  const text = body
+    .replace(
+      /## 문제\n—/,
+      () =>
+        '## 문제\nOpen work items that `reins migrate` moved out of `.ai/work/`. The PM plans them again: approve this intent, then write a spec whose work units cover them.',
+    )
+    .replace(/## 계획\n—/, () => `## 계획\n${list}`);
   const yaml = [
     'id: "000"',
     'slug: migrated',
@@ -87,7 +89,7 @@ function writeMigratedIntent(root: string, moves: MigrateResult['moves']): strin
   const out = join(dir, '000_migrated/intent.md');
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, `---\n${yaml}\n---\n${text}`);
-  return '.agents/intent/000_migrated/intent.md written as a draft listing the migrated tickets — the user approves it before any of them starts';
+  return '.agents/intent/000_migrated/intent.md written as a draft whose plan lists the migrated work — the user approves it before any of it starts';
 }
 
 /** `reins migrate` (design §7): install, move the old workspace, set AGENTS.md aside for the PM to reconcile. Idempotent. */

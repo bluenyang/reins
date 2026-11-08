@@ -6,7 +6,7 @@ summary_for_user: |
   명령은 install·migrate·update·config 넷만 남기고 작업 중 명령과 그 코드는 지운다. 생성물은 어디서도 reins나 npx를 실행하지 않는다.
   설정은 bindings.yaml 2판 한 파일(모드 single 기본, 역할군 모델, 감사 on/off)이고 AGENTS.md가 직접 가리킨다.
   문서는 intent·spec·감사 기록·버전 history로 줄인다(plan, ticket, bus, metrics 삭제). 작업 단위 W-1~W-9.
-  질문 2개: 세 단(harness/loop/graph)을 어떻게 할지, 역할 에이전트 파일 이름.
+  세 단(harness/loop/graph)은 없애고, 역할 에이전트 파일은 접두어 rs-를 붙인다(사용자 2026-11-09).
 ---
 ## 요구 해석
 intent 019의 "바라는 결과"와 "계획"을 아래로 옮긴다. 각 줄 끝의 ← 는 intent의 근거다.
@@ -16,6 +16,8 @@ intent 019의 "바라는 결과"와 "계획"을 아래로 옮긴다. 각 줄 끝
 - S-2 생성물 불변식: install·migrate·update·config가 쓰는 어떤 파일에도 `reins`나 `@bluenyang/reins`를 **실행하는** 줄이 없다. 문서 안의 사람용 안내("설정을 바꾸려면 터미널에서 `npx @bluenyang/reins config`")는 허용하되, 에이전트에게 실행을 지시하는 문장은 없다. 테스트가 생성물 전체를 검사한다(검증 기준 V-1). ← "작업 중 어떤 훅·스킬·에이전트도 reins를 실행하지 않는다"
 - S-3 훅: install은 프로젝트의 훅 도구를 감지한다(lefthook 설정, `.husky/`, `pre-commit` 설정). 있으면 `gates.yaml`의 게이트 명령을 **그대로** 부르는 줄을 제안하고, 사용자가 확인하면 넣는다(auto 모드에서도 묻는다; 비대화형은 `--hooks`일 때만 넣는다). 넣는 줄은 프로젝트 명령만 부른다(예: `pnpm check`). 훅 도구가 없으면 AGENTS.md 온보딩 항목에 "훅 도구 정하기"를 남겨 PM이 첫 대화에서 묻는다. ← "검사는 프로젝트가 소유", "install은 할 수 있는 만큼 제안·설정"
 
+- S-16 harness/loop/graph 세 단(기획서 R1~R3)을 없앤다. 단일/멀티와 역할군 켜기가 그 자리를 대신한다. install의 단 인자와 단별 설치 표를 지우고, 기획서 R1~R3은 W-2에서 고친다. 0.1.x·0.2.0 설치의 `tier`는 update가 무시하고 지운다(사용자 2026-11-09 "a"). ← "단일이 기본, 필요한 것만 켠다"
+
 ### 설정
 - S-4 `.agents/harness/bindings.yaml`을 2판(`schema: reins/bindings@2`)으로 바꾼다. 키: `mode: single | multi`(기본 single), `audit: { required: true }`, `default: {vendor, model}`(PM이 쓰는 모델), `groups:` 아래 `pm`, `pl`, `planner`, `implementer`, `executor`, `advisor`, `auditor`. 군 값은 `{vendor, model}` 하나, 또는 `models: [{vendor, model}, …]`(pl·advisor만, 여럿), 또는 `roles: { <role>: {vendor, model} }`(상세 지정). 군을 적지 않으면 꺼짐 = PM이 한다. `escalation`, `limits`, `parallel`, `enabled` 같은 실행 중 해석 키는 없다. 로컬 덮어쓰기 `.loctx/bindings.local.yaml`도 같은 모양이고 키 단위로 이긴다. ← "모델 할당의 뜻", "상속", "vendor·model 묶음", "로컬 덮어쓰기"
 - S-5 상속은 `config`가 쓸 때 **미리 풀어서** 생성물에 적는다: 상세 역할 > 군 > (없으면 PM). pl의 첫 모델이 관제, 리뷰어는 하나(기본: 관제가 아닌 첫 모델, 하나뿐이면 관제 모델), Discussion은 전부. advisor는 Committee 전부. ← "PL 모델 배치", "일상 리뷰는 리뷰어 하나", "Advisor 여럿"
@@ -23,7 +25,7 @@ intent 019의 "바라는 결과"와 "계획"을 아래로 옮긴다. 각 줄 끝
 
 ### 역할과 생성물
 - S-7 `harness/roles/`를 군과 상세 역할로 다시 쓴다: `pm.md`, `pl.md`(관제·리뷰 다섯·Discussion), `planner.md`(spec-writer·qa-designer), `implementer.md`, `executor.md`(tool-executor·researcher·qa-runner·deployer), `advisor.md`(committee), `auditor.md`. 각 파일은 하는 일, 하지 않을 일, 도구 권한(쓰기·셸·push; 상세 역할마다), 돌려보내는 형식(결과 + 사유를 PM에게)을 적는다. 목표는 한 문장으로 구체적으로 쓴다. lookup·verify-tool·qa-design·qa-run·code-review·docs·deploy·planner(옛) 파일은 지운다. ← "역할", "도구 권한 고정", "Look-up → Retrospector"
-- S-8 Claude용 생성물: 켜진 군의 상세 역할마다 `.claude/agents/<name>.md`(모델과 권한이 박힘). 다른 벤더 모델이 할당된 역할은 에이전트 파일 대신 AGENTS.md 기본 블록의 "위임 표"에 그 벤더 CLI의 읽기 전용 실행 줄(예: `codex exec -m <model> -s read-only`)을 적는다. 이 줄은 벤더 CLI를 부르는 것이지 reins를 부르는 것이 아니다. 단일 모드면 에이전트 파일을 만들지 않는다. ← "멀티는 역할군에 모델을 할당해 켠다", "하위 역할은 PM을 거친다"
+- S-8 Claude용 생성물: 켜진 군의 상세 역할마다 `.claude/agents/rs-<group>-<role>.md`(예: `rs-pl-code-reviewer.md`; 모델과 권한이 박힘; 접두어는 사용자 2026-11-09 "짧게 접두어", `rs-`는 PM이 정함). install은 `generated.yaml`에 없는 같은 이름 파일을 덮어쓰지 않고 멈춘다. 다른 벤더 모델이 할당된 역할은 에이전트 파일 대신 AGENTS.md 기본 블록의 "위임 표"에 그 벤더 CLI의 읽기 전용 실행 줄(예: `codex exec -m <model> -s read-only`)을 적는다. 이 줄은 벤더 CLI를 부르는 것이지 reins를 부르는 것이 아니다. 단일 모드면 에이전트 파일을 만들지 않는다. ← "멀티는 역할군에 모델을 할당해 켠다", "하위 역할은 PM을 거친다"
 - S-9 스킬 11개를 `skills/<name>/SKILL.md`로 새로 쓴다: `onboard`, `roadmap`, `intent`, `spec`, `implement`, `review`, `test`, `merge`, `audit`, `release`, `retro`. 각 스킬은 ① 언제 쓰나 ② 절차 ③ "위임" 문단(군에 모델이 있으면 그 모델로, 없으면 직접; 읽기 위주·급한 병렬은 같은 모델 서브에이전트 가능; 위임할 때 넘길 파일·결정 목록을 적는다) ④ 만든 파일과 수명 ⑤ 다음 스킬 ⑥ 멈추고 사용자에게 물을 때. reins를 부르지 않는다. 옛 `reins-*` 스킬과 `reins-loop`, `reins-setup`은 지운다(플러그인의 setup 입구는 W-8에서 `npx @bluenyang/reins install` 안내만 남긴다). ← "단계 스킬 11개", "지휘자 없음", "위임 문단"
 - S-10 문서 형식: `intent.md`에 `## 계획` 절을 더하고 `plan.md` 템플릿·스키마를 지운다. `spec.md`에 `## 작업 단위`(W-n, 체크박스, 완료 커밋)와 `## 검증 기준`(qa-designer 몫)을 둔다. ticket 파일, bus 템플릿·스키마, knowledge 제안 파일을 지운다. 승인 항목 형식: `{ role: user, by, at, words, rev }`. 사용자 지시로 건너뛴 단계는 intent의 `waivers:`에 `{ step, words, at, scope: once }`. ← "plan.md는 intent로", "승인 기록", "건너뛴 단계 기록"
 - S-11 기록 파일과 수명(만들 때 정함): `.agents/audit/<version>.md`(커밋, 영구), `.loctx/history/<version>.md`(버전당 한 장, 로컬 영구), 게이트·테스트 로그 `.loctx/reports/<version>/`(회고 뒤 정리 때 삭제; 지우기 전 history와 감사 기록에 요약), 하위 보고 `.loctx/reports/<version>/handoff/`(같음). install·update는 history에 쓰지 않는다. 각 스킬의 ④가 이 표를 따른다. ← "파일 수명"
@@ -62,14 +64,12 @@ intent 019의 "바라는 결과"와 "계획"을 아래로 옮긴다. 각 줄 끝
 - 감사(W-9 뒤, 머지 다음): intent 019의 흐름을 지켰는가를 이 spec의 작업 단위와 커밋으로 대조한다.
 
 ## 우려 표시
-- U-1 **harness/loop/graph 세 단(기획서 R1~R3)**: 0.3 논의에서 다루지 않았다. 단일/멀티와 역할군 켜기가 그 자리를 대신하는지, 세 단을 남기는지에 따라 install과 템플릿이 달라진다. 사용자 질문 1.
-- U-2 **에이전트 파일 이름**: 스킬은 접두어를 뺐다. `.claude/agents/`의 역할 파일도 접두어 없이(`pl-code-reviewer.md` 등) 두면 사용자가 만든 같은 이름의 에이전트와 겹칠 수 있다(install은 `generated.yaml`에 없는 파일을 덮어쓰지 않고 멈춘다). 사용자 질문 2.
+- U-1, U-2는 사용자가 답했다(2026-11-09): 세 단은 없앤다(S-16), 에이전트 파일은 짧은 접두어(S-8).
 - U-3 플러그인의 `reins-setup` 스킬은 사용자가 설치 입구로 쓰던 것이다. 지우면 플러그인 사용자의 첫 경험이 바뀐다. W-8에서 setup 입구를 "install 안내"로만 남긴다(에이전트가 reins를 부르는 것이 아니라 사용자에게 명령을 보여 주는 것).
 - U-4 0.2.0 설치본을 보존한 이전 시험 사례가 이 저장소 밖에 필요하다. W-9에서 v0.2.0 태그로 임시 저장소에 설치해 만든다.
 
 ## 사용자에게 묻는 것
-1. **harness/loop/graph 세 단**: (a) 없앤다 — 단일/멀티와 역할군 켜기가 대신한다(권장: 0.3의 "단일 기본 + 필요한 것만 켠다"와 같은 생각) (b) 남긴다 — 세 단은 흐름의 무게(intent·spec 유무 등)를, 단일/멀티는 실행 방식을 정한다 (c) 0.3에서는 graph 하나만 두고 깎기는 나중에
-2. **역할 에이전트 파일 이름**: (a) 접두어 없음(`pl-code-reviewer.md`), 겹치면 install이 멈추고 알림 (b) 짧은 접두어(`rs-…`) (c) 폴더로 구분(`.claude/agents/harness/…`가 지원되면)
+- 1(세 단) → (a) 없앤다. 2(에이전트 파일 이름) → 짧은 접두어. (사용자 2026-11-09)
 
 ## 범위 밖
 - Codex·Gemini·Cursor용 에이전트 생성 파일(위임 표의 실행 줄로만 다룬다).

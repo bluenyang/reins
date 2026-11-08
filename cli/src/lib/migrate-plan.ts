@@ -109,7 +109,7 @@ function existingTickets(root: string): {
 } {
   const list: PriorTicket[] = [];
   let max = 0;
-  const dir = '.loctx/ticket';
+  const dir = '.loctx/context/migrated-work';
   for (const f of existsSync(join(root, dir)) ? readdirSync(join(root, dir)) : []) {
     const m = /^000-(\d+)_/.exec(f);
     if (!m) continue;
@@ -169,14 +169,14 @@ function planTickets(root: string, ai: string, files: string[], moves: Move[]): 
           from: it.path,
           to: '',
           action: 'ticket',
-          why: 'open work item → ticket',
+          why: 'open work item → intent 000 plan',
           group: it.group,
         };
     if (was) numberOf.set(it.path, was.id);
     else {
       next += 1;
       m.n = next;
-      m.to = `.loctx/ticket/000-${next}_${slugOf(it.path)}.md`;
+      m.to = `.loctx/context/migrated-work/000-${next}_${slugOf(it.path)}.md`;
       numberOf.set(it.path, `000-${next}`);
     }
     moves.push(m);

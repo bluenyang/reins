@@ -53,6 +53,7 @@ program
         dryRun: o.dryRun,
         asker,
         prompter: screens ? await clackPrompter() : undefined,
+        confirmHooks: !o.json && !o.dryRun && isInteractive() ? await clackPrompter() : undefined,
       });
       asker.close();
       if (o.json) {

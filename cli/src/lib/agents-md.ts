@@ -6,6 +6,7 @@ import {
   pmBinding,
   resolveRoles,
   type Binding,
+  type ResolvedRole,
   type BindingsV2,
 } from './bindings.js';
 
@@ -17,6 +18,16 @@ import {
 /** The name of the generated Claude agent file of a role (design §6). */
 export const agentName = (group: string, role: string): string =>
   group === role ? `rs-${group}` : `rs-${group}-${role}`;
+
+/**
+ * The Claude agent files of a resolved role: one per Claude model. Several Claude models on one role
+ * (discussion, committee) get numbered names so each keeps its own model.
+ */
+export function claudeAgents(r: ResolvedRole): { name: string; model: string }[] {
+  const base = agentName(r.group, r.group === 'auditor' ? 'auditor' : r.role);
+  const ms = r.models.filter((b) => b.vendor === 'claude');
+  return ms.map((b, i) => ({ name: ms.length > 1 ? `${base}-${i + 1}` : base, model: b.model }));
+}
 
 /** How the PM hands a role its work on a vendor other than Claude (the vendor's own CLI, read-only unless it writes). */
 export function callLine(b: Binding, cli: string, writes: boolean): string {
@@ -49,15 +60,18 @@ export function renderDelegation(doc: BindingsV2): string {
       '| role | model | how to call |',
       '|---|---|---|',
     );
-    for (const r of resolveRoles(doc).filter((x) => x.on))
+    for (const r of resolveRoles(doc).filter((x) => x.on)) {
+      const agents = claudeAgents(r);
+      let k = 0;
       for (const b of r.models) {
         const cli = doc.tools?.[b.vendor]?.cli ?? b.vendor;
         const how =
           b.vendor === 'claude'
-            ? `subagent \`${agentName(r.group, r.role)}\``
+            ? `subagent \`${agents[k++]!.name}\``
             : callLine(b, cli, WRITES.has(r.group));
         lines.push(`| ${r.group}/${r.role} | ${b.vendor} ${b.model} | ${how} |`);
       }
+    }
     lines.push(
       '',
       'Routine review takes one reviewer; `pl/discussion` and `advisor/committee` (every listed model, without seeing each other) are for large decisions, audit remedies, incidents and unresolved disagreements.',
@@ -107,9 +121,11 @@ export function reconcileNote(why: string): string {
   ].join('\n');
 }
 
-/** Put a note right after the first H1 (or at the top) unless a marker of that kind is already there. */
+/** Put a note right after the first H1 (or at the top) unless one of that kind is still pending. */
 export function placeNote(text: string, note: string, kind: 'onboarding' | 'reconcile'): string {
-  if (text.includes(`<!-- reins:${kind} `)) return text;
+  if (text.includes(`<!-- reins:${kind} pending -->`)) return text;
+  // a finished one gives way to the new one (e.g. a second mode switch)
+  text = text.replace(new RegExp(`<!-- reins:${kind} done -->\\n(?:> [^\\n]*\\n)?\\n?`), '');
   const m = /^# .*\n/m.exec(text);
   if (!m) return `${note}\n\n${text}`;
   const at = m.index + m[0].length;

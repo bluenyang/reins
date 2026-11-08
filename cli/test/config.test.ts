@@ -249,6 +249,47 @@ describe('reins config bindings (flags)', () => {
     expect(snapshot(d)).toEqual(before);
   });
 
+  it('several Claude models on the committee each get their own agent file', async () => {
+    const d = await repo();
+    await configureBindings({
+      cwd: d,
+      mode: 'multi',
+      models: ['advisor=claude:claude-fable-5-1,claude:claude-opus-5-5'],
+    });
+    const a1 = readFileSync(join(d, '.claude/agents/rs-advisor-committee-1.md'), 'utf8');
+    const a2 = readFileSync(join(d, '.claude/agents/rs-advisor-committee-2.md'), 'utf8');
+    expect(a1).toContain('model: claude-fable-5-1');
+    expect(a2).toContain('model: claude-opus-5-5');
+    const agents = readFileSync(join(d, 'AGENTS.md'), 'utf8');
+    expect(agents).toContain('subagent `rs-advisor-committee-1`');
+    expect(agents).toContain('subagent `rs-advisor-committee-2`');
+  });
+
+  it('a second mode switch after a finished reconcile asks for a new one', async () => {
+    const d = await repo();
+    await configureBindings({ cwd: d, mode: 'multi' });
+    const p = join(d, 'AGENTS.md');
+    writeFileSync(
+      p,
+      readFileSync(p, 'utf8').replace('reins:reconcile pending', 'reins:reconcile done'),
+    );
+    await configureBindings({ cwd: d, mode: 'single' });
+    const text = readFileSync(p, 'utf8');
+    expect(text).toContain('<!-- reins:reconcile pending -->');
+    expect(text).not.toMatch(/^<!-- reins:reconcile done -->$/m); // the note itself names the done marker
+    expect(text.match(/^<!-- reins:reconcile pending -->$/gm)).toHaveLength(1);
+  });
+
+  it('--local --off hides a group the team switched on', async () => {
+    const d = await repo();
+    await configureBindings({ cwd: d, mode: 'multi', set: ['implementer=claude-sonnet-5-5'] });
+    const r = await configureBindings({ cwd: d, local: true, off: ['implementer'] });
+    expect(r.roles.filter((x) => x.group === 'implementer' && x.on)).toEqual([]);
+    expect(readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8')).toContain(
+      'implementer:',
+    );
+  });
+
   it('--local writes only the personal file; --off switches a group off', async () => {
     const d = await repo();
     await configureBindings({ cwd: d, mode: 'multi', set: ['implementer=claude-sonnet-5-5'] });

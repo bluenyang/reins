@@ -92,7 +92,7 @@ describe('reins migrate (S1)', () => {
     expect(existsSync(join(d, '.agents'))).toBe(false);
   });
 
-  it('dry run lists the subdirectory gate proposals and memory drafts, and writes nothing', async () => {
+  it('dry run lists the subdirectory gate proposals and the memory note, and writes nothing', async () => {
     const d = repo({
       ...GEN4,
       'apps/web/package.json': JSON.stringify({ scripts: { typecheck: 'tsc --noEmit' } }),
@@ -109,7 +109,7 @@ describe('reins migrate (S1)', () => {
     expect(
       r.report.some((n) => n.includes('apps-web-typecheck=npm --prefix apps/web run typecheck')),
     ).toBe(true);
-    expect(r.report.some((n) => n.includes('.loctx/knowledge-proposals/memory-a.md'))).toBe(true);
+    expect(r.report.some((n) => n.startsWith('.claude/memory found'))).toBe(true);
     expect(readdirSync(d).sort()).toEqual(before);
     expect(existsSync(join(d, '.loctx'))).toBe(false);
     expect(existsSync(join(d, '.agents'))).toBe(false);
@@ -144,27 +144,6 @@ const CROFFLE = {
   '.ai/test/.env': 'X=1',
   '.ai/verify/run.sh': 'echo hi',
 };
-
-describe('reins migrate — memory (012 S-11)', () => {
-  it('leaves .claude/memory and drafts a proposal instead of moving it to knowledge', async () => {
-    const d = repo({ ...GEN4, '.claude/memory/2026-10-14_deploy.md': 'deploy on friday\n' });
-    await runMigrate({
-      mode: 'auto',
-      asker: defaultsAsker,
-      cwd: d,
-      detectVendors: claudeOnly,
-      now: new Date(2026, 9, 27, 9, 0),
-    });
-    expect(existsSync(join(d, '.claude/memory/2026-10-14_deploy.md'))).toBe(true);
-    expect(existsSync(join(d, '.agents/knowledge/2026-10-14_deploy.md'))).toBe(false);
-    const dr = readFileSync(
-      join(d, '.loctx/knowledge-proposals/memory-2026-10-14-deploy.md'),
-      'utf8',
-    );
-    expect(dr).toContain('deploy on friday');
-    expect(dr).not.toMatch(/^approved:/m);
-  });
-});
 
 describe('reins migrate — ticket ids, intent 000, legacy (012-3)', () => {
   const opts = (d: string, legacy?: 'local' | 'committed') => ({

@@ -4,7 +4,7 @@ import type { Write } from './fsx.js';
 import type { RedLine } from './harness.js';
 import { workTreeReader, type Reader } from './reader.js';
 import { resolveRoles, type BindingsV2 } from './bindings.js';
-import { agentName } from './agents-md.js';
+import { agentName, claudeAgents } from './agents-md.js';
 import { splitFrontmatter } from './skills.js';
 
 /**
@@ -48,9 +48,14 @@ function disallowed(t: RoleSpec['tools']): string[] {
   return out;
 }
 
-export function claudeAgent(g: GroupDoc, role: string, model: string, version: string): string {
+export function claudeAgent(
+  g: GroupDoc,
+  role: string,
+  model: string,
+  version: string,
+  name = agentName(g.group, role),
+): string {
   const r = g.roles[role]!;
-  const name = agentName(g.group, role);
   const fm: Record<string, unknown> = {
     name,
     description: `${g.group}/${role}: ${r.does}`,
@@ -127,8 +132,8 @@ export function generateVendorFiles(root: string, rd: Reader = workTreeReader(ro
   if (doc?.schema === 'reins/bindings@2') {
     const groups = new Map<string, GroupDoc>();
     for (const r of resolveRoles(doc).filter((x) => x.on)) {
-      const model = r.models.find((b) => b.vendor === 'claude')?.model;
-      if (!model) continue; // other vendors are called through the delegation table
+      const agents = claudeAgents(r);
+      if (!agents.length) continue; // other vendors are called through the delegation table
       let g = groups.get(r.group);
       if (!g) {
         const src = rd.read(`${harness}/roles/${r.group}.md`);
@@ -138,11 +143,12 @@ export function generateVendorFiles(root: string, rd: Reader = workTreeReader(ro
       }
       const role = r.group === 'auditor' ? 'auditor' : r.role;
       if (!g.roles[role]) continue;
-      out.writes.push({
-        path: `.claude/agents/${agentName(r.group, role)}.md`,
-        content: claudeAgent(g, role, model, version),
-        why: `role ${r.group}/${role}`,
-      });
+      for (const a of agents)
+        out.writes.push({
+          path: `.claude/agents/${a.name}.md`,
+          content: claudeAgent(g, role, a.model, version, a.name),
+          why: `role ${r.group}/${role} on ${a.model}`,
+        });
     }
   }
   // skills: other agents read .agents/skills/ directly; Claude Code reads a byte-identical copy

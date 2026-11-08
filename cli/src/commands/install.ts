@@ -17,7 +17,8 @@ import { apply, listFiles, type Applied, type Write } from '../lib/fsx.js';
 import { repoRoot } from '../lib/git.js';
 import { harnessVersion, packageHarness, packageSkills, packageVersion } from '../lib/upstream.js';
 import { generateVendorFiles } from '../lib/generate.js';
-import { defaultBindings, readTeam } from '../lib/bindings.js';
+import { defaultBindings, readTeam, type BindingsV2 } from '../lib/bindings.js';
+import { overlayReader, workTreeReader } from '../lib/reader.js';
 import { onboardingNote, placeNote, renderBlocks } from '../lib/agents-md.js';
 import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
 
@@ -44,6 +45,10 @@ export interface InstallOptions {
   retire?: boolean;
   /** update: overwrite generated files edited by hand */
   force?: boolean;
+  /** update, dry run: contents it would have written first (the converted bindings), for the plan */
+  pending?: { path: string; content: string }[];
+  /** update, dry run: paths it would have deleted first (0.x skills, agent files), for the plan */
+  pendingDeletes?: string[];
 }
 
 export interface InstallResult {
@@ -179,7 +184,10 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     add(`.agents/harness/${f}`, readFileSync(join(up, f), 'utf8'), 'upstream harness');
 
   // 2. questions (manual) / detection (auto) — only for what does not exist yet
-  const team = readTeam(root);
+  const pendingBindings = o.pending?.find((p) => p.path === '.agents/harness/bindings.yaml');
+  const team = pendingBindings
+    ? { doc: parse(pendingBindings.content) as BindingsV2 }
+    : readTeam(root);
   const hasBindings = team.doc !== null;
   const hasGates = existsSync(join(root, '.agents/harness/gates.yaml'));
   const pinPath = join(root, '.agents/harness/install.yaml');
@@ -441,10 +449,12 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
 
   // 8. apply
   const applied = apply(root, writes, !!o.dryRun);
+  const retired: string[] = [];
   if (o.retire) {
     const harnessDir = join(root, '.agents/harness');
     const here = existsSync(harnessDir) ? listFiles(harnessDir) : [];
     for (const f of retiredFiles(here, listFiles(up))) {
+      retired.push(`.agents/harness/${f}`);
       applied.removed.push(`.agents/harness/${f}`);
       if (o.dryRun) continue;
       rmSync(join(harnessDir, f), { force: true });
@@ -460,7 +470,14 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
 
   // 9. generated files from the installed harness (design §6) — never over a file reins did not write
   // a dry run computes the same plan without writing, so update can show hand-edited files first
-  const generated = writeGenerated(root, generateVendorFiles(root), !!o.dryRun, !!o.force);
+  const rd = o.dryRun
+    ? overlayReader(
+        workTreeReader(root),
+        [...(o.pending ?? []), ...writes],
+        [...retired, ...(o.pendingDeletes ?? [])],
+      )
+    : workTreeReader(root);
+  const generated = writeGenerated(root, generateVendorFiles(root, rd), !!o.dryRun, !!o.force);
   if (generated) {
     applied.created.push(...generated.written.filter((p) => !applied.created.includes(p)));
     applied.removed.push(...generated.removed);

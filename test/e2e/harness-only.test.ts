@@ -123,6 +123,15 @@ describe('the installed harness works without reins and without a network (019 V
         npm_config_registry: 'http://127.0.0.1:9',
         npm_config_offline: 'true',
       };
+      // reins is really not reachable from this environment
+      expect(spawnSync('sh', ['-c', 'command -v reins'], { cwd: d, env }).status).not.toBe(0);
+      expect(
+        spawnSync('sh', ['-c', 'npm view @bluenyang/reins version'], {
+          cwd: d,
+          env,
+          encoding: 'utf8',
+        }).status,
+      ).not.toBe(0);
       // the installed husky file runs as a real git hook (what husky's own wrapper does)
       mkdirSync(join(d, '.githooks'));
       writeFileSync(join(d, '.githooks/pre-commit'), '#!/bin/sh\nset -e\n. ./.husky/pre-commit\n');

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from 'yaml';
@@ -256,6 +256,20 @@ describe('reins update', () => {
       expect(agents).toContain('My rules.');
       expect(agents).not.toContain('reins status');
       expect(readFileSync(join(d, '.agents/AGENTS.previous.md'), 'utf8')).toContain('reins status');
+    });
+
+    it('the dry-run plan of generated files matches what the real run does (review #3)', async () => {
+      const d = await old();
+      rmSync(join(d, '.claude/skills/onboard'), { recursive: true }); // so the plan has a write to match
+      const dry = await runUpdate({ cwd: d, detectVendors: claude, dryRun: true });
+      const real = await runUpdate({ cwd: d, detectVendors: claude, yes: true });
+      const g = (r: typeof dry) => ({
+        written: [...(r.install?.generated?.written ?? [])].toSorted(),
+        refused: (r.install?.generated?.refused ?? []).map((x) => x.path).toSorted(),
+      });
+      expect(g(dry)).toEqual(g(real));
+      expect(g(real).written).toContain('.claude/skills/onboard/SKILL.md');
+      expect(g(real).written.some((p) => p.includes('reins-loop'))).toBe(false);
     });
 
     it('without --yes the .loctx working files are only listed', async () => {

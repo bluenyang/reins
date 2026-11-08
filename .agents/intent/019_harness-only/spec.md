@@ -53,7 +53,7 @@ intent 019의 "바라는 결과"와 "계획"을 아래로 옮긴다. 각 줄 끝
 - [x] W-6 (f4d7e4f) 생성기와 AGENTS.md 기본 블록(S-2, S-8, S-12), install의 훅 제안(S-3)과 온보딩 표시.
 - [x] W-7 (51f2fcd: 작업 중 명령과 코드 삭제; f4d7e4f: config·update·migrate 2판; 22cfbbd: configure 별칭; 180f7d8: migrate의 열린 work → intent 000 계획) CLI 정리: 작업 중 명령과 코드 삭제(S-1), `config` 통합과 새 화면(S-6), `update`의 덮어쓰기 확인과 이전(S-14, S-15).
 - [x] W-8 (ba65664) 플러그인(`.claude-plugin`)의 setup 입구, README 양판, `docs/violations*` 정리, CHANGELOG.
-- [ ] W-9 검증: V-1~V-6, 보존한 0.2.0 설치본에서 이전, 이 저장소 자기 이전.
+- [x] W-9 (f8d4621 V-1·V-2 e2e; fixes from a real 0.2.0 move 5af37dd and before; logs `.loctx/reports/0.3.0/w9-migrate-v020.log`, `w9-self-migrate.log`; the real self-migrate waits for the 0.3 release, as decided) 검증: V-1~V-6, 보존한 0.2.0 설치본에서 이전, 이 저장소 자기 이전.
 
 ## 검증 기준
 - V-1 install(single, multi 각각)과 update 뒤 생성된 모든 파일을 훑어, `reins`·`@bluenyang/reins`를 실행하는 줄이 없다(허용된 사람용 안내 문장은 형식으로 구분). 훅 파일에는 `gates.yaml` 명령만 있다.

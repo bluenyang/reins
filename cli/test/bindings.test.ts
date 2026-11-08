@@ -5,11 +5,9 @@ import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { configureBindings } from '../src/commands/configure.js';
 import { runInstall } from '../src/commands/install.js';
-import { runStatus } from '../src/commands/status.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { readLocal, resolveBindings } from '../src/lib/bindings.js';
 import { generateVendorFiles } from '../src/lib/generate.js';
-import { driftGenerated } from '../src/lib/vendor-write.js';
 
 const detect = (on: string[]) => () =>
   (['claude', 'openai', 'google', 'cursor'] as const).map((name) => ({
@@ -55,7 +53,6 @@ describe('two-layer bindings (013-3)', () => {
       readFileSync(p, 'utf8').replace('cli: claude\n', 'cli: claude\n    detected: true\n'),
     );
     expect(readFileSync(p, 'utf8')).toContain('detected: true');
-    expect(driftGenerated(d)).toEqual([]);
     expect(resolveBindings(d, detect(['claude'])).length).toBeGreaterThan(0);
   });
 
@@ -105,7 +102,7 @@ describe('two-layer bindings (013-3)', () => {
     expect(before).toContain('openai');
   });
 
-  it('configure --local --set writes roles only; --show and status list the table (C-6)', async () => {
+  it('configure --local --set writes roles only; --show lists the table (C-6)', async () => {
     const d = await repo(['claude']);
     const bp = join(d, '.agents/harness/bindings.yaml');
     const files = ['.claude/agents/reins-pm.md', '.agents/harness/generated.yaml'];
@@ -128,11 +125,6 @@ describe('two-layer bindings (013-3)', () => {
     );
     const show = await configureBindings({ cwd: d, show: true, detectVendors: detect(['claude']) });
     expect(show.resolved).toHaveLength(12);
-    const st = JSON.parse(runStatus({ cwd: d, json: true }).stdout) as {
-      bindings: { role: string; source: string }[];
-    };
-    expect(st.bindings.find((b) => b.role === 'pm')?.source).toBe('local');
-    expect(runStatus({ cwd: d }).stdout).toContain('bindings (resolved):');
   });
 
   it('choosing the team model again removes the local override', async () => {

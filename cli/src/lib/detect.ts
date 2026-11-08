@@ -1,6 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { compound } from '../commands/gate.js';
 import { join } from 'node:path';
 
 /** Generation of an existing harness (design §7). First match wins, from the most specific. */
@@ -361,4 +360,9 @@ export function checkBinding(
   if (res.ids.includes(model)) return {};
   cache.warn(`${model} is not in \`${cli} models\` — recorded as unverified`);
   return { unverified: true, note: `not in ${cli} models` };
+}
+
+/** A command with a pipe, list, redirect or substitution: a gate must be one plain command. */
+export function compound(cmd: string): boolean {
+  return /[|;&<>`]|\$\(/.test(cmd.replace(/'[^']*'|"[^"]*"/g, ''));
 }

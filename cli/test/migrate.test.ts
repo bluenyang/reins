@@ -51,7 +51,6 @@ describe('reins migrate (S1)', () => {
     const d = repo(GEN4);
     expect(generation(d)).toBe('gen4');
     const opts = {
-      tier: 'graph' as const,
       mode: 'auto' as const,
       asker: defaultsAsker,
       cwd: d,
@@ -69,23 +68,18 @@ describe('reins migrate (S1)', () => {
     expect(existsSync(join(d, '.loctx/_legacy/test/compose-test.env'))).toBe(true);
     const agents = readFileSync(join(d, 'AGENTS.md'), 'utf8');
     expect(agents).toContain('## Project\nmine');
-    expect(agents).toContain('reins:begin workflow');
-    expect(agents).not.toContain('old loop rules');
-    expect(readFileSync(join(d, '.loctx/context/agents-md.before.md'), 'utf8')).toContain(
-      'old loop rules',
-    );
-    expect(r.history).toBe('.loctx/history/2026-10-25-1300_migrate-graph.md');
+    expect(agents).toContain('reins:begin flow');
+    expect(agents).toContain('<!-- reins:reconcile pending -->');
+    expect(readFileSync(join(d, '.agents/AGENTS.previous.md'), 'utf8')).toContain('old loop rules');
     expect(generation(d)).toBe('reins');
     const again = await runMigrate(opts);
     expect(again.moves).toEqual([]);
-    expect(again.agents.swapped).toEqual([]);
-    expect(again.history).toBeUndefined();
+    expect(again.agents.inserted).toEqual([]);
   });
 
   it('dry run touches nothing', async () => {
     const d = repo(GEN4);
     const r = await runMigrate({
-      tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -106,7 +100,6 @@ describe('reins migrate (S1)', () => {
     });
     const before = readdirSync(d).sort();
     const r = await runMigrate({
-      tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -124,9 +117,9 @@ describe('reins migrate (S1)', () => {
 
   it('refuses where there is nothing to migrate', async () => {
     const d = repo({ 'README.md': '' });
-    expect(
-      (await runMigrate({ tier: 'graph', mode: 'auto', asker: defaultsAsker, cwd: d })).refused,
-    ).toMatch(/install/);
+    expect((await runMigrate({ mode: 'auto', asker: defaultsAsker, cwd: d })).refused).toMatch(
+      /install/,
+    );
   });
 });
 
@@ -156,7 +149,6 @@ describe('reins migrate — memory (012 S-11)', () => {
   it('leaves .claude/memory and drafts a proposal instead of moving it to knowledge', async () => {
     const d = repo({ ...GEN4, '.claude/memory/2026-10-14_deploy.md': 'deploy on friday\n' });
     await runMigrate({
-      tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -176,7 +168,6 @@ describe('reins migrate — memory (012 S-11)', () => {
 
 describe('reins migrate — ticket ids, intent 000, legacy (012-3)', () => {
   const opts = (d: string, legacy?: 'local' | 'committed') => ({
-    tier: 'graph' as const,
     mode: 'auto' as const,
     asker: defaultsAsker,
     cwd: d,
@@ -195,9 +186,6 @@ describe('reins migrate — ticket ids, intent 000, legacy (012-3)', () => {
     expect(new Set(names.map((n) => n.split('_')[0]))).toEqual(
       new Set(Array.from({ length: 10 }, (_, i) => `000-${i + 1}`)),
     );
-    const v = loadSchemas(packageHarness()).get('ticket');
-    for (const n of names)
-      expect(validateFile(v!, n, false, read(d, `.loctx/ticket/${n}`))).toEqual([]);
     const by = (from: string) =>
       read(
         d,

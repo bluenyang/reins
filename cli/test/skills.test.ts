@@ -1,9 +1,8 @@
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { validateSkillFile } from '../src/lib/skills.js';
-import { tierSkills } from '../src/lib/upstream.js';
 
 function skill(dir: string, name: string, fm: string, body = '# x\n'): string {
   const d = join(dir, name);
@@ -46,50 +45,52 @@ describe('SKILL.md format layer (Agent Skills spec)', () => {
   });
 });
 
-describe('metrics line in the loop skills (S-5)', () => {
-  const line =
-    'reins metrics record --role <role> --tokens <n> --intent <id> [--ticket <id>] --vendor <v> --model <m>';
-  it.each(['skills/reins-loop/SKILL.md', 'skills/reins-intent/SKILL.md'])(
-    '%s has the one-line call',
-    (p) => {
-      expect(readFileSync(join(process.cwd(), p), 'utf8')).toContain(line);
-    },
-  );
-});
+const STAGES = [
+  'onboard',
+  'roadmap',
+  'intent',
+  'spec',
+  'implement',
+  'review',
+  'test',
+  'merge',
+  'audit',
+  'release',
+  'retro',
+];
 
-describe('stage skills (intent 008)', () => {
-  const root = process.cwd();
-  const stage: Record<string, string> = {
-    'reins-roadmap': 'reins status',
-    'reins-intent': 'reins check --drift',
-    'reins-spec': 'reins check --drift',
-    'reins-implement': 'reins check --stage ticket-start --ticket <id>',
-    'reins-review': 'reins check --drift',
-    'reins-test': 'reins status',
-    'reins-release': 'reins check --stage rc-close --release <version>',
-    'reins-retro': 'reins status',
-  };
-  it.each(Object.keys(stage))('%s conforms and starts with its check', (name) => {
-    const p = join(root, 'skills', name, 'SKILL.md');
-    expect(validateSkillFile(p)).toEqual([]);
-    const text = readFileSync(p, 'utf8');
-    const first = text.split('\n').find((l) => l.startsWith('1. '));
-    expect(first).toContain('**Check first');
-    expect(first).toContain(stage[name]!);
+describe('stage skills (019 S-9, design §3-1)', () => {
+  const read = (n: string) => readFileSync(join(process.cwd(), 'skills', n, 'SKILL.md'), 'utf8');
+  it('ships the eleven skills and nothing else but the plugin setup', () => {
+    expect(
+      readdirSync(join(process.cwd(), 'skills'))
+        .filter((d) => d !== 'reins-setup')
+        .toSorted(),
+    ).toEqual([...STAGES].toSorted());
   });
-  it('reins-intent has no spec procedure; reins-loop only names stages', () => {
-    const intent = readFileSync(join(root, 'skills/reins-intent/SKILL.md'), 'utf8');
-    expect(intent).not.toMatch(/summary_for_user|templates\/spec\.md/);
-    const loop = readFileSync(join(root, 'skills/reins-loop/SKILL.md'), 'utf8');
-    for (const n of Object.keys(stage)) expect(loop).toContain(n);
-    expect(loop).not.toMatch(/templates\/|gate --ticket/);
+  it.each(STAGES)('%s conforms, has the six sections and never runs reins', (n) => {
+    expect(validateSkillFile(join(process.cwd(), 'skills', n, 'SKILL.md'))).toEqual([]);
+    const t = read(n);
+    for (const h of [
+      '## 1. When',
+      '## 2. Procedure',
+      '## 3. Delegation',
+      '## 4. Files and lifetime',
+      '## 5. Next',
+      '## 6. Stop and ask',
+    ])
+      expect(t, h).toContain(h);
+    expect(t).not.toMatch(
+      /npx @bluenyang\/reins|node cli\/dist\/reins|`reins (check|gate|new|status|metrics|retro|knowledge|unit|approve|dispatch)/,
+    );
   });
-});
-
-describe('tierSkills (intent 008)', () => {
-  it('harness = setup only; loop and graph = all ten', () => {
-    expect(tierSkills('harness')).toEqual(['reins-setup']);
-    expect(tierSkills('loop')).toHaveLength(10);
-    expect(tierSkills('graph')).toEqual(tierSkills('loop'));
+  it('the next skills follow the flow', () => {
+    const next = (n: string) => /## 5\. Next\n`([a-z]+)`/.exec(read(n))?.[1];
+    const chain = ['roadmap', 'intent', 'spec', 'implement', 'review'];
+    for (let i = 0; i < chain.length - 1; i++) expect(next(chain[i]!)).toBe(chain[i + 1]);
+    expect(next('test')).toBe('merge');
+    expect(next('merge')).toBe('audit');
+    expect(next('audit')).toBe('release');
+    expect(next('release')).toBe('retro');
   });
 });

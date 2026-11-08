@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -16,16 +16,4 @@ describe('public roadmap (008 C-6)', () => {
     expect(read('README.md')).toContain('docs/ROADMAP.md');
     expect(read('docs/README.ko.md')).toContain('ROADMAP.ko.md');
   });
-});
-
-describe('skills pin the CLI version (008)', () => {
-  const dirs = readdirSync(join(root, 'skills')).filter((d) => d !== 'reins-setup');
-  for (const d of dirs) {
-    it(`${d} has no unpinned npx invocation`, () => {
-      const t = read(`skills/${d}/SKILL.md`);
-      expect(t).toContain('npx @bluenyang/reins@<v>');
-      expect(t).toContain('.agents/harness/install.yaml');
-      expect(t.match(/npx @bluenyang\/reins(?!@)/g) ?? []).toEqual([]);
-    });
-  }
 });

@@ -1,12 +1,11 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { retiredFiles, runInstall } from '../src/commands/install.js';
 import { changesBetween, newer, runUpdate } from '../src/commands/update.js';
-import { resolveBindings } from '../src/lib/bindings.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { packageHarness } from '../src/lib/upstream.js';
 
@@ -30,7 +29,6 @@ describe('reins update', () => {
     execFileSync('git', ['init', '-q'], { cwd: d });
     writeFileSync(join(d, 'package.json'), '{}');
     await runInstall({
-      tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -56,7 +54,7 @@ describe('reins update', () => {
     expect(readFileSync(pin, 'utf8')).toContain(
       `version: ${readFileSync('harness/VERSION', 'utf8').trim()}`,
     );
-    expect(r.install?.history).toBe('.loctx/history/2026-10-25-1400_update-graph.md');
+    expect(existsSync(join(d, '.loctx/history'))).toBe(false);
   });
 
   it('keeps release: and keys it does not know across update (C-1)', async () => {
@@ -64,7 +62,6 @@ describe('reins update', () => {
     execFileSync('git', ['init', '-q'], { cwd: d });
     writeFileSync(join(d, 'package.json'), '{}');
     await runInstall({
-      tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -84,12 +81,11 @@ describe('reins update', () => {
     expect(after['future_key']).toEqual({ a: 1 });
   });
 
-  it('removes a file the tier no longer installs; drift only warns first (C-12)', async () => {
+  it('removes upstream files this version no longer ships, keeps the project files', async () => {
     const d = mkdtempSync(join(tmpdir(), 'reins-up-'));
     execFileSync('git', ['init', '-q'], { cwd: d });
     writeFileSync(join(d, 'package.json'), '{}');
     await runInstall({
-      tier: 'graph',
       mode: 'auto',
       asker: defaultsAsker,
       cwd: d,
@@ -111,11 +107,22 @@ describe('reins update', () => {
     expect(readFileSync(join(h, 'notes.md'), 'utf8')).toBe('mine\n');
   });
 
-  it('retiredFiles lists only upstream-owned files outside the tier', () => {
-    const up = ['CHANGELOG.md', 'VERSION', 'roles/pl.md', 'knowledge-seeds/a.md', 'gates.yaml'];
-    const have = [...up, 'notes.md', 'knowledge/x.md'];
-    expect(retiredFiles(have, up, 'graph')).toEqual(['CHANGELOG.md', 'knowledge-seeds/a.md']);
-    expect(retiredFiles(have, up, 'harness')).toContain('roles/pl.md');
+  it('retiredFiles lists upstream-owned files this version no longer ships', () => {
+    const up = ['CHANGELOG.md', 'VERSION', 'roles/pm.md', 'knowledge-seeds/a.md'];
+    const have = [
+      'VERSION',
+      'roles/pm.md',
+      'roles/pl-old.md',
+      'policy/stops.yaml',
+      'CHANGELOG.md',
+      'notes.md',
+      'gates.yaml',
+    ];
+    expect(retiredFiles(have, up)).toEqual([
+      'roles/pl-old.md',
+      'policy/stops.yaml',
+      'CHANGELOG.md',
+    ]);
   });
 
   it('refuses where reins is not installed', async () => {
@@ -124,100 +131,107 @@ describe('reins update', () => {
     expect((await runUpdate({ cwd: d })).refused).toMatch(/not installed/);
   });
 
-  describe('0.1.4 detected keys (013-7)', () => {
-    const old = (b: string) =>
-      b.replace(
-        /vendors:\n(?:  .*\n|\s*\n)+?(?=roles:)/,
-        `vendors:
-  # claude is the floor
-  claude:
-    cli: claude # the CLI
-    detected: true
-    available: true
-  openai:
-    cli: codex
-    detected: false
-    at: "2026-10-01T00:00:00.000Z"
-    available: false
-  google:
-    cli: gemini
-    detected: true
-    available: true
-`,
-      );
-    async function setup() {
-      const d = mkdtempSync(join(tmpdir(), 'reins-mig-'));
+  describe('moving a 0.2.0 install to 0.3 (019 S-15, design §7)', () => {
+    async function old(): Promise<string> {
+      const d = mkdtempSync(join(tmpdir(), 'reins-up02-'));
       execFileSync('git', ['init', '-q'], { cwd: d });
       writeFileSync(join(d, 'package.json'), '{}');
-      await runInstall({
-        tier: 'graph',
-        mode: 'auto',
-        asker: defaultsAsker,
-        cwd: d,
-        detectVendors: claude,
-      });
-      const b = join(d, '.agents/harness/bindings.yaml');
-      writeFileSync(b, old(readFileSync(b, 'utf8')));
-      return { d, b, local: join(d, '.loctx/bindings.local.yaml') };
-    }
-    const noDetect = () => claude();
-
-    it('moves the keys, keeps comments and other keys, resolver result unchanged, idempotent', async () => {
-      const { d, b, local } = await setup();
-      writeFileSync(
-        local,
-        'schema: reins/bindings-local@1\nvendors:\n  google:\n    detected: false\n',
-      );
-      const before = resolveBindings(d, noDetect);
-      const r = await runUpdate({ cwd: d, detectVendors: claude });
-      expect(r.bindingsMoved).toEqual(['claude', 'openai', 'google']);
-      const t = readFileSync(b, 'utf8');
-      expect(t).not.toContain('detected');
-      expect(t).not.toContain('2026-10-01');
-      expect(t).toContain('# claude is the floor');
-      expect(t).toContain('cli: claude # the CLI');
-      expect(t).toContain('available: false');
-      const l = parse(readFileSync(local, 'utf8')) as {
-        vendors: Record<string, { detected: boolean; at?: string }>;
+      await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: d, detectVendors: claude });
+      const put = (p: string, c: string) => {
+        mkdirSync(join(d, p, '..'), { recursive: true });
+        writeFileSync(join(d, p), c);
       };
-      expect(l.vendors['claude']?.detected).toBe(true);
-      expect(l.vendors['openai']).toEqual({ detected: false, at: '2026-10-01T00:00:00.000Z' });
-      expect(l.vendors['google']?.detected).toBe(false); // the local entry wins
-      const afterLocal = readFileSync(local, 'utf8');
-      const r2 = await runUpdate({ cwd: d, detectVendors: claude });
-      expect(r2.bindingsMoved).toBeUndefined();
-      expect(readFileSync(b, 'utf8')).toBe(t);
-      expect(readFileSync(local, 'utf8')).toBe(afterLocal);
-      expect(resolveBindings(d, noDetect).map((x) => x.model)).toEqual(before.map((x) => x.model));
+      // what 0.2.0 left behind
+      put(
+        '.agents/harness/bindings.yaml',
+        'schema: reins/bindings@1\nmode: auto\nvendors:\n  claude: { cli: claude, available: true }\nroles:\n  pm: { vendor: claude, model: claude-fable-5-1 }\n  code-review: { vendor: openai, model: gpt-6.1-sol }\nescalation: [pl, pm, advisor, user]\n',
+      );
+      put('.agents/harness/policy/stops.yaml', 'stops: []\n');
+      put('.agents/skills/reins-loop/SKILL.md', '---\nname: reins-loop\n---\n');
+      put('.agents/SKILLS.md', '# Skills\n');
+      put('.claude/agents/reins-pm.md', 'old\n');
+      put(
+        '.husky/pre-commit',
+        'echo mine\n# reins:begin hooks\nnpx @bluenyang/reins check --stage pre-commit\n# reins:end hooks\n',
+      );
+      put(
+        '.claude/settings.json',
+        JSON.stringify({
+          hooks: {
+            PreToolUse: [
+              { hooks: [{ command: 'npx -y @bluenyang/reins@0.2.0 hook pre-tool-use' }] },
+              { hooks: [{ command: 'echo mine' }] },
+            ],
+          },
+        }),
+      );
+      put('.loctx/bus/x.request.yaml', 'a: 1\n');
+      put('.loctx/journal.jsonl', '{}\n');
+      put('.loctx/history/keep.md', 'keep\n');
+      put(
+        'AGENTS.md',
+        '# AGENTS.md\n\nMy rules.\n\n<!-- reins:begin workflow v=0.1.0 -->\n## Workflow\n- reins status\n<!-- reins:end workflow -->\n',
+      );
+      return d;
+    }
+
+    it("converts bindings, takes the 0.x pieces out, keeps the user's, and reconciles AGENTS.md", async () => {
+      const d = await old();
+      const r = await runUpdate({ cwd: d, detectVendors: claude, yes: true });
+      expect(r.refused).toBeUndefined();
+      const b = parse(readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8')) as Record<
+        string,
+        unknown
+      >;
+      expect(b['schema']).toBe('reins/bindings@2');
+      expect(b['mode']).toBe('single');
+      expect(b['default']).toEqual({ vendor: 'claude', model: 'claude-fable-5-1' });
+      expect(r.converted?.some((n) => n.includes('code-review → pl.code-reviewer'))).toBe(true);
+      for (const p of [
+        '.agents/harness/policy/stops.yaml',
+        '.agents/skills/reins-loop',
+        '.agents/SKILLS.md',
+        '.claude/agents/reins-pm.md',
+        '.loctx/bus',
+        '.loctx/journal.jsonl',
+      ])
+        expect(existsSync(join(d, p)), p).toBe(false);
+      expect(readFileSync(join(d, '.loctx/history/keep.md'), 'utf8')).toBe('keep\n');
+      const hook = readFileSync(join(d, '.husky/pre-commit'), 'utf8');
+      expect(hook).toContain('echo mine');
+      expect(hook).not.toContain('@bluenyang/reins');
+      const settings = readFileSync(join(d, '.claude/settings.json'), 'utf8');
+      expect(settings).not.toContain('@bluenyang/reins');
+      const agents = readFileSync(join(d, 'AGENTS.md'), 'utf8');
+      expect(agents).toContain('<!-- reins:reconcile pending -->');
+      expect(agents).toContain('My rules.');
+      expect(agents).not.toContain('reins status');
+      expect(readFileSync(join(d, '.agents/AGENTS.previous.md'), 'utf8')).toContain('reins status');
     });
 
-    it('leaves timestamp-only and non-boolean records untouched', async () => {
-      const { d, b } = await setup();
-      const t = readFileSync(b, 'utf8')
-        .replace(
-          '    detected: false\n    at: "2026-10-01T00:00:00.000Z"\n',
-          '    at: "2026-10-01T00:00:00.000Z"\n',
-        )
-        .replace(
-          '    detected: true\n    available: true\n  openai',
-          '    detected: yes\n    available: true\n  openai',
-        );
-      writeFileSync(b, t);
+    it('without --yes the .loctx working files are only listed', async () => {
+      const d = await old();
       const r = await runUpdate({ cwd: d, detectVendors: claude });
-      expect(r.bindingsMoved).toEqual(['google']);
-      const after = readFileSync(b, 'utf8');
-      expect(after).toContain('at: "2026-10-01T00:00:00.000Z"');
-      expect(after).toContain('detected: yes');
+      expect(r.cleanup).toEqual(['.loctx/bus', '.loctx/journal.jsonl']);
+      expect(existsSync(join(d, '.loctx/bus'))).toBe(true);
     });
 
-    it('dry run lists the move and writes nothing', async () => {
-      const { d, b, local } = await setup();
-      const t = readFileSync(b, 'utf8');
-      const l0 = readFileSync(local, 'utf8');
-      const r = await runUpdate({ cwd: d, dryRun: true, detectVendors: claude });
-      expect(r.bindingsMoved).toEqual(['claude', 'openai', 'google']);
-      expect(readFileSync(b, 'utf8')).toBe(t);
-      expect(readFileSync(local, 'utf8')).toBe(l0);
+    it('a dry run writes nothing', async () => {
+      const d = await old();
+      const before = readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8');
+      const r = await runUpdate({ cwd: d, detectVendors: claude, dryRun: true });
+      expect(r.converted?.length).toBeGreaterThan(0);
+      expect(readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8')).toBe(before);
+      expect(existsSync(join(d, '.agents/skills/reins-loop'))).toBe(true);
+    });
+
+    it('running it again changes nothing more', async () => {
+      const d = await old();
+      await runUpdate({ cwd: d, detectVendors: claude, yes: true });
+      const r = await runUpdate({ cwd: d, detectVendors: claude, yes: true });
+      expect(r.converted).toBeUndefined();
+      expect(r.removed).toEqual([]);
+      expect(r.cleanup).toEqual([]);
     });
   });
 });

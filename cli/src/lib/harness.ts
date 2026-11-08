@@ -31,22 +31,8 @@ export interface RedLine {
   allowed?: string[];
 }
 
-export interface StopCondition {
-  id: string;
-  group: string;
-  kind: 'intent' | 'knowledge';
-  grade: 'HOLD' | 'STOP' | 'ESCALATE' | 'WARN';
-  detect: string;
-  text: string;
-  resume: string;
-}
-
 export function redLines(dir: string): RedLine[] {
   return readYaml<{ rules: RedLine[] }>(join(dir, 'policy', 'common-red-lines.yaml')).rules;
-}
-
-export function stops(dir: string): StopCondition[] {
-  return readYaml<{ stops: StopCondition[] }>(join(dir, 'policy', 'stops.yaml')).stops;
 }
 
 /** Secret patterns from red line C4, or null when there is no harness to read. */

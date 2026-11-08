@@ -5,14 +5,9 @@ import type { Asker } from '../lib/ask.js';
 import { askerPrompter, BACK, EXIT, type Prompter } from '../lib/prompter.js';
 import { planMemoryProposals } from '../lib/memory.js';
 import { draftRelease, releaseDraftNotes } from '../lib/release.js';
-import { applyBlocks, parseBlocks } from '../lib/blocks.js';
+import { applyBlocks } from '../lib/blocks.js';
 import {
-  CONFIRMED_MODELS,
-  checkBinding,
   discoverGates,
-  newModelCache,
-  vendorOf,
-  type ModelCache,
   generation,
   stacks,
   vendors,
@@ -21,43 +16,33 @@ import {
 } from '../lib/detect.js';
 import { apply, listFiles, type Applied, type Write } from '../lib/fsx.js';
 import { repoRoot } from '../lib/git.js';
-import { SKILLS_INDEX_HEADER, skillsIndex, splitFrontmatter } from '../lib/skills.js';
-import {
-  harnessVersion,
-  packageHarness,
-  packageSkills,
-  packageVersion,
-  tierSkills,
-} from '../lib/upstream.js';
+import { harnessVersion, packageHarness, packageSkills, packageVersion } from '../lib/upstream.js';
 import { generateVendorFiles } from '../lib/generate.js';
-import { recordDetection } from '../lib/bindings.js';
+import { defaultBindings, readTeam } from '../lib/bindings.js';
+import { onboardingNote, placeNote, renderBlocks } from '../lib/agents-md.js';
 import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
 
-export type Tier = 'harness' | 'loop' | 'graph';
-
 export interface InstallOptions {
-  tier: Tier;
   mode: 'manual' | 'auto';
   dryRun?: boolean;
+  /** add the hook lines to an existing husky setup instead of proposing them */
   hooks?: boolean;
   cwd?: string;
   asker: Asker;
   /**
-   * Screens for the four manual questions (design §9). Given only when stdin and stdout are terminals,
-   * mode is manual and the output is not JSON; otherwise the questions go through `asker` as before.
+   * Screens for the manual questions (design §9). Given only when stdin and stdout are terminals,
+   * mode is manual and the output is not JSON; otherwise the questions go through `asker`.
    */
   prompter?: Prompter;
-  /** tests: replace vendor detection */
+  /** tests: replace tool detection */
   detectVendors?: () => Vendor[];
-  /** model-list check (spec S-3); tests inject a runner */
-  modelCache?: ModelCache;
   now?: Date;
   /** migrate installs over an old harness it is about to move away */
   overExisting?: boolean;
-  /** history file label: install (default), update, migrate */
-  recordAs?: string;
-  /** update: delete upstream files the tier no longer installs (spec S-13) */
+  /** update: delete upstream-owned files this version no longer ships */
   retire?: boolean;
+  /** update: overwrite generated files edited by hand */
+  force?: boolean;
 }
 
 export interface InstallResult {
@@ -69,24 +54,17 @@ export interface InstallResult {
   applied?: Applied;
   generated?: GenWriteResult;
   notes: string[];
-  history?: string;
 }
 
-/** Which upstream harness files a tier installs (design §1, tier table). */
-export function tierFiles(all: string[], tier: Tier): string[] {
-  return all.filter((f) => {
-    if (f.startsWith('knowledge-seeds/')) return false; // copied into knowledge/, not harness/
-    if (f === 'CHANGELOG.md') return false; // read by update from the package, not installed
-    if (f === 'VERSION' || f.startsWith('policy/')) return true;
-    if (f === 'templates/agents-md-blocks.md') return true;
-    if (tier === 'harness') return false;
-    if (f.startsWith('templates/bus/')) return tier === 'graph';
-    if (f.startsWith('templates/')) return true;
-    return tier === 'graph'; // roles/, schemas/
-  });
+/** Upstream harness files installed into `.agents/harness/` (design §1): everything but seeds and the changelog. */
+export function harnessFiles(all: string[]): string[] {
+  return all.filter((f) => !f.startsWith('knowledge-seeds/') && f !== 'CHANGELOG.md');
 }
 
-/** Harness files the project owns; update and drift never touch them. */
+/** Folders under `.agents/harness/` that upstream owns; a file there that upstream no longer ships is retired. */
+const UPSTREAM_DIRS = ['policy/', 'roles/', 'schemas/', 'templates/'];
+
+/** Harness files the project owns; update never touches them. */
 export const PROJECT_OWNED = new Set([
   'bindings.yaml',
   'gates.yaml',
@@ -94,66 +72,31 @@ export const PROJECT_OWNED = new Set([
   'generated.yaml',
 ]);
 
-/**
- * Files installed under `.agents/harness/` that upstream still ships but this tier no longer installs
- * (e.g. `CHANGELOG.md`): in upstream, outside `tierFiles(tier)`, not project-owned. Anything not in
- * upstream is the project's and is never listed.
- */
-export function retiredFiles(installed: string[], upstream: string[], tier: Tier): string[] {
-  const up = new Set(upstream);
-  const keep = new Set(tierFiles(upstream, tier));
-  return installed.filter((f) => up.has(f) && !keep.has(f) && !PROJECT_OWNED.has(f));
+/** Installed upstream-owned files this version no longer ships (an older reins wrote them). */
+export function retiredFiles(installed: string[], upstream: string[]): string[] {
+  const keep = new Set(harnessFiles(upstream));
+  return installed.filter(
+    (f) =>
+      !keep.has(f) &&
+      !PROJECT_OWNED.has(f) &&
+      (f === 'CHANGELOG.md' || UPSTREAM_DIRS.some((d) => f.startsWith(d))),
+  );
 }
 
-/** bindings.yaml (design §5): defaults from role files; an unavailable vendor falls back, else to pm's model. */
-export function buildBindings(
-  harness: string,
-  available: Set<Vendor['name']>,
-  vs: Vendor[],
-  mode: string,
-  cache?: ModelCache,
-): string {
-  const roles: Record<string, Record<string, unknown>> = {};
-  const files = readdirSync(join(harness, 'roles'))
-    .filter((f) => f.endsWith('.md'))
-    .toSorted();
-  const meta = new Map<string, { def: string; fb?: string }>();
-  for (const f of files) {
-    const { data } = splitFrontmatter(readFileSync(join(harness, 'roles', f), 'utf8'));
-    meta.set(f.replace(/\.md$/, ''), {
-      def: String(data?.['default_binding']),
-      fb: data?.['fallback_binding'] as string | undefined,
-    });
-  }
-  const pm = meta.get('pm')?.def ?? 'claude-opus-5-5';
-  for (const [role, m] of meta) {
-    let model = m.def;
-    let note: string | undefined;
-    if (!available.has(vendorOf(model))) {
-      note = `${vendorOf(model)} not available — default was ${model}`;
-      model = m.fb && available.has(vendorOf(m.fb)) ? m.fb : pm;
-    }
-    const entry: Record<string, unknown> = { vendor: vendorOf(model), model };
-    if (role === 'implementer') entry['parallel'] = 4;
-    const chk = cache ? checkBinding(model, entry['vendor'] as Vendor['name'], cache) : null;
-    if (chk) {
-      if (chk.unverified) entry['unverified'] = true;
-      if (chk.note) note = note ? `${note}; ${chk.note}` : chk.note;
-    } else if (!CONFIRMED_MODELS.has(model)) entry['unverified'] = true;
-    if (note) entry['note'] = note;
-    roles[role] = entry;
-  }
-  const doc = {
-    schema: 'reins/bindings@1',
-    mode,
-    vendors: Object.fromEntries(
-      vs.map((v) => [v.name, { cli: v.cli, available: available.has(v.name) }]),
-    ),
-    roles,
-    escalation: ['pl', 'pm', 'advisor', 'user'],
-    limits: {},
-  };
-  return `# generated by reins install — change with \`reins configure bindings\`\n${stringify(doc)}`;
+/** Skills that ship with the plugin only and are not installed into a project. */
+const PLUGIN_ONLY = new Set(['reins-setup', 'setup']);
+
+/** The hook tool the project already uses (design §6), if any. */
+export function hookTool(root: string): 'husky' | 'lefthook' | 'pre-commit' | null {
+  if (existsSync(join(root, '.husky'))) return 'husky';
+  if (
+    ['lefthook.yml', 'lefthook.yaml', '.lefthook.yml', '.lefthook.yaml'].some((f) =>
+      existsSync(join(root, f)),
+    )
+  )
+    return 'lefthook';
+  if (existsSync(join(root, '.pre-commit-config.yaml'))) return 'pre-commit';
+  return null;
 }
 
 export function buildGates(
@@ -182,21 +125,35 @@ export const ROADMAP_STUB =
 
 const LOCTX_README = `# .loctx — 이 머신·이 개발자만 (gitignore)
 
-| 경로 | 무엇 |
-|---|---|
-| ROADMAP.local.md | 날 것의 큰 그림 — 산발적 아이디어, 미확정 기능을 예상 버전별로. 확정되면 docs/ROADMAP.md |
-| ticket/ | 지금 하는 일 하나 = 파일 하나. 끝나면 history에 한 줄 쓰고 삭제 |
-| reports/ | 테스트·게이트 증거 (툴체인 출력 그대로) |
-| pr/ release/ | PR 본문·릴리스 노트 초안 |
-| context/ | 개인 컨텍스트 — 대화·메모 |
-| bus/ | 에이전트간 인계 파일 (스키마 강제, 끝나면 삭제) |
-| test/ | 로컬 스크래치·휘발성 벤치마크 |
-| history/ | 버전별 완료 보고서 — 노하우. 공유할 결정은 .agents/knowledge/ 로 |
+| 경로 | 무엇 | 지우는 때 |
+|---|---|---|
+| ROADMAP.local.md | 날 것의 아이디어. 사용자와 정리되면 docs/ROADMAP.md | 사용자 |
+| history/<version>.md | 버전마다 한 장: 결정, 판정, 건너뛴 단계, 감사·회고 요약 | 지우지 않음 |
+| reports/<version>/ | 게이트·테스트 원본 로그, 하위 보고 | 회고 뒤 (history·감사에 요약한 다음) |
+| context/ | 개인 컨텍스트 — 대화·메모 | 사용자 |
+| bindings.local.yaml | 나만 쓰는 모델 할당 (있으면 팀 설정보다 우선) | 사용자 |
 `;
 
-const hookLine = (stage: string) => `npx @bluenyang/reins check --stage ${stage}`;
 const pad = (n: number) => String(n).padStart(2, '0');
+type Tool = Vendor['name'];
+const TOOL_NAMES: Tool[] = ['claude', 'openai', 'google', 'gemini', 'copilot', 'cursor'];
 
+/** The gate commands, in order, as hook lines (design §6). */
+function gateLines(root: string): string[] {
+  const p = join(root, '.agents/harness/gates.yaml');
+  if (!existsSync(p)) return [];
+  const g = parse(readFileSync(p, 'utf8')) as {
+    gates?: Record<string, { cmd?: string; optional?: boolean }>;
+    order?: string[];
+  } | null;
+  const gates = g?.gates ?? {};
+  return (g?.order ?? Object.keys(gates))
+    .map((n) => gates[n])
+    .filter((x): x is { cmd: string } => !!x?.cmd && !(x as { optional?: boolean }).optional)
+    .map((x) => x.cmd);
+}
+
+/** `reins install` (design §9): place the harness, ask, propose hooks, mark onboarding. Never writes history. */
 export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   const root = repoRoot(o.cwd ?? process.cwd());
   const gen = generation(root);
@@ -206,7 +163,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
       root,
       generation: gen,
       notes,
-      refused: `an existing ${gen} harness is here — run \`reins migrate ${o.tier}\` instead`,
+      refused: `an existing ${gen} harness is here — run \`reins migrate\` instead`,
     };
 
   const up = packageHarness();
@@ -217,13 +174,13 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     if (!existsSync(join(root, path))) add(path, content, why);
   };
 
-  // 1. upstream harness files for the tier
-  for (const f of tierFiles(listFiles(up), o.tier))
+  // 1. upstream harness files
+  for (const f of harnessFiles(listFiles(up)))
     add(`.agents/harness/${f}`, readFileSync(join(up, f), 'utf8'), 'upstream harness');
 
-  // 2. questions (manual) / detection (auto) — only for what does not exist yet.
-  // bindings.yaml and gates.yaml belong to the project once written; `reins configure` changes them.
-  const hasBindings = existsSync(join(root, '.agents/harness/bindings.yaml'));
+  // 2. questions (manual) / detection (auto) — only for what does not exist yet
+  const team = readTeam(root);
+  const hasBindings = team.doc !== null;
   const hasGates = existsSync(join(root, '.agents/harness/gates.yaml'));
   const pinPath = join(root, '.agents/harness/install.yaml');
   const pinned = existsSync(pinPath)
@@ -233,17 +190,16 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     : null;
   const vs = (o.detectVendors ?? vendors)();
   const detected = vs.filter((v) => v.detected).map((v) => v.name);
-  const avail = new Set<Vendor['name']>(['claude']); // claude is the floor (R22)
+  const use = new Set<Tool>(['claude']); // claude is the floor (R22)
   const screens = o.mode === 'manual' ? o.prompter : undefined;
-  const line = askerPrompter(o.asker); // the piped, line-based form: today's strings and parsing
+  const line = askerPrompter(o.asker); // the piped, line-based form
   const cancelled = (): InstallResult => ({ root, generation: gen, notes, cancelled: true });
   const isNav = (v: unknown): v is typeof BACK | typeof EXIT => v === BACK || v === EXIT;
-  const VENDOR_NAMES: Vendor['name'][] = ['claude', 'openai', 'google', 'cursor'];
-  if (o.tier === 'graph' && !hasBindings) {
+  if (!hasBindings && !team.v1) {
     if (screens) {
-      const picked = await screens.multiselect<Vendor['name']>({
-        message: 'Vendors you can use (claude is always on)',
-        options: VENDOR_NAMES.map((n) => ({
+      const picked = await screens.multiselect<Tool>({
+        message: 'Agent tools you use (claude is always on)',
+        options: TOOL_NAMES.map((n) => ({
           value: n,
           label: n,
           hint: n === 'claude' ? 'always' : detected.includes(n) ? 'detected' : undefined,
@@ -251,16 +207,16 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
         initial: ['claude', ...detected.filter((d) => d !== 'claude')],
       });
       if (isNav(picked)) return cancelled();
-      for (const v of picked) avail.add(v);
+      for (const v of picked) use.add(v);
     } else {
       const ans = await line.text({
-        message: `vendors you can use (claude,openai,google,cursor) — detected: ${detected.join(',') || 'none'}`,
+        message: `agent tools you use (${TOOL_NAMES.join(',')}) — detected: ${detected.join(',') || 'none'}`,
         initial: ['claude', ...detected.filter((d) => d !== 'claude')].join(','),
       });
       for (const v of String(ans)
         .split(',')
         .map((s) => s.trim()))
-        if ((VENDOR_NAMES as string[]).includes(v)) avail.add(v as Vendor['name']);
+        if ((TOOL_NAMES as string[]).includes(v)) use.add(v as Tool);
     }
   }
   let language = pinned?.language;
@@ -295,10 +251,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     const gateQ = `gates found: ${gateList} — use them?`;
     const gateAns = await (screens ?? line).confirm({ message: gateQ, initial: true });
     if (isNav(gateAns)) return cancelled();
-    if (!gateAns)
-      notes.push(
-        'gates not confirmed — edit .agents/harness/gates.yaml, then `reins check --dry-run`',
-      );
+    if (!gateAns) notes.push('gates not confirmed — edit .agents/harness/gates.yaml');
     let chosen: typeof proposal.proposals = [];
     if (proposal.proposals.length) {
       const listing = proposal.proposals.map((g) => `${g.name}=${g.cmd}`).join('; ');
@@ -333,7 +286,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
           if (!chosen.some((g) => g.name === n)) notes.push(`no such subdirectory gate: ${n}`);
       } else
         notes.push(
-          `subdirectory gates not added (auto mode): ${listing} — add with \`reins configure gates --add <name>\``,
+          `subdirectory gates not added (auto mode): ${listing} — add with \`reins config gates --add <name>\``,
         );
     }
     for (const x of proposal.excluded) notes.push(`excluded from gates: ${x.name} (${x.why})`);
@@ -344,73 +297,53 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     );
   }
 
-  // 3. generated configuration
-  if (o.tier === 'graph' && !hasBindings) {
-    // detection results are per-user: .loctx/bindings.local.yaml, never the committed file
-    if (!o.dryRun) recordDetection(root, vs);
+  // 3. settings: a new bindings file in single mode (an old one is converted by update)
+  let doc = team.doc;
+  if (!doc && !team.v1) {
+    doc = defaultBindings(vs.map((v) => ({ name: v.name, cli: v.cli, use: use.has(v.name) })));
     add(
       '.agents/harness/bindings.yaml',
-      buildBindings(up, avail, vs, o.mode, o.modelCache ?? newModelCache()),
-      'role ↔ model bindings',
+      `# reins model assignment (design §5) — the user changes it with \`reins config\`; nothing reads it while you work\n${stringify(doc)}`,
+      'model assignment (single mode)',
     );
   }
+  const { tier: _tier, ...keep } = pinned ?? {};
   add(
     '.agents/harness/install.yaml',
-    `# version pin and install settings (R25) — read by reins update\n${stringify({ ...pinned, schema: 'reins/install@1', tier: o.tier, version, cli: packageVersion(), mode: o.mode, language })}`,
+    `# version pin and install settings (R25) — read by reins update\n${stringify({ ...keep, schema: 'reins/install@1', version, cli: packageVersion(), mode: o.mode, language })}`,
     'version pin',
   );
 
   // 4. layout skeleton (design §1); never overwrite project files
-  if (o.tier !== 'harness') {
-    addIfMissing('.agents/intent/.gitkeep', '', 'intent folders live here');
-    addIfMissing('.agents/knowledge/.gitkeep', '', 'explicit knowledge');
-    for (const s of stacks(root)) {
-      const seeds = join(up, 'knowledge-seeds', s);
-      if (existsSync(seeds))
-        for (const f of listFiles(seeds))
-          addIfMissing(
-            `.agents/knowledge/${f}`,
-            readFileSync(join(seeds, f), 'utf8'),
-            `seed for ${s}`,
-          );
-    }
-    add('.loctx/.gitignore', '*\n', 'double ignore (kestrel pattern)');
-    add('.loctx/README.md', LOCTX_README, 'local workspace layout');
-    addIfMissing('.loctx/ROADMAP.local.md', ROADMAP_STUB, 'raw roadmap');
+  addIfMissing('.agents/intent/.gitkeep', '', 'intent folders live here');
+  addIfMissing('.agents/audit/.gitkeep', '', 'version audit records');
+  addIfMissing('.agents/knowledge/.gitkeep', '', 'explicit knowledge');
+  for (const s of stacks(root)) {
+    const seeds = join(up, 'knowledge-seeds', s);
+    if (existsSync(seeds))
+      for (const f of listFiles(seeds))
+        addIfMissing(
+          `.agents/knowledge/${f}`,
+          readFileSync(join(seeds, f), 'utf8'),
+          `seed for ${s}`,
+        );
   }
-  // skill entry points: upstream-owned copies under the Agent Skills path, plus the index
+  add('.loctx/.gitignore', '*\n', 'double ignore');
+  add('.loctx/README.md', LOCTX_README, 'local workspace layout and lifetimes');
+  addIfMissing('.loctx/ROADMAP.local.md', ROADMAP_STUB, 'raw roadmap');
+
+  // stage skills: upstream-owned copies under the Agent Skills path
   const skillsUp = packageSkills();
-  const installed: { name: string; description: string }[] = [];
-  for (const name of tierSkills(o.tier)) {
-    for (const f of listFiles(join(skillsUp, name)))
-      add(
-        `.agents/skills/${name}/${f}`,
-        readFileSync(join(skillsUp, name, f), 'utf8'),
-        'upstream skill',
-      );
-  }
-  const skillsDir = join(root, '.agents', 'skills');
-  const names = new Set([
-    ...tierSkills(o.tier),
-    ...(existsSync(skillsDir) ? readdirSync(skillsDir) : []).filter((n) =>
-      existsSync(join(skillsDir, n, 'SKILL.md')),
-    ),
-  ]);
-  for (const n of names) {
-    const src = tierSkills(o.tier).includes(n) ? join(skillsUp, n) : join(skillsDir, n);
-    const { data } = splitFrontmatter(readFileSync(join(src, 'SKILL.md'), 'utf8'));
-    installed.push({ name: n, description: String(data?.['description'] ?? '') });
-  }
-  const indexPath = join(root, '.agents', 'SKILLS.md');
-  const index = existsSync(indexPath) ? readFileSync(indexPath, 'utf8') : null;
-  if (
-    index === null ||
-    index.startsWith(SKILLS_INDEX_HEADER) ||
-    /^# Skills\n\n\| skill \| does \|\n\|---\|---\|\n$/.test(index)
-  )
-    add('.agents/SKILLS.md', skillsIndex(installed), 'skill index');
-  else
-    notes.push('.agents/SKILLS.md is written by the project — add the reins skills to it by hand');
+  if (existsSync(skillsUp))
+    for (const name of readdirSync(skillsUp).toSorted()) {
+      if (PLUGIN_ONLY.has(name) || !existsSync(join(skillsUp, name, 'SKILL.md'))) continue;
+      for (const f of listFiles(join(skillsUp, name)))
+        add(
+          `.agents/skills/${name}/${f}`,
+          readFileSync(join(skillsUp, name, f), 'utf8'),
+          'upstream skill',
+        );
+    }
 
   const gi = existsSync(join(root, '.gitignore'))
     ? readFileSync(join(root, '.gitignore'), 'utf8')
@@ -436,61 +369,80 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   // 4c. a release: draft from dispatchable workflows — proposal only, never written
   notes.push(...releaseDraftNotes(draftRelease(root)));
 
-  // 5. AGENTS.md managed blocks, CLAUDE.md pointer
+  // 5. hooks: the project's own gate commands in its own hook tool (design §6)
+  const tool = hookTool(root);
+  const cmds = gateLines(root);
+  const pending = writes.find((w) => w.path === '.agents/harness/gates.yaml');
+  const lines = pending
+    ? (() => {
+        const g = parse(pending.content) as {
+          gates?: Record<string, { cmd: string; optional?: boolean }>;
+          order?: string[];
+        };
+        return (g.order ?? [])
+          .map((n) => g.gates?.[n])
+          .filter((x) => x && !x.optional)
+          .map((x) => x!.cmd);
+      })()
+    : cmds;
+  if (lines.length) {
+    if (tool === 'husky' && o.hooks) {
+      for (const stage of ['pre-commit', 'pre-push']) {
+        const p = join(root, '.husky', stage);
+        const cur = existsSync(p) ? readFileSync(p, 'utf8') : '';
+        if (cur.includes('# reins:begin hooks')) continue;
+        add(
+          `.husky/${stage}`,
+          `${cur.replace(/\s*$/, '')}\n# reins:begin hooks\n${lines.join('\n')}\n# reins:end hooks\n`.replace(
+            /^\n/,
+            '',
+          ),
+          'hook: the project gates',
+        );
+      }
+    } else if (tool)
+      notes.push(
+        `hook proposal (${tool}): run the project gates in pre-commit and pre-push — ${lines.join(' && ')}${tool === 'husky' ? '; re-run with --hooks to add them' : ''}`,
+      );
+    else notes.push('no hook tool found — the PM asks which one to use during onboarding');
+  }
+
+  // 6. AGENTS.md: managed blocks, the onboarding note; CLAUDE.md pointer
   const agentsPath = join(root, 'AGENTS.md');
-  const agents = existsSync(agentsPath) ? readFileSync(agentsPath, 'utf8') : '# AGENTS.md\n';
-  const blocks = parseBlocks(readFileSync(join(up, 'templates/agents-md-blocks.md'), 'utf8'));
-  const br = applyBlocks(agents, blocks);
-  if (br.text !== agents)
-    add('AGENTS.md', br.text, `managed blocks: ${[...br.inserted, ...br.replaced].join(', ')}`);
+  const before = existsSync(agentsPath) ? readFileSync(agentsPath, 'utf8') : '# AGENTS.md\n';
+  const blocks = renderBlocks(up, doc ?? defaultBindings([]), String(language ?? 'ko'));
+  const br = applyBlocks(before, blocks);
+  let agents = br.text;
+  if (!/<!-- reins:onboarding done -->/.test(agents))
+    agents = placeNote(agents, onboardingNote(tool === null), 'onboarding');
+  if (agents !== before)
+    add(
+      'AGENTS.md',
+      agents,
+      `managed blocks: ${[...br.inserted, ...br.replaced].join(', ') || 'onboarding'}`,
+    );
   for (const s of br.skipped) notes.push(`AGENTS.md block "${s.name}" not placed: ${s.why}`);
   const claude = join(root, 'CLAUDE.md');
   if (!existsSync(claude)) add('CLAUDE.md', '@AGENTS.md\n', 'Claude Code reads AGENTS.md');
   else if (!readFileSync(claude, 'utf8').includes('@AGENTS.md'))
     notes.push('CLAUDE.md does not import @AGENTS.md — add it');
 
-  // 6. hooks: propose only, unless asked (user decision 2026-10-25)
-  const husky = existsSync(join(root, '.husky'));
-  for (const stage of ['pre-commit', 'pre-push']) {
-    const p = join(root, '.husky', stage);
-    const cur = existsSync(p) ? readFileSync(p, 'utf8') : '';
-    if (/reins(\.js)?\s+check/.test(cur)) continue; // already calls the verifier
-    if (husky && o.hooks)
-      add(
-        `.husky/${stage}`,
-        `${cur.replace(/\s*$/, '')}\n# reins:begin hooks\n${hookLine(stage)}\n# reins:end hooks\n`.replace(
-          /^\n/,
-          '',
-        ),
-        'hook',
-      );
-    else
-      notes.push(
-        `hook proposal (${husky ? 'husky' : 'no hook tool found — lefthook or husky'}): run \`${hookLine(stage)}\` in ${stage}; re-run with --hooks to add it`,
-      );
-  }
-
   // 7. legacy workspace — migrate owns it
   if (existsSync(join(root, '.ai')) && !o.overExisting)
-    notes.push(
-      'legacy workspace .ai/ found — left untouched; run `reins migrate ' +
-        o.tier +
-        '` to move it into .agents/ and .loctx/',
-    );
+    notes.push('legacy workspace .ai/ found — left untouched; run `reins migrate` to move it');
   notes.push(
-    'next: in your agent, run the setup skill (/reins-setup) — the PM reads the project and proposes AGENTS.md project sections',
+    'next: open your agent in this repository — the onboarding note in AGENTS.md starts the first conversation',
   );
 
-  // 8. apply, then record (only when something changed)
+  // 8. apply
   const applied = apply(root, writes, !!o.dryRun);
   if (o.retire) {
     const harnessDir = join(root, '.agents/harness');
     const here = existsSync(harnessDir) ? listFiles(harnessDir) : [];
-    for (const f of retiredFiles(here, listFiles(up), o.tier)) {
+    for (const f of retiredFiles(here, listFiles(up))) {
       applied.removed.push(`.agents/harness/${f}`);
       if (o.dryRun) continue;
       rmSync(join(harnessDir, f), { force: true });
-      // prune directories the removal left empty, never the harness root
       for (let d = dirname(join(harnessDir, f)); d !== harnessDir; d = dirname(d)) {
         try {
           rmdirSync(d);
@@ -501,38 +453,14 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     }
   }
 
-  // 9. vendor files from the installed harness (design §6) — never over a file reins did not write
-  const generated = o.dryRun ? undefined : writeGenerated(root, generateVendorFiles(root), false);
+  // 9. generated files from the installed harness (design §6) — never over a file reins did not write
+  const generated = o.dryRun
+    ? undefined
+    : writeGenerated(root, generateVendorFiles(root), false, !!o.force);
   if (generated) {
     applied.created.push(...generated.written.filter((p) => !applied.created.includes(p)));
-    for (const s of generated.skipped)
-      notes.push(`not generated this round (vendor CLI files arrive in round two): ${s}`);
+    applied.removed.push(...generated.removed);
     for (const r of generated.refused) notes.push(`left alone ${r.path}: ${r.why}`);
   }
-  let history: string | undefined;
-  const changedAny = applied.created.length + applied.changed.length + applied.removed.length > 0;
-  if (changedAny && !o.dryRun && o.tier !== 'harness') {
-    const now = o.now ?? new Date();
-    // local time, like every other history file name (<YYYY-MM-DD-HHmm>)
-    const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
-    history = `.loctx/history/${stamp}_${o.recordAs ?? 'install'}-${o.tier}.md`;
-    const body = [
-      `decisions: install-${o.tier}`,
-      'source: tool',
-      '',
-      `# reins install ${o.tier} (${o.mode}) — v${version}`,
-      '',
-      `- generation before: ${gen}`,
-      `- created: ${applied.created.length} · changed: ${applied.changed.length} · unchanged: ${applied.unchanged.length} · removed: ${applied.removed.length}`,
-      ...applied.created.map((p) => `  - + ${p}`),
-      ...applied.changed.map((p) => `  - ~ ${p}`),
-      ...applied.removed.map((p) => `  - - ${p}`),
-      '',
-      '## notes',
-      ...notes.map((n) => `- ${n}`),
-      '',
-    ].join('\n');
-    apply(root, [{ path: history, content: body, why: 'install record' }], false);
-  }
-  return { root, generation: gen, applied, generated, notes, history };
+  return { root, generation: gen, applied, generated, notes };
 }

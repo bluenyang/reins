@@ -1,9 +1,17 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runConfig } from '../src/commands/config.js';
+import { configureBindings } from '../src/commands/configure.js';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { askerPrompter, BACK, EXIT, isInteractive, scriptedPrompter } from '../src/lib/prompter.js';
@@ -20,7 +28,6 @@ async function repo(): Promise<string> {
   execFileSync('git', ['init', '-q'], { cwd: d });
   writeFileSync(join(d, 'package.json'), '{}');
   await runInstall({
-    tier: 'graph',
     mode: 'auto',
     asker: defaultsAsker,
     cwd: d,
@@ -125,8 +132,8 @@ describe('Prompter (C-1)', () => {
   });
 });
 
-describe('reins config (C-2)', () => {
-  it('non-TTY prints one resolved line per role and the configure hint, and changes no file', async () => {
+describe('reins config (019 S-6, design §9)', () => {
+  it('non-TTY prints the effective settings and the hint, and changes no file', async () => {
     const d = await repo();
     const before = snapshot(d);
     let out = '';
@@ -137,13 +144,14 @@ describe('reins config (C-2)', () => {
       write: (s) => (out += s),
     });
     expect(code).toBe(0);
-    expect(out).toMatch(/^ {2}pm\s+claude\s+\S+ \(/m);
-    expect(out.trim().split('\n').length).toBeGreaterThan(10);
-    expect(out).toContain('reins configure bindings --set');
+    expect(out).toContain('mode: single');
+    expect(out).toContain('audit: required every version');
+    expect(out).toContain('every role: the PM');
+    expect(out).toContain('reins config bindings --set');
     expect(snapshot(d)).toEqual(before);
   });
 
-  it('--json prints a bindings array, even on a terminal', async () => {
+  it('--json prints the bindings and the roles, even on a terminal', async () => {
     const d = await repo();
     let out = '';
     const p = scriptedPrompter([]);
@@ -156,12 +164,13 @@ describe('reins config (C-2)', () => {
       write: (s) => (out += s),
     });
     expect(code).toBe(0);
-    const j = JSON.parse(out) as { bindings: { role: string; model: string }[] };
-    expect(j.bindings.find((b) => b.role === 'pm')?.model).toBeTruthy();
+    const j = JSON.parse(out) as { bindings: { mode: string }; roles: unknown[] };
+    expect(j.bindings.mode).toBe('single');
+    expect(j.roles.length).toBeGreaterThan(10);
     expect(p.asked).toEqual([]);
   });
 
-  it('on a terminal the main screen lists models and roles first, then exit', async () => {
+  it('on a terminal the main screen lists models, tools, mode, audit, then exit', async () => {
     const d = await repo();
     const p = scriptedPrompter(['models', 'back', 'exit']);
     expect(await runConfig({ cwd: d, interactive: true, prompter: p, detectVendors: detect })).toBe(
@@ -169,9 +178,87 @@ describe('reins config (C-2)', () => {
     );
     expect(p.asked.map((q) => q.message)).toEqual([
       'Configuration',
-      'Models and roles',
+      'Models and roles (mode: single)',
       'Configuration',
     ]);
-    expect(p.asked[0]?.values).toEqual(['models', 'exit']);
+    expect(p.asked[0]?.values).toEqual(['models', 'tools', 'mode', 'audit', 'exit']);
+  });
+
+  it('the screen sets a group model on the global scope and regenerates', async () => {
+    const d = await repo();
+    const p = scriptedPrompter([
+      'mode',
+      'multi',
+      'models',
+      'scope',
+      'global',
+      'implementer',
+      'one',
+      'claude',
+      'other',
+      'claude-sonnet-5-5',
+      'back',
+      'exit',
+    ]);
+    expect(await runConfig({ cwd: d, interactive: true, prompter: p, detectVendors: detect })).toBe(
+      0,
+    );
+    const b = readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8');
+    expect(b).toContain('mode: multi');
+    expect(b).toMatch(/implementer:\n\s+vendor: claude\n\s+model: claude-sonnet-5-5/);
+    expect(existsSync(join(d, '.claude/agents/rs-implementer-code.md'))).toBe(true);
+    const agents = readFileSync(join(d, 'AGENTS.md'), 'utf8');
+    expect(agents).toContain('<!-- reins:reconcile pending -->');
+    expect(agents).toContain(
+      '| implementer/code | claude claude-sonnet-5-5 | subagent `rs-implementer-code` |',
+    );
+  });
+
+  it('switching the audit off asks once more', async () => {
+    const d = await repo();
+    const p = scriptedPrompter(['audit', false, 'audit', true, 'exit']);
+    await runConfig({ cwd: d, interactive: true, prompter: p, detectVendors: detect });
+    expect(readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8')).toMatch(
+      /audit:\n\s+required: false/,
+    );
+  });
+});
+
+describe('reins config bindings (flags)', () => {
+  it('sets groups, roles, several models and the mode; refuses bad names and writes nothing', async () => {
+    const d = await repo();
+    const r = await configureBindings({
+      cwd: d,
+      mode: 'multi',
+      set: ['executor=claude-haiku-5-5', 'pl.doc-reviewer=claude:claude-sonnet-5-5'],
+      models: ['pl=claude-sonnet-5-5,openai:gpt-6.1-terra'],
+    });
+    expect(r.refused).toBeUndefined();
+    expect(r.changed).toEqual(
+      expect.arrayContaining(['executor', 'pl.doc-reviewer', 'pl', 'mode']),
+    );
+    const reviewer = r.roles.find((x) => x.group === 'pl' && x.role === 'code-reviewer');
+    expect(reviewer?.models).toEqual([{ vendor: 'openai', model: 'gpt-6.1-terra' }]);
+    expect(readFileSync(join(d, 'AGENTS.md'), 'utf8')).toContain(
+      'exec -m gpt-6.1-terra -s read-only -`',
+    );
+    const before = snapshot(d);
+    expect((await configureBindings({ cwd: d, set: ['nope=x'] })).code).toBe(1);
+    expect((await configureBindings({ cwd: d, set: ['pl.nope=x'] })).code).toBe(1);
+    expect((await configureBindings({ cwd: d, models: ['executor=a,b'] })).code).toBe(1);
+    expect(snapshot(d)).toEqual(before);
+  });
+
+  it('--local writes only the personal file; --off switches a group off', async () => {
+    const d = await repo();
+    await configureBindings({ cwd: d, mode: 'multi', set: ['implementer=claude-sonnet-5-5'] });
+    const team = readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8');
+    const l = await configureBindings({ cwd: d, local: true, set: ['default=claude-fable-5-1'] });
+    expect(l.doc?.default).toEqual({ vendor: 'claude', model: 'claude-fable-5-1' });
+    expect(readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8')).toBe(team);
+    expect(existsSync(join(d, '.loctx/bindings.local.yaml'))).toBe(true);
+    const off = await configureBindings({ cwd: d, off: ['implementer'] });
+    expect(off.roles.filter((x) => x.on)).toEqual([]);
+    expect(existsSync(join(d, '.claude/agents/rs-implementer-code.md'))).toBe(false);
   });
 });

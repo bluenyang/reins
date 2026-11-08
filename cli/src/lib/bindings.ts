@@ -1,457 +1,296 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { isMap, isScalar, parse, parseDocument, stringify } from 'yaml';
+import { parse, stringify } from 'yaml';
 import { Ajv2020 } from 'ajv/dist/2020.js';
-import { vendorOf, vendors, type Vendor } from './detect.js';
 import { packageHarness } from './upstream.js';
-import { splitFrontmatter } from './skills.js';
 
-/** The git-ignored per-user layer (design §5): detection results and role overrides. */
-export const LOCAL_BINDINGS = '.loctx/bindings.local.yaml';
-
-export interface LocalBindings {
-  schema: 'reins/bindings-local@1';
-  vendors: Record<string, { detected: boolean; at?: string }>;
-  /** `model` and/or `enabled` per role (the schema wants at least one). */
-  roles: Record<string, { model?: string; enabled?: boolean }>;
-}
-
-export type BindingSource = 'local' | 'team' | 'fallback' | 'pm' | 'default';
-
-/** Used only when pm itself has no usable binding. */
-export const DEFAULT_MODEL = 'claude-opus-5-5';
-
-/** Always on (design §2): pm, implementer and verify-tool cannot be switched off. */
-export const FIXED_ROLES: readonly string[] = ['pm', 'implementer', 'verify-tool'];
-
-export type EnabledSource = 'fixed' | 'local' | 'team' | 'default';
-
-export interface ResolvedBinding {
-  role: string;
+/**
+ * Model assignment, version 2 (design §2-1, §5): which vendor's model does a group's or a role's work.
+ * reins resolves it when `config` writes; nothing reads it while a project works.
+ */
+export interface Binding {
   vendor: string;
   model: string;
-  source: BindingSource;
-  reason: string;
-  /** Whether the role is on for this user (fixed → on; else local ?? team ?? true). */
-  enabled: boolean;
-  enabled_source: EnabledSource;
-  /** Who does the work while the role is off: a role, `caller` or `user`; absent for the fixed roles. */
-  covered_by?: string;
 }
 
-const isObj = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null && !Array.isArray(v);
+export type Group = 'pl' | 'planner' | 'implementer' | 'executor' | 'advisor' | 'auditor';
 
-let validateLocal: ((d: unknown) => boolean) | undefined;
-function localValid(doc: unknown): string | null {
-  validateLocal ??= (() => {
-    const schema = JSON.parse(
-      readFileSync(join(packageHarness(), 'schemas/bindings-local.schema.json'), 'utf8'),
-    ) as object;
-    return new Ajv2020({ allErrors: true, strict: false }).compile(schema) as (
-      d: unknown,
-    ) => boolean;
-  })();
-  if (validateLocal(doc)) return null;
-  const errs = (
-    validateLocal as unknown as { errors?: { instancePath: string; message?: string }[] }
-  ).errors;
-  return (errs ?? [])
-    .map((e) => `${e.instancePath || '(root)'} ${e.message ?? 'invalid'}`)
-    .join('; ');
+export interface GroupSpec {
+  vendor?: string;
+  model?: string;
+  /** pl and advisor only: several models. */
+  models?: Binding[];
+  roles?: Record<string, Binding>;
 }
 
-/** Tolerant: a missing file reads as empty; an invalid one is ignored with a warning, never a crash. */
-export function readLocal(root: string): LocalBindings {
-  return loadLocal(root) ?? { schema: 'reins/bindings-local@1', vendors: {}, roles: {} };
+export interface BindingsV2 {
+  schema: 'reins/bindings@2';
+  mode?: 'single' | 'multi';
+  audit?: { required?: boolean };
+  default?: Binding;
+  tools?: Record<string, { cli?: string; use?: boolean }>;
+  groups?: Partial<Record<Group, GroupSpec>>;
 }
 
-/** The local file, empty when absent; `null` (after a warning) when it exists but cannot be used. */
-function loadLocal(root: string): LocalBindings | null {
-  const out: LocalBindings = { schema: 'reins/bindings-local@1', vendors: {}, roles: {} };
-  const path = join(root, LOCAL_BINDINGS);
-  if (!existsSync(path)) return out;
-  let doc: unknown;
-  try {
-    doc = parse(readFileSync(path, 'utf8'));
-  } catch (e) {
-    process.stderr.write(
-      `warning: ${LOCAL_BINDINGS} cannot be read (${(e as Error).message}) — ignored\n`,
-    );
-    return null;
-  }
-  const bad = isObj(doc) ? localValid(doc) : 'not a mapping';
-  if (bad !== null || !isObj(doc)) {
-    process.stderr.write(`warning: ${LOCAL_BINDINGS} is invalid (${bad}) — ignored\n`);
-    return null;
-  }
-  if (isObj(doc['vendors']))
-    for (const [k, v] of Object.entries(doc['vendors']))
-      if (isObj(v) && typeof v['detected'] === 'boolean')
-        out.vendors[k] = {
-          detected: v['detected'],
-          ...(typeof v['at'] === 'string' ? { at: v['at'] } : {}),
-        };
-  if (isObj(doc['roles']))
-    for (const [k, v] of Object.entries(doc['roles']))
-      if (isObj(v)) {
-        const e: { model?: string; enabled?: boolean } = {};
-        if (typeof v['model'] === 'string' && v['model']) e.model = v['model'];
-        if (typeof v['enabled'] === 'boolean') e.enabled = v['enabled'];
-        if (e.model !== undefined || e.enabled !== undefined) out.roles[k] = e;
-      }
-  return out;
-}
+/** The roles of each group (design §2-2). A group whose list is empty is one role of the same name. */
+export const GROUP_ROLES: Record<Group, readonly string[]> = {
+  pl: [
+    'control',
+    'plan-reviewer',
+    'code-reviewer',
+    'qa-plan-reviewer',
+    'doc-reviewer',
+    'retrospector',
+    'discussion',
+  ],
+  planner: ['spec-writer', 'qa-designer'],
+  implementer: ['code', 'qa', 'doc'],
+  executor: ['tool-executor', 'researcher', 'qa-runner', 'deployer'],
+  advisor: ['committee'],
+  auditor: [],
+};
 
-export function writeLocal(root: string, doc: LocalBindings): void {
-  const path = join(root, LOCAL_BINDINGS);
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(
-    path,
-    `# per-user, git-ignored — change with \`reins configure bindings --local\`\n${stringify(doc)}`,
-  );
-}
+export const GROUPS = Object.keys(GROUP_ROLES) as Group[];
 
-/** Records a detection run in the local file; `roles` and other vendors' entries are kept. */
-export function recordDetection(root: string, vs: Vendor[], now: Date = new Date()): void {
-  const doc = readLocal(root);
-  for (const v of vs) doc.vendors[v.name] = { detected: v.detected, at: now.toISOString() };
-  writeLocal(root, doc);
-}
+/** Roles that use every model of their group rather than one (design §2-2). */
+const ALL_MODELS = new Set(['pl/discussion', 'advisor/committee']);
+const PL_REVIEWERS = new Set([
+  'plan-reviewer',
+  'code-reviewer',
+  'qa-plan-reviewer',
+  'doc-reviewer',
+  'retrospector',
+]);
 
-interface RoleMeta {
-  def?: string;
-  fb?: string;
-  covered?: string;
-}
+/** Used when a file names no default. */
+export const DEFAULT_BINDING: Binding = { vendor: 'claude', model: 'claude-opus-5-5' };
 
-function roleMeta(root: string): Map<string, RoleMeta> {
-  const dir = join(root, '.agents/harness/roles');
-  const meta = new Map<string, RoleMeta>();
-  if (!existsSync(dir)) return meta;
-  for (const f of readdirSync(dir)
-    .filter((x) => x.endsWith('.md'))
-    .toSorted()) {
-    const { data } = splitFrontmatter(readFileSync(join(dir, f), 'utf8'));
-    meta.set(f.slice(0, -3), {
-      def: typeof data?.['default_binding'] === 'string' ? data['default_binding'] : undefined,
-      fb: typeof data?.['fallback_binding'] === 'string' ? data['fallback_binding'] : undefined,
-      covered:
-        typeof data?.['covered_by'] === 'string' && data['covered_by'] !== 'none'
-          ? data['covered_by']
-          : undefined,
-    });
-  }
-  return meta;
-}
-
-/** `roles.<r>.enabled` of the committed file, where a boolean is written. */
-export function teamEnabled(root: string): Record<string, boolean> {
-  const path = join(root, '.agents/harness/bindings.yaml');
-  if (!existsSync(path)) return {};
-  try {
-    const doc = parse(readFileSync(path, 'utf8')) as { roles?: Record<string, unknown> } | null;
-    const out: Record<string, boolean> = {};
-    for (const [r, b] of Object.entries(doc?.roles ?? {}))
-      if (isObj(b) && typeof b['enabled'] === 'boolean') out[r] = b['enabled'];
-    return out;
-  } catch {
-    return {};
-  }
-}
-
-export interface RoleState {
+export interface ResolvedRole {
+  group: Group;
   role: string;
-  enabled: boolean;
-  enabled_source: EnabledSource;
-  covered_by?: string;
+  /** false: the PM does this work. */
+  on: boolean;
+  /** One model, or several for discussion and the committee; empty when off. */
+  models: Binding[];
+  source: 'role' | 'group' | 'off';
+}
+
+const pair = (b: Binding): Binding => ({ vendor: b.vendor, model: b.model });
+
+/** The group's models in order: `models`, else the single `vendor`/`model`. */
+function groupModels(spec: GroupSpec): Binding[] {
+  if (spec.models?.length) return spec.models.map(pair);
+  if (spec.vendor && spec.model) return [{ vendor: spec.vendor, model: spec.model }];
+  return [];
 }
 
 /**
- * On or off per role for this user, without resolving models (no vendor detection): fixed roles are
- * on; otherwise `local enabled ?? team enabled ?? true`. `warnings` names a fixed role that carries
- * `enabled: false` in either layer (ignored).
+ * Every group's roles with the model(s) that do them. Single mode switches every group off, so the PM
+ * does all the work; the auditor's model, if any, stays a recommendation (see `auditBinding`).
  */
-export function roleStates(root: string): { states: Map<string, RoleState>; warnings: string[] } {
-  const local = readLocal(root);
-  const team = teamEnabled(root);
-  const meta = roleMeta(root);
-  const names = new Set([
-    ...FIXED_ROLES,
-    ...Object.keys(teamRoles(root)),
-    ...meta.keys(),
-    ...Object.keys(team),
-    ...Object.keys(local.roles),
-  ]);
-  const states = new Map<string, RoleState>();
-  const warnings: string[] = [];
-  for (const role of [...names].toSorted()) {
-    const covered = meta.get(role)?.covered;
-    let enabled = true;
-    let enabled_source: EnabledSource = 'default';
-    if (FIXED_ROLES.includes(role)) {
-      enabled_source = 'fixed';
-      for (const [layer, v] of [
-        ['bindings.yaml', team[role]],
-        [LOCAL_BINDINGS, local.roles[role]?.enabled],
-      ] as const)
-        if (v === false)
-          warnings.push(`warning: ${layer}: ${role} is always on — its enabled: false is ignored`);
-    } else if (local.roles[role]?.enabled !== undefined) {
-      enabled = local.roles[role].enabled;
-      enabled_source = 'local';
-    } else if (team[role] !== undefined) {
-      enabled = team[role];
-      enabled_source = 'team';
+export function resolveRoles(doc: BindingsV2): ResolvedRole[] {
+  const multi = doc.mode === 'multi';
+  const out: ResolvedRole[] = [];
+  for (const group of GROUPS) {
+    const spec = doc.groups?.[group];
+    const roles = GROUP_ROLES[group].length ? GROUP_ROLES[group] : [group];
+    const models = spec ? groupModels(spec) : [];
+    for (const role of roles) {
+      const own = spec?.roles?.[role];
+      if (!multi || (!own && models.length === 0)) {
+        out.push({ group, role, on: false, models: [], source: 'off' });
+        continue;
+      }
+      if (own) {
+        out.push({ group, role, on: true, models: [pair(own)], source: 'role' });
+        continue;
+      }
+      let picked: Binding[];
+      if (ALL_MODELS.has(`${group}/${role}`)) picked = models;
+      else if (group === 'pl' && PL_REVIEWERS.has(role)) picked = [models[1] ?? models[0]!];
+      else picked = [models[0]!];
+      out.push({ group, role, on: true, models: picked, source: 'group' });
     }
-    states.set(role, {
-      role,
-      enabled,
-      enabled_source,
-      ...(covered ? { covered_by: covered } : {}),
-    });
   }
-  return { states, warnings };
-}
-
-/** The state column of status and the config table: `off → pm`, `on (local)`, or empty when plainly on. */
-export function stateLabel(b: {
-  enabled: boolean;
-  enabled_source: EnabledSource;
-  covered_by?: string;
-}): string {
-  if (!b.enabled) return `off${b.covered_by ? ` → ${b.covered_by}` : ''}`;
-  return b.enabled_source === 'local' ? 'on (local)' : '';
-}
-
-export function teamRoles(root: string): Record<string, { vendor: string; model: string }> {
-  const path = join(root, '.agents/harness/bindings.yaml');
-  if (!existsSync(path)) return {};
-  try {
-    const doc = parse(readFileSync(path, 'utf8')) as { roles?: Record<string, unknown> } | null;
-    const out: Record<string, { vendor: string; model: string }> = {};
-    for (const [r, b] of Object.entries(doc?.roles ?? {}))
-      if (isObj(b) && typeof b['model'] === 'string')
-        out[r] = {
-          vendor: typeof b['vendor'] === 'string' ? b['vendor'] : vendorOf(b['model']),
-          model: b['model'],
-        };
-    return out;
-  } catch {
-    return {};
-  }
-}
-
-/**
- * The model each role actually runs on (design §5). Per role: local override → team binding when its
- * vendor is detected → the role file's `fallback_binding` when its vendor is detected → the pm model.
- * A vendor missing from the local file is detected live (`detect`) and not written back. claude is the floor.
- */
-export function resolveBindings(root: string, detect: () => Vendor[] = vendors): ResolvedBinding[] {
-  const local = readLocal(root);
-  const team = teamRoles(root);
-  const meta = roleMeta(root);
-  const { states } = roleStates(root);
-  const stateOf = (role: string): RoleState =>
-    states.get(role) ?? {
-      role,
-      enabled: true,
-      enabled_source: FIXED_ROLES.includes(role) ? 'fixed' : 'default',
-    };
-  let live: Map<string, boolean> | undefined;
-  const detected = (v: string): boolean => {
-    if (v === 'claude') return true;
-    const known = local.vendors[v];
-    if (known) return known.detected;
-    live ??= new Map(detect().map((x) => [x.name, x.detected]));
-    return live.get(v) ?? false;
-  };
-  const roles = [...new Set([...FIXED_ROLES, ...Object.keys(team), ...meta.keys()])].toSorted();
-  const withState = (b: Omit<ResolvedBinding, 'enabled' | 'enabled_source' | 'covered_by'>) => {
-    const { enabled, enabled_source, covered_by } = stateOf(b.role);
-    return { ...b, enabled, enabled_source, ...(covered_by ? { covered_by } : {}) };
-  };
-  const one = (
-    role: string,
-    last: { vendor: string; model: string; source: BindingSource; label: string },
-  ): ResolvedBinding => {
-    const l = local.roles[role]?.model;
-    if (l)
-      return withState({
-        role,
-        vendor: vendorOf(l),
-        model: l,
-        source: 'local',
-        reason: 'local override',
-      });
-    const t = team[role];
-    if (t && detected(t.vendor))
-      return withState({ role, ...t, source: 'team', reason: 'team binding' });
-    const fb = meta.get(role)?.fb;
-    const why = t ? `${t.vendor} not detected` : 'no team binding';
-    if (fb && detected(vendorOf(fb)))
-      return withState({
-        role,
-        vendor: vendorOf(fb),
-        model: fb,
-        source: 'fallback',
-        reason: `${why} — fallback_binding`,
-      });
-    return withState({
-      role,
-      vendor: last.vendor,
-      model: last.model,
-      source: last.source,
-      reason: `${why} — ${last.label}`,
-    });
-  };
-  // pm first, through the same order; its last resort is the claude default model
-  const pmRes = one('pm', {
-    vendor: vendorOf(DEFAULT_MODEL),
-    model: DEFAULT_MODEL,
-    source: 'default',
-    label: 'default model',
-  });
-  const pm = {
-    vendor: pmRes.vendor,
-    model: pmRes.model,
-    source: 'pm' as const,
-    label: "pm's model",
-  };
-  const out: ResolvedBinding[] = [];
-  for (const role of roles) out.push(role === 'pm' ? pmRes : one(role, pm));
   return out;
 }
 
-const DETECT_KEYS = ['detected', 'at', 'detected_at', 'detectedAt', 'checked_at', 'checkedAt'];
+/** The PM's model. */
+export function pmBinding(doc: BindingsV2): Binding {
+  return doc.default ? pair(doc.default) : { ...DEFAULT_BINDING };
+}
+
+/** The model an audit should run on: the auditor group's, else the PM's (design §3-3). */
+export function auditBinding(doc: BindingsV2): Binding {
+  const a = doc.groups?.auditor;
+  const own = a?.roles?.auditor;
+  if (own) return pair(own);
+  const ms = a ? groupModels(a) : [];
+  return ms[0] ?? pmBinding(doc);
+}
+
+/** Whether the per-version audit is mandatory (design §3-3): true unless the file says false. */
+export const auditRequired = (doc: BindingsV2): boolean => doc.audit?.required !== false;
+
+/** The local override wins per key: mode, audit, default, each tool and each group as a whole. */
+export function mergeLocal(team: BindingsV2, local: Partial<BindingsV2> | undefined): BindingsV2 {
+  if (!local) return team;
+  const out: BindingsV2 = { ...team, schema: 'reins/bindings@2' };
+  if (local.mode) out.mode = local.mode;
+  if (local.audit) out.audit = { ...team.audit, ...local.audit };
+  if (local.default) out.default = pair(local.default);
+  if (local.tools) out.tools = { ...team.tools, ...local.tools };
+  if (local.groups) out.groups = { ...team.groups, ...local.groups };
+  return out;
+}
+
+let validator: ((d: unknown) => boolean) | undefined;
+/** Problems of a version-2 file against `harness/schemas/bindings.schema.json`; empty when valid. */
+export function validateBindings(doc: unknown): string[] {
+  validator ??= new Ajv2020({ allErrors: true, strict: false }).compile(
+    JSON.parse(
+      readFileSync(join(packageHarness(), 'schemas/bindings.schema.json'), 'utf8'),
+    ) as object,
+  ) as (d: unknown) => boolean;
+  if (validator(doc)) return [];
+  const errs = (validator as unknown as { errors?: { instancePath: string; message?: string }[] })
+    .errors;
+  return (errs ?? []).map((e) => `${e.instancePath || '(root)'} ${e.message ?? 'invalid'}`);
+}
+
+/** Where each version-1 role goes in version 2 (design §7). `pm` becomes `default`. */
+export const V1_ROLE_MAP: Record<string, { group: Group; role?: string }> = {
+  planner: { group: 'planner', role: 'spec-writer' },
+  pl: { group: 'pl' },
+  'code-review': { group: 'pl', role: 'code-reviewer' },
+  implementer: { group: 'implementer' },
+  'verify-tool': { group: 'executor', role: 'tool-executor' },
+  'qa-run': { group: 'executor', role: 'qa-runner' },
+  deploy: { group: 'executor', role: 'deployer' },
+  lookup: { group: 'executor', role: 'researcher' },
+  'qa-design': { group: 'planner', role: 'qa-designer' },
+  docs: { group: 'implementer', role: 'doc' },
+  advisor: { group: 'advisor' },
+};
+
+const DROPPED_V1_KEYS = ['escalation', 'limits'] as const;
 
 /**
- * 0.1.4 kept `vendors.<v>.detected` (and a timestamp) in the committed bindings.yaml. Moves them to the
- * local file (a vendor the local file already has is kept as is) and removes just those keys from the
- * committed one through the Document API, so comments, order and every other key stay as written.
- * Returns the vendors moved; nothing is written when `dryRun`.
+ * A version-1 `bindings.yaml` (`roles.<r>: {vendor, model, enabled, fallback, parallel}`, `vendors`)
+ * as version 2. The result is single mode; the converted groups take effect once the user switches to
+ * multi with `config`. `notes` says what moved and what was dropped, for the user to confirm.
  */
-export function migrateDetected(root: string, dryRun = false): string[] {
-  const path = join(root, '.agents/harness/bindings.yaml');
-  if (!existsSync(path)) return [];
-  const doc = parseDocument(readFileSync(path, 'utf8'));
-  if (doc.errors.length > 0) return [];
-  const vs = doc.get('vendors', true);
-  if (!isMap(vs)) return [];
-  const found: Record<string, { detected: boolean; at?: string }> = {};
-  const touched: string[] = [];
-  for (const pair of vs.items) {
-    const name = isScalar(pair.key) ? String(pair.key.value) : undefined;
-    if (name === undefined || !isMap(pair.value)) continue;
-    const m = pair.value;
-    const keys = m.items.filter(
-      (i) => isScalar(i.key) && DETECT_KEYS.includes(String(i.key.value)),
-    );
-    if (keys.length === 0) continue;
-    const val = (k: string): unknown => {
-      const v = m.get(k);
-      return v;
-    };
-    const det = val('detected');
-    const at = ['at', 'detected_at', 'detectedAt', 'checked_at', 'checkedAt']
-      .map(val)
-      .find((x) => typeof x === 'string' || x instanceof Date);
-    if (typeof det !== 'boolean') continue; // only a well-formed record is migrated
-    found[name] = {
-      detected: det,
-      ...(at === undefined ? {} : { at: at instanceof Date ? at.toISOString() : String(at) }),
-    };
-    touched.push(name);
-  }
-  if (touched.length === 0) return [];
-  if (dryRun) return touched;
-  const local = loadLocal(root);
-  if (local === null) return []; // never overwrite a local file we cannot read
-  let add = false;
-  for (const [k, v] of Object.entries(found))
-    if (!local.vendors[k]) {
-      local.vendors[k] = v;
-      add = true;
+export function convertV1(v1: Record<string, unknown>): { doc: BindingsV2; notes: string[] } {
+  const notes: string[] = [];
+  const doc: BindingsV2 = { schema: 'reins/bindings@2', mode: 'single', audit: { required: true } };
+  const isObj = (v: unknown): v is Record<string, unknown> =>
+    typeof v === 'object' && v !== null && !Array.isArray(v);
+  const roles = isObj(v1['roles']) ? v1['roles'] : {};
+  const bindingOf = (v: unknown): Binding | null =>
+    isObj(v) && typeof v['vendor'] === 'string' && typeof v['model'] === 'string'
+      ? { vendor: v['vendor'], model: v['model'] }
+      : null;
+  const pm = bindingOf(roles['pm']);
+  if (pm) doc.default = pm;
+  for (const [name, raw] of Object.entries(roles)) {
+    if (name === 'pm') continue;
+    const target = V1_ROLE_MAP[name];
+    if (!target) {
+      notes.push(`role ${name}: no place in version 2, dropped`);
+      continue;
     }
-  if (add) writeLocal(root, local);
-  for (const name of touched) {
-    const m = vs.get(name, true);
-    if (!isMap(m)) continue;
-    for (const k of DETECT_KEYS) m.delete(k);
-    if (m.items.length === 0) vs.delete(name);
+    if (isObj(raw) && raw['enabled'] === false) {
+      notes.push(`role ${name}: was off, left off`);
+      continue;
+    }
+    const b = bindingOf(raw);
+    if (!b) continue;
+    doc.groups ??= {};
+    const spec = (doc.groups[target.group] ??= {});
+    if (target.role) {
+      spec.roles ??= {};
+      spec.roles[target.role] = b;
+    } else if (!spec.vendor) {
+      spec.vendor = b.vendor;
+      spec.model = b.model;
+    }
+    const where = target.role ? `${target.group}.${target.role}` : target.group;
+    notes.push(`role ${name} → ${where} (${b.vendor} ${b.model})`);
+    for (const k of ['fallback', 'parallel'] as const)
+      if (isObj(raw) && k in raw) notes.push(`role ${name}: ${k} dropped (no run-time keys)`);
   }
-  if (vs.items.length === 0) doc.delete('vendors');
-  writeFileSync(path, doc.toString());
-  return touched;
+  if (isObj(v1['vendors'])) {
+    doc.tools = {};
+    for (const [v, raw] of Object.entries(v1['vendors'])) {
+      if (!isObj(raw)) continue;
+      const t: { cli?: string; use?: boolean } = {};
+      if (typeof raw['cli'] === 'string') t.cli = raw['cli'];
+      if (typeof raw['available'] === 'boolean') t.use = raw['available'];
+      doc.tools[v] = t;
+    }
+  }
+  for (const k of DROPPED_V1_KEYS) if (k in v1) notes.push(`${k}: dropped (no run-time keys)`);
+  if (doc.groups) notes.push('mode: single; switch to multi with config to use the groups above');
+  return { doc, notes };
 }
 
-export type EnabledScope = 'global' | 'local';
+/** The committed team file and the git-ignored personal override (design §5). */
+export const TEAM_BINDINGS = '.agents/harness/bindings.yaml';
+export const LOCAL_BINDINGS = '.loctx/bindings.local.yaml';
 
-export interface SetRoleEnabledResult {
-  refused?: string;
-  changed: boolean;
+/** Agent tools reins knows how to detect and call (design §9 `config`). */
+export const KNOWN_TOOLS: Record<string, string> = {
+  claude: 'claude',
+  openai: 'codex',
+  google: 'agy',
+  gemini: 'gemini',
+  copilot: 'copilot',
+  cursor: 'cursor-agent',
+};
+
+/** The team file as version 2, or `null` when absent; `v1` when an old file is there (update converts it). */
+export function readTeam(root: string): { doc: BindingsV2 | null; v1?: Record<string, unknown> } {
+  const p = join(root, TEAM_BINDINGS);
+  if (!existsSync(p)) return { doc: null };
+  const raw = parse(readFileSync(p, 'utf8')) as Record<string, unknown> | null;
+  if (!raw || raw['schema'] !== 'reins/bindings@2') return { doc: null, v1: raw ?? {} };
+  return { doc: raw as unknown as BindingsV2 };
 }
 
-function roleNames(root: string): string[] {
-  const dir = join(root, '.agents/harness/roles');
-  return existsSync(dir)
-    ? readdirSync(dir)
-        .filter((f) => f.endsWith('.md'))
-        .map((f) => f.slice(0, -3))
-        .toSorted()
-    : [];
+/** The personal override, if any (same shape, any key may be missing). */
+export function readLocalBindings(root: string): Partial<BindingsV2> | undefined {
+  const p = join(root, LOCAL_BINDINGS);
+  if (!existsSync(p)) return undefined;
+  const raw = parse(readFileSync(p, 'utf8')) as Record<string, unknown> | null;
+  return raw && raw['schema'] === 'reins/bindings@2' ? (raw as Partial<BindingsV2>) : undefined;
 }
 
-/** Why a role cannot be switched on or off, or null (used before anything is written). */
-export function roleEnabledRefusal(root: string, role: string, on: boolean): string | null {
-  const names = roleNames(root);
-  if (!names.includes(role)) return `unknown role "${role}" — roles: ${names.join(', ')}`;
-  if (!on && FIXED_ROLES.includes(role))
-    return `${role} is always on and cannot be switched off (fixed roles: ${FIXED_ROLES.join(', ')})`;
-  return null;
+/** What applies to this user: the team file with the personal override on top. */
+export function effectiveBindings(root: string): BindingsV2 | null {
+  const team = readTeam(root).doc;
+  return team ? mergeLocal(team, readLocalBindings(root)) : null;
 }
 
-/**
- * Switches a role on or off in one layer and touches nothing else. Global edits `bindings.yaml` through
- * the Document API (comments and order stay; switching on removes the key, since on is the default);
- * local drops its key when it equals the team value. Regenerating vendor files is the caller's job.
- */
-export function setRoleEnabled(
+const HEADER =
+  '# reins model assignment (design §5) — the user changes it with `reins config`; nothing reads it while you work\n';
+
+export function writeBindings(
   root: string,
-  role: string,
-  on: boolean,
-  scope: EnabledScope,
-): SetRoleEnabledResult {
-  const refused = roleEnabledRefusal(root, role, on);
-  if (refused) return { refused, changed: false };
-  if (scope === 'local') {
-    const local = readLocal(root);
-    const teamValue = teamEnabled(root)[role] ?? true;
-    const before = local.roles[role]?.enabled;
-    const entry = { ...local.roles[role] };
-    if (on === teamValue) delete entry.enabled;
-    else entry.enabled = on;
-    if (entry.enabled === before) return { changed: false };
-    if (entry.model === undefined && entry.enabled === undefined) delete local.roles[role];
-    else local.roles[role] = entry;
-    writeLocal(root, local);
-    return { changed: true };
-  }
-  const path = join(root, '.agents/harness/bindings.yaml');
-  if (!existsSync(path))
-    return { refused: 'no bindings.yaml — install the graph tier first', changed: false };
-  const doc = parseDocument(readFileSync(path, 'utf8'));
-  if (doc.errors.length > 0) return { refused: 'bindings.yaml cannot be parsed', changed: false };
-  const was = doc.getIn(['roles', role, 'enabled']);
-  if (on) {
-    if (was === undefined) return { changed: false };
-    doc.deleteIn(['roles', role, 'enabled']);
-    const entry = doc.getIn(['roles', role], true);
-    if (isMap(entry) && entry.items.length === 0) doc.deleteIn(['roles', role]);
-  } else {
-    if (was === false) return { changed: false };
-    doc.setIn(['roles', role, 'enabled'], false);
-  }
-  writeFileSync(path, doc.toString());
-  return { changed: true };
+  doc: Partial<BindingsV2>,
+  scope: 'global' | 'local',
+): void {
+  const p = join(root, scope === 'global' ? TEAM_BINDINGS : LOCAL_BINDINGS);
+  mkdirSync(dirname(p), { recursive: true });
+  writeFileSync(p, `${HEADER}${stringify({ ...doc, schema: 'reins/bindings@2' })}`);
+}
+
+/** A fresh file for install: single mode, the audit required, the PM on Claude, the detected tools. */
+export function defaultBindings(tools: { name: string; cli: string; use: boolean }[]): BindingsV2 {
+  return {
+    schema: 'reins/bindings@2',
+    mode: 'single',
+    audit: { required: true },
+    default: { ...DEFAULT_BINDING },
+    tools: Object.fromEntries(tools.map((t) => [t.name, { cli: t.cli, use: t.use }])),
+  };
 }

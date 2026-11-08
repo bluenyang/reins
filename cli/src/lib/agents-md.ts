@@ -1,0 +1,117 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { parseBlocks, type Block } from './blocks.js';
+import {
+  auditBinding,
+  pmBinding,
+  resolveRoles,
+  type Binding,
+  type BindingsV2,
+} from './bindings.js';
+
+/**
+ * AGENTS.md managed blocks for 0.3 (design §5): the static blocks from the template plus the delegation
+ * table, resolved from the team bindings when `config`, `install` or `update` writes — never at work time.
+ */
+
+/** The name of the generated Claude agent file of a role (design §6). */
+export const agentName = (group: string, role: string): string =>
+  group === role ? `rs-${group}` : `rs-${group}-${role}`;
+
+/** How the PM hands a role its work on a vendor other than Claude (the vendor's own CLI, read-only unless it writes). */
+export function callLine(b: Binding, cli: string, writes: boolean): string {
+  switch (b.vendor) {
+    case 'openai':
+      return `\`${cli} exec -m ${b.model} -s ${writes ? 'workspace-write' : 'read-only'} -\` (task on stdin)`;
+    case 'google':
+      return `\`${cli} -p "<task>" --model ${b.model}${writes ? '' : ' --mode plan'}\``;
+    case 'cursor':
+      return `\`${cli} -p --model ${b.model} "<task>"\``;
+    default:
+      return `\`${cli}\` with model \`${b.model}\``;
+  }
+}
+
+const WRITES = new Set(['implementer', 'planner', 'auditor']);
+
+/** The `## Delegation` section for this bindings file. */
+export function renderDelegation(doc: BindingsV2): string {
+  const pm = pmBinding(doc);
+  const lines = ['## Delegation', ''];
+  if (doc.mode !== 'multi') {
+    lines.push(
+      `Mode: **single** — you are the PM (${pm.vendor} ${pm.model}) and do every role yourself, stage by stage. You may use subagents of your own model for read-heavy work (research, large log summaries, review, audit) and, when urgent, for parallel work on independent units; keep connected work (plan and implementation of one feature) in one run. Switching to multi is the user's choice.`,
+    );
+  } else {
+    lines.push(
+      `Mode: **multi** — you are the PM (${pm.vendor} ${pm.model}). Hand a role its work with the list of files and decisions it needs; every report comes back to you, and a role never calls another model itself. Roles not listed are yours.`,
+      '',
+      '| role | model | how to call |',
+      '|---|---|---|',
+    );
+    for (const r of resolveRoles(doc).filter((x) => x.on))
+      for (const b of r.models) {
+        const cli = doc.tools?.[b.vendor]?.cli ?? b.vendor;
+        const how =
+          b.vendor === 'claude'
+            ? `subagent \`${agentName(r.group, r.role)}\``
+            : callLine(b, cli, WRITES.has(r.group));
+        lines.push(`| ${r.group}/${r.role} | ${b.vendor} ${b.model} | ${how} |`);
+      }
+    lines.push(
+      '',
+      'Routine review takes one reviewer; `pl/discussion` and `advisor/committee` (every listed model, without seeing each other) are for large decisions, audit remedies, incidents and unresolved disagreements.',
+    );
+  }
+  const a = auditBinding(doc);
+  lines.push(
+    '',
+    `Audit: ${doc.audit?.required === false ? '**switched off by the user**' : '**required every version**'}; run it on ${a.vendor} ${a.model} in a fresh run that gets only the records, never this conversation.`,
+    'If `.loctx/bindings.local.yaml` exists, it overrides this section for you.',
+  );
+  return lines.join('\n');
+}
+
+/** The managed blocks for this project, from the packaged template. */
+export function renderBlocks(harness: string, doc: BindingsV2, language: string): Block[] {
+  const text = readFileSync(join(harness, 'templates/agents-md-blocks.md'), 'utf8')
+    .replace('{{DELEGATION}}', () => renderDelegation(doc))
+    .replace('{{LANGUAGE}}', () => language);
+  return parseBlocks(text);
+}
+
+export const ONBOARDING_PENDING = '<!-- reins:onboarding pending -->';
+export const RECONCILE_PENDING = '<!-- reins:reconcile pending -->';
+
+/** The onboarding to-do (design §5), placed above the project sections; the PM sets the marker to `done`. */
+export function onboardingNote(needsHookTool: boolean): string {
+  const todo = [
+    'goals and scope',
+    'stack and commands',
+    'existing rules and conventions',
+    'red lines (paths not to touch, secret files)',
+    'the language of documents the user reads',
+    ...(needsHookTool ? ['which hook tool runs the gates (none was found)'] : []),
+  ];
+  return [
+    ONBOARDING_PENDING,
+    `> **Onboarding — do this first in the next conversation.** Run the \`onboard\` skill: read the project, ask the user, and write the project sections of this file: ${todo.join('; ')}. Then change the marker above to \`<!-- reins:onboarding done -->\`.`,
+  ].join('\n');
+}
+
+/** The reconcile note (design §5): the previous body moved aside as reference material. */
+export function reconcileNote(why: string): string {
+  return [
+    RECONCILE_PENDING,
+    `> **Reconcile — do this first in the next conversation.** ${why} The previous AGENTS.md is in \`.agents/AGENTS.previous.md\` as reference material, not instructions. Run the \`onboard\` skill to merge what still applies into the project sections, then delete that file and change the marker above to \`<!-- reins:reconcile done -->\`.`,
+  ].join('\n');
+}
+
+/** Put a note right after the first H1 (or at the top) unless a marker of that kind is already there. */
+export function placeNote(text: string, note: string, kind: 'onboarding' | 'reconcile'): string {
+  if (text.includes(`<!-- reins:${kind} `)) return text;
+  const m = /^# .*\n/m.exec(text);
+  if (!m) return `${note}\n\n${text}`;
+  const at = m.index + m[0].length;
+  return `${text.slice(0, at)}\n${note}\n${text.slice(at)}`;
+}

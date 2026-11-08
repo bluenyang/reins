@@ -101,10 +101,10 @@ describe('proposal name collisions', () => {
         ask: async (q, f) => (q.startsWith('subdirectory gates') ? n : f),
         close: () => {},
       };
-      await runInstall({ tier: 'loop', mode: 'manual', asker, cwd: d });
+      await runInstall({ mode: 'manual', asker, cwd: d });
       expect(gatesOf(d).order).toEqual(['build', n]);
       const e = collisionFixture();
-      await runInstall({ tier: 'loop', mode: 'auto', asker: defaultsAsker, cwd: e });
+      await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: e });
       expect(configureGates({ cwd: e, add: [n] }).added).toEqual([n]);
       expect(gatesOf(e).order).toEqual(['build', n]);
     }
@@ -119,13 +119,13 @@ describe('install (spec S-6)', () => {
       ask: async (q, f) => (q.startsWith('subdirectory gates') ? 'server-test-go' : f),
       close: () => {},
     };
-    await runInstall({ tier: 'loop', mode: 'manual', asker, cwd: d });
+    await runInstall({ mode: 'manual', asker, cwd: d });
     const g = gatesOf(d);
     expect(g.order).toEqual(['build', 'server-test-go']);
     expect(g.gates['server-test-go']!.cmd).toBe('go -C server test ./...');
 
     const a = fixture();
-    const r = await runInstall({ tier: 'loop', mode: 'auto', asker: defaultsAsker, cwd: a });
+    const r = await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: a });
     expect(gatesOf(a).order).toEqual(['build']);
     expect(r.notes.some((n) => n.includes('server-test-go'))).toBe(true);
   });
@@ -134,7 +134,7 @@ describe('install (spec S-6)', () => {
 describe('reins configure gates (spec S-7)', () => {
   it('lists missing proposals, appends with comments kept, refuses unknown names', async () => {
     const d = fixture();
-    await runInstall({ tier: 'loop', mode: 'auto', asker: defaultsAsker, cwd: d });
+    await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: d });
     const path = join(d, '.agents/harness/gates.yaml');
     const before = readFileSync(path, 'utf8');
     expect(before).toContain('# discovered by reins install');

@@ -53,7 +53,7 @@ intent 019의 "바라는 결과"와 "계획"을 아래로 옮긴다. 각 줄 끝
 - [x] W-6 (f4d7e4f) 생성기와 AGENTS.md 기본 블록(S-2, S-8, S-12), install의 훅 제안(S-3)과 온보딩 표시.
 - [x] W-7 (51f2fcd: 작업 중 명령과 코드 삭제; f4d7e4f: config·update·migrate 2판; 22cfbbd: configure 별칭; 180f7d8: migrate의 열린 work → intent 000 계획) CLI 정리: 작업 중 명령과 코드 삭제(S-1), `config` 통합과 새 화면(S-6), `update`의 덮어쓰기 확인과 이전(S-14, S-15).
 - [x] W-8 (ba65664) 플러그인(`.claude-plugin`)의 setup 입구, README 양판, `docs/violations*` 정리, CHANGELOG.
-- [x] W-9 (f8d4621 V-1·V-2 e2e; fixes from a real 0.2.0 move 5af37dd and before; logs `.loctx/reports/0.3.0/w9-migrate-v020.log`, `w9-self-migrate.log`; the real self-migrate waits for the 0.3 release, as decided) 검증: V-1~V-6, 보존한 0.2.0 설치본에서 이전, 이 저장소 자기 이전.
+- [x] W-9 검증 — 감사(0.3.0) 뒤 다시 나눠 적음. **검증 완료**: V-1(e2e, install·config·update 뒤), V-3~V-6(단위·e2e 테스트), V-2(e2e: reins 없는 PATH·닿지 않는 registry·실제 git 훅; 수동: `unshare -rn` 네트워크 차단 안에서 스킬이 시키는 git·게이트·커밋·머지, `.loctx/reports/0.3.0/v2-network-isolated.log`), 실제 v0.2.0 설치 이전(`w9-migrate-v020.log`), 자기 이전 리허설(`w9-self-migrate.log`). **미검증**: Windows에서의 V-2 수동 검사(CI는 Windows에서 V-1과 단위 테스트만). **출시 뒤**: 이 저장소의 실제 자기 이전(사용자 결정 2026-11-09). 처음 표시(2026-11-09)는 V-2 일부가 검증되기 전이었다 — 감사 지적 3.
 
 ## 검증 기준
 - V-1 install(single, multi 각각)과 update 뒤 생성된 모든 파일을 훑어, `reins`·`@bluenyang/reins`를 실행하는 줄이 없다(허용된 사람용 안내 문장은 형식으로 구분). 훅 파일에는 `gates.yaml` 명령만 있다.

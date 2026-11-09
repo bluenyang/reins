@@ -266,6 +266,42 @@ describe('known models (ST-2)', () => {
   });
 });
 
+describe('rc.2 review fixes', () => {
+  it('a mode switch keeps a project quote that sits under a finished note', async () => {
+    const d = await repo();
+    await configureBindings({ cwd: d, mode: 'multi' });
+    const p = join(d, 'AGENTS.md');
+    // the PM finished the check and wrote its own quote under the marker
+    const done = readFileSync(p, 'utf8')
+      .replace('reins:mode-changed pending', 'reins:mode-changed done')
+      .replace(/> \*\*Mode changed from [^\n]*\n/, '> Our rule: review it yourself.\n');
+    writeFileSync(p, done);
+    await configureBindings({ cwd: d, mode: 'single' });
+    expect(readFileSync(p, 'utf8')).toContain('> Our rule: review it yourself.');
+  });
+
+  it('known models keep each binding with its own vendor', async () => {
+    const { knownModels } = await import('../src/commands/config-models.js');
+    const doc = {
+      schema: 'reins/bindings@2' as const,
+      groups: { pl: { roles: { 'code-reviewer': { vendor: 'openai', model: 'o3' } } } },
+    };
+    expect(knownModels('openai', [doc])).toContain('o3');
+    expect(knownModels('claude', [doc])).not.toContain('o3');
+  });
+
+  it('in multi mode the group screen carries no single-mode tag', async () => {
+    const d = await repo();
+    await configureBindings({ cwd: d, mode: 'multi', set: ['auditor=openai:gpt-6-astra'] });
+    const p = scriptedPrompter(['models', 'auditor', 'back', 'back', 'exit']);
+    await runConfig({ cwd: d, interactive: true, prompter: p, detectVendors: detect });
+    const screens =
+      p.asked.map((q) => q.message).join('\n') + p.asked.flatMap((q) => q.labels ?? []).join('\n');
+    expect(screens).not.toContain('recommended audit model');
+    expect(screens).not.toContain('used in multi only');
+  });
+});
+
 describe('reins config bindings (flags)', () => {
   it('sets groups, roles, several models and the mode; refuses bad names and writes nothing', async () => {
     const d = await repo();

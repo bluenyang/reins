@@ -43,7 +43,7 @@ intent 020의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 ## 작업 단위
 - [x] W-1 ST-4 로컬 위임 표(S-1~S-4, S-12의 §1·§3-1·§4-2·§5): 렌더러·동기화 함수·호출 지점, `config`의 안내 줄, 위임·레이아웃 블록 문장, 스킬 11개의 ③ 첫 문장, 설계서 양판(§3-1의 ③ 위임 설명 포함), README(있으면), 테스트.
 - [x] W-2 ST-6 작업 단위 ↔ 커밋(S-5~S-8, S-12의 §3-1·§3-3 판정): `skills/implement`, 흐름 블록, `skills/audit` ③, `harness/roles/auditor.md`, 이 저장소 `AGENTS.md`, 설계서 양판, 테스트 기대값.
-- [ ] W-3 ST-7 감사 입력(S-9~S-11, S-12의 §3-3 읽는 것): `skills/audit` ②, `harness/roles/auditor.md`, 설계서 양판.
+- [x] W-3 ST-7 감사 입력(S-9~S-11, S-12의 §3-3 읽는 것): `skills/audit` ②, `harness/roles/auditor.md`, 설계서 양판.
 
 순서는 W-1 → W-2 → W-3. 단위마다 커밋 하나. W-2와 W-3은 같은 파일(`skills/audit`, `auditor.md`, §3-3)을 고치지만 다른 줄이라 나눠 커밋한다.
 

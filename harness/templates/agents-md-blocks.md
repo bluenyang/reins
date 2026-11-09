@@ -27,7 +27,7 @@ Follow these steps in order; each has a skill in `.agents/skills/`, and each ski
 1. `roadmap` — ideas go to `.loctx/ROADMAP.local.md`; once settled with the user, to `docs/ROADMAP.md`.
 2. `intent` — the PM writes the direction and the plan; **the user approves**.
 3. `spec` — the spec, its work units (W-n) and checks (V-n); **the user answers 진행 or 수정 on its summary, every time**.
-4. `implement` → `review` — one work unit, one commit, naming its spec items.
+4. `implement` → `review` — one work unit, one commit, naming its spec items. Merging, splitting or reordering units needs the spec changed and approved first.
 5. `test` → `merge` → **`audit`** (after the merge, before the rc) → `release` → `retro` (after stable), then delete the version's working files.
 
 The first conversation after installation (or after a reconcile or mode-changed marker appears in this file) starts with `onboard`.

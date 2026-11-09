@@ -39,6 +39,7 @@ large decisions get an outside review (another vendor's model, read-only) when t
    `{ role: user, by, at, words, rev }`. A step the maintainer tells you to skip is recorded in the intent's
    `waivers:` and applies once.
 3. Implement the spec's work units in order; each finished unit is its own commit and passes `pnpm check`.
+   Merging, splitting or reordering units needs the spec changed and the summary approved first.
 4. Test, merge, then an **audit** of the version (before the rc): were these steps followed?
 5. Release, then a retro, then delete the version's working files in `.loctx/`.
 

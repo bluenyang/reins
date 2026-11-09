@@ -68,6 +68,20 @@ describe('stage skills (019 S-9, design §3-1)', () => {
         .toSorted(),
     ).toEqual([...STAGES].toSorted());
   });
+  it('one work unit, one commit: implement checks it, the audit judges it (020 S-5, S-7)', () => {
+    const impl = read('implement');
+    expect(impl).toContain("check that the commit is exactly one of the spec's work units");
+    expect(impl).toContain('Work units that need merging, splitting or reordering');
+    const rule =
+      'a commit that holds several units, a unit split without approval, or units reordered without approval is a violation';
+    expect(read('audit')).toContain(rule);
+    expect(readFileSync(join(process.cwd(), 'harness/roles/auditor.md'), 'utf8')).toContain(rule);
+    expect(
+      readFileSync(join(process.cwd(), 'harness/templates/agents-md-blocks.md'), 'utf8'),
+    ).toContain(
+      'Merging, splitting or reordering units needs the spec changed and approved first.',
+    );
+  });
   it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
     const t = read(n);
     expect(t.slice(t.indexOf('## 3. Delegation')).split('\n')[1]).toMatch(

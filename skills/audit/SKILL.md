@@ -11,7 +11,7 @@ After the merge, before the rc. While `audit.required` in `.agents/harness/bindi
 ## 2. Procedure
 1. Run in a fresh context that gets only the records, never the working conversation (auditor if switched on; in single mode, a new run — another vendor, or the same vendor's top model — chosen by the user).
 2. Read: AGENTS.md and the harness settings as they were, the intent, spec, `docs/ROADMAP.md`, `.loctx/ROADMAP.local.md`, git history, history, gate and test logs.
-3. Judge each step: local roadmap → roadmap → intent → approval → spec → approval → implementation and commits → review → test → merge. Kept, violated, cannot confirm (no evidence path), or skipped on the user's instruction (recorded in `waivers:`). Judge against the rules in force at the time. A generated or harness file changed by a commit that is not an `update`/`config` commit is a violation.
+3. Judge each step: local roadmap → roadmap → intent → approval → spec → approval → implementation and commits → review → test → merge. Kept, violated, cannot confirm (no evidence path), or skipped on the user's instruction (recorded in `waivers:`). Judge against the rules in force at the time. Commits against work units: a commit that holds several units, a unit split without approval, or units reordered without approval is a violation. A generated or harness file changed by a commit that is not an `update`/`config` commit is a violation.
 4. Write `.agents/audit/<version>.md` from `.agents/harness/templates/audit.md`: criticise each violation precisely and give a remedy (pl or advisor opinions by severity).
 5. The PM reports to the user: fix it, or the user accepts it. Commit the record with the user's decision.
 

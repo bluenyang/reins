@@ -3,6 +3,7 @@
 Read by `reins update`: it lists the entries newer than a project's pinned version.
 
 ## 0.3.0
+- rc.2: `models.yaml` lists known models per vendor; a mode switch adds `reins:mode-changed` (no AGENTS.previous.md); the `onboard` skill handles it.
 - Seven role groups replace the twelve roles; bindings.yaml version 2 (mode, audit, groups); `update` converts version 1.
 - Eleven stage skills without the `reins-` prefix replace the ten `reins-*` skills; none calls reins.
 - AGENTS.md blocks: notice, layout, settings, flow, delegation, records, stops, language; an onboarding or reconcile note for the PM.

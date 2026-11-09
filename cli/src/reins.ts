@@ -232,9 +232,9 @@ config
         process.stdout.write(
           r.changed.length ? `changed: ${r.changed.join(', ')}\n` : 'no change\n',
         );
-      if (r.reconcile)
+      if (r.modeChanged)
         process.stdout.write(
-          '• AGENTS.md has a reconcile note — the PM merges it in the next conversation\n',
+          '• AGENTS.md has a mode-changed note — the PM checks the project sections in the next conversation\n',
         );
       const g = r.generated;
       if (g) {

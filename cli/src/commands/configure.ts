@@ -16,14 +16,14 @@ import {
   type Group,
   type ResolvedRole,
 } from '../lib/bindings.js';
-import { placeNote, reconcileNote, renderBlocks } from '../lib/agents-md.js';
+import { modeChangedNote, placeNote, renderBlocks } from '../lib/agents-md.js';
 import { applyBlocks } from '../lib/blocks.js';
 import { generateVendorFiles } from '../lib/generate.js';
 import { repoRoot } from '../lib/git.js';
 import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
 import { packageHarness } from '../lib/upstream.js';
 
-export type Scope = 'local' | 'global';
+export type Scope = 'local' | 'project';
 
 export interface ConfigureBindingsOptions {
   cwd?: string;
@@ -56,8 +56,8 @@ export interface ConfigureResult {
   doc?: BindingsV2;
   roles: ResolvedRole[];
   generated?: GenWriteResult;
-  /** the mode changed: AGENTS.md got a reconcile note */
-  reconcile?: boolean;
+  /** the mode changed: AGENTS.md got a mode-changed note (spec ST-5) */
+  modeChanged?: boolean;
 }
 
 /** A model given alone, or `vendor:model`. */
@@ -69,8 +69,8 @@ export function parseBinding(v: string): Binding | null {
   return { vendor: vendorOf(s), model: s };
 }
 
-/** Rewrite AGENTS.md's managed blocks for these settings (design §5); a mode change adds the reconcile note. */
-export function refreshAgents(root: string, doc: BindingsV2, modeChanged: boolean): boolean {
+/** Rewrite AGENTS.md's managed blocks for these settings (design §5); a mode change adds the light mode-changed note (ST-5). */
+export function refreshAgents(root: string, doc: BindingsV2, modeFrom?: string): boolean {
   const ap = join(root, 'AGENTS.md');
   if (!existsSync(ap)) return false;
   const before = readFileSync(ap, 'utf8');
@@ -79,16 +79,10 @@ export function refreshAgents(root: string, doc: BindingsV2, modeChanged: boolea
     ? String((parse(readFileSync(pin, 'utf8')) as { language?: string } | null)?.language ?? 'ko')
     : 'ko';
   let text = applyBlocks(before, renderBlocks(packageHarness(), doc, language)).text;
-  if (modeChanged) {
-    // a previous text the PM has not reconciled yet is older and stays; the current one is still in AGENTS.md
-    const prev = join(root, '.agents/AGENTS.previous.md');
-    if (!(existsSync(prev) && before.includes('<!-- reins:reconcile pending -->')))
-      writeFileSync(prev, before);
-    text = placeNote(
-      text,
-      reconcileNote(`The user switched the mode to ${doc.mode ?? 'single'}.`),
-      'reconcile',
-    );
+  if (modeFrom !== undefined) {
+    // a pending note from an earlier switch is replaced by one that names the latest change
+    text = text.replace(/<!-- reins:mode-changed (?:pending|done) -->\n(?:> [^\n]*\n)?\n?/, '');
+    text = placeNote(text, modeChangedNote(modeFrom, doc.mode ?? 'single'), 'mode-changed');
   }
   if (text !== before) writeFileSync(ap, text);
   return text !== before;
@@ -222,14 +216,21 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
     const doc = effective();
     return { changed: [], doc, roles: resolveRoles(doc) };
   }
-  writeBindings(root, next, o.local ? 'local' : 'global');
+  writeBindings(root, next, o.local ? 'local' : 'project');
   const doc = effective();
   if (o.local) return { changed, doc, roles: resolveRoles(doc) };
   const teamNow = readTeam(root).doc!;
-  const modeChanged = (team.doc.mode ?? 'single') !== (teamNow.mode ?? 'single');
+  const from = team.doc.mode ?? 'single';
+  const modeChanged = from !== (teamNow.mode ?? 'single');
   const generated = writeGenerated(root, generateVendorFiles(root), false);
-  refreshAgents(root, teamNow, modeChanged);
-  return { changed, doc, roles: resolveRoles(doc), generated, reconcile: modeChanged || undefined };
+  refreshAgents(root, teamNow, modeChanged ? from : undefined);
+  return {
+    changed,
+    doc,
+    roles: resolveRoles(doc),
+    generated,
+    modeChanged: modeChanged || undefined,
+  };
 }
 
 export interface ConfigureGatesOptions {

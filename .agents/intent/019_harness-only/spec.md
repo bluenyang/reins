@@ -69,7 +69,7 @@ rc.1을 쓰며 나온 결함과 사용자 결정(2026-11-09). 구현 전에 이 
 - V-2 오프라인 시험: 설치한 임시 저장소에서 `PATH`에 reins가 없고 네트워크를 막은 채, 훅이 달린 커밋과 스킬 문서가 가리키는 모든 명령이 reins 없이 동작한다.
 - V-3 bindings 2판: 단일 기본, 군·상세 상속, pl·advisor 여럿, 로컬 덮어쓰기, 1판 → 2판 변환의 표 기반 테스트. 관제·리뷰어·Discussion 배정이 S-5대로 생성물에 적힌다.
 - V-4 스킬 11개가 있고 각 스킬에 ①~⑥ 절이 있다. 다음 스킬 사슬이 흐름(4-1) 순서와 같다.
-- V-5 AGENTS.md 기본 블록에 설정 파일 경로, `audit.required`, 흐름, 온보딩 표시가 있다. 모드 전환과 migrate 충돌이 reconcile 표시와 `AGENTS.previous.md`를 만든다.
+- V-5 AGENTS.md 기본 블록에 설정 파일 경로, `audit.required`, 흐름, 온보딩 표시가 있다. 모드 전환은 mode-changed 표시만 남기고(ST-5), migrate 충돌이 reconcile 표시와 `AGENTS.previous.md`를 만든다.
 - V-6 update: 손으로 고친 생성 파일이 있으면 확인 없이 덮어쓰지 않는다. 0.2.0 설치본 이전에서 사용자 훅 줄과 settings 항목이 보존되고, reins 호출이 모두 사라지고, 중간에 멈춘 뒤 다시 실행하면 같은 결과다.
 - 감사(W-9 뒤, 머지 다음): intent 019의 흐름을 지켰는가를 이 spec의 작업 단위와 커밋으로 대조한다.
 

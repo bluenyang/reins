@@ -1,7 +1,7 @@
-import { effectiveBindings, resolveRoles, type BindingsV2 } from '../lib/bindings.js';
+import { effectiveBindings, resolveRoles, type BindingsV2, type Group } from '../lib/bindings.js';
 import { newModelCache, vendors, type ModelCache, type Vendor } from '../lib/detect.js';
 import { repoRoot } from '../lib/git.js';
-import { modelsScreen } from './config-models.js';
+import { groupLine, modelsScreen } from './config-models.js';
 import { configureBindings } from './configure.js';
 import { clackPrompter, isInteractive, type Prompter } from '../lib/prompter.js';
 
@@ -30,6 +30,17 @@ export function formatBindings(doc: BindingsV2): string {
   ];
   const on = resolveRoles(doc).filter((r) => r.on);
   if (on.length === 0) lines.push('  every role: the PM');
+  if (doc.mode !== 'multi') {
+    const kept = Object.entries(doc.groups ?? {}).filter(
+      ([, s]) => s && JSON.stringify(s) !== '{}',
+    );
+    for (const [g, s] of kept)
+      lines.push(
+        `  ${g.padEnd(26)} ${groupLine(g as Group, s, doc.mode)
+          .slice(12)
+          .trim()}`,
+      );
+  }
   for (const r of on)
     lines.push(
       `  ${`${r.group}/${r.role}`.padEnd(26)} ${r.models.map((b) => `${b.vendor} ${b.model}`).join(', ')} (${r.source})`,
@@ -117,8 +128,8 @@ export async function runConfig(o: ConfigOptions = {}): Promise<number> {
       prompter.note(
         r.refused
           ? `not changed: ${r.refused}`
-          : r.reconcile
-            ? `mode ${m}: AGENTS.md has a reconcile note — the PM merges it in the next conversation`
+          : r.modeChanged
+            ? `mode ${m}: AGENTS.md has a mode-changed note — the PM checks the project sections in the next conversation`
             : `mode ${m}: already so`,
       );
       continue;

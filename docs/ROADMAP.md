@@ -41,6 +41,8 @@ The 0.2 plan answered "agents do not follow the harness" by putting reins into t
 
 ## 0.3 — reins manages the harness, nothing more
 
+State: 0.3.0-rc.1 (2026-11-09); stable on the maintainer's instruction.
+
 - **reins has four commands: `install`, `migrate`, `update`, `config`.** No hook, skill or agent calls reins while the project works; the installed harness works without reins and without a network. The commands used during work (`check`, `gate`, `new`, `status` and others) are removed.
 - **Checks belong to the project.** Stage checks run in hook tools such as lefthook or husky, or in scripts inside the project; reins proposes or sets them up at installation.
 - **A single agent is the default.** Multi-agent work is switched on by assigning models to role groups (PM, PL, Planner, Implementer, Executor, Advisor, Auditor); a group without a model is done by the PM. In single mode the PM may still use subagents of the same model for read-heavy work (research, review, audit) and urgent parallel work. Basis: Anthropic, [Building agents: When to fold subagents into your main agent loop](https://claude.com/resources/articles/building-agents-when-to-fold-subagents-into-your-main-agent-loop) (2026-10-22).

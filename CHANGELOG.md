@@ -11,7 +11,7 @@ has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md).
 
 ## [Unreleased] — 0.3.0
 
-reins manages the harness only (intent 019). 0.2.1–0.2.8 were cancelled.
+rc.1: 2026-11-09. reins manages the harness only (intent 019). 0.2.1–0.2.8 were cancelled. Audit: [.agents/audit/0.3.0.md](.agents/audit/0.3.0.md).
 
 ### Removed
 - The commands used during work: `check`, `gate`, `new`, `status`, `metrics`, `retro`, `knowledge`,

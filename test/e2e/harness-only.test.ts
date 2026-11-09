@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -89,6 +90,18 @@ describe('what reins installs never runs reins (019 V-1)', () => {
           'pl=claude-sonnet-5-5,openai:gpt-6.1-terra',
           'advisor=claude-fable-5-1,openai:gpt-6.1-sol',
         );
+      // a personal setting that delegates differently writes the personal table (020 V-2)
+      reins(
+        d,
+        'config',
+        'bindings',
+        '--local',
+        '--mode',
+        'multi',
+        '--set',
+        'pl.doc-reviewer=openai:gpt-6.1-sol',
+      );
+      expect(existsSync(join(d, '.loctx/delegation.local.md'))).toBe(true);
       const offenders = () =>
         files(d)
           .filter((f) => !PEOPLE_ONLY.has(f))
@@ -97,6 +110,7 @@ describe('what reins installs never runs reins (019 V-1)', () => {
       // and after an update over it
       reins(d, 'update', '--yes');
       expect(offenders()).toEqual([]);
+      expect(existsSync(join(d, '.loctx/delegation.local.md'))).toBe(true);
       const hook = readFileSync(join(d, '.husky/pre-commit'), 'utf8');
       expect(hook).toContain('npm run check');
     });

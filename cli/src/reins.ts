@@ -5,6 +5,7 @@ import { runInstall } from './commands/install.js';
 import { runMigrate } from './commands/migrate.js';
 import { formatUpdate, runUpdate } from './commands/update.js';
 import { configureBindings, configureGates } from './commands/configure.js';
+import { LOCAL_DELEGATION_NOTE } from './lib/local-delegation.js';
 import { formatBindings, runConfig } from './commands/config.js';
 import { defaultsAsker, stdinAsker } from './lib/ask.js';
 import { clackPrompter, isInteractive } from './lib/prompter.js';
@@ -232,6 +233,8 @@ config
         process.stdout.write(
           r.changed.length ? `changed: ${r.changed.join(', ')}\n` : 'no change\n',
         );
+      if (r.localDelegation)
+        process.stdout.write(`• ${LOCAL_DELEGATION_NOTE(r.localDelegation)}\n`);
       if (r.modeChanged)
         process.stdout.write(
           '• AGENTS.md has a mode-changed note — the PM checks the project sections in the next conversation\n',

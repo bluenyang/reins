@@ -24,7 +24,7 @@
 │   └── skills/<name>/SKILL.md   단계 스킬 11개
 ├── .claude/agents/rs-*.md    커밋 · 생성물(멀티에서 켠 역할만)
 ├── docs/                     ROADMAP.md 등
-└── .loctx/                   gitignore · ROADMAP.local.md · history/<version>.md · reports/<version>/ · context/ · bindings.local.yaml
+└── .loctx/                   gitignore · ROADMAP.local.md · history/<version>.md · reports/<version>/ · context/ · bindings.local.yaml · delegation.local.md
 ```
 `AGENTS.previous.md`는 재구성 대기 중에만 `.agents/`에 있다(§5).
 
@@ -77,7 +77,7 @@ PM 말고는 모두 선택이다. 켜지 않은 군의 일은 PM이 한다.
 | `release` | rc, stable(사용자 지시) | `retro` |
 | `retro` | 회고·개선안·정리 | `roadmap` |
 
-지휘자 스킬은 없다. 순서는 AGENTS.md 기본 블록이 갖고, 각 스킬 끝에 다음 스킬을 적는다. 모든 스킬은 같은 여섯 절을 갖는다: ① 언제 쓰나 ② 절차 ③ 위임(군에 모델이 할당돼 있으면 그 모델, 없으면 직접; 읽기 위주·급한 병렬은 같은 모델 서브에이전트 가능; 넘길 파일·결정 목록) ④ 만든 파일과 수명 ⑤ 다음 스킬 ⑥ 멈추고 물을 때. 스킬은 평문이고 reins를 부르지 않는다. 단일·멀티가 같은 스킬을 쓰므로 모드를 바꿔도 스킬은 다시 만들지 않는다.
+지휘자 스킬은 없다. 순서는 AGENTS.md 기본 블록이 갖고, 각 스킬 끝에 다음 스킬을 적는다. 모든 스킬은 같은 여섯 절을 갖는다: ① 언제 쓰나 ② 절차 ③ 위임(첫 문장은 "`.loctx/delegation.local.md`가 있으면 그것을, 없으면 AGENTS.md의 위임 표를 본다"; 군에 모델이 할당돼 있으면 그 모델, 없으면 직접; 읽기 위주·급한 병렬은 같은 모델 서브에이전트 가능; 넘길 파일·결정 목록) ④ 만든 파일과 수명 ⑤ 다음 스킬 ⑥ 멈추고 물을 때. 스킬은 평문이고 reins를 부르지 않는다. 단일·멀티가 같은 스킬을 쓰므로 모드를 바꿔도 스킬은 다시 만들지 않는다.
 
 ### 3-2. 멈추고 물을 때
 검증기가 없으므로 정지 조건은 에이전트가 스스로 지키는 평문 규칙이고, 감사의 판정 기준이다(옛 `stops.yaml`에서 작업 중 해당하는 것만 남김). AGENTS.md 기본 블록과 각 스킬 ⑥에 쓴다.
@@ -119,13 +119,14 @@ plan.md, ticket 파일, bus 파일은 없다. 커밋 메시지에 spec 항목(`S
 | `.loctx/history/<version>.md` | PM | 지우지 않음(로컬 노하우) |
 | `.loctx/reports/<version>/`(게이트·테스트 원본 로그, 하위 보고) | 그 단계를 한 역할 | 회고 뒤 PM이 정리. 지우기 전 history·감사 기록에 요약 |
 | `.agents/AGENTS.previous.md` | install·migrate·config | 재구성이 끝나면 PM |
+| `.loctx/delegation.local.md`(개인 위임 표) | config(두 범위)·install·update | 같은 명령이, 개인 설정이 없어지거나 팀과 같은 위임이 될 때 |
 | `.loctx/context/`, `ROADMAP.local.md` | 사용자·PM | 사용자 |
 
 install·update는 history에 쓰지 않는다. 각 스킬의 ④가 이 표를 따른다.
 
 ## 5. 프로젝트 것과 툴 것의 경계
 ### `AGENTS.md`
-관리 블록 `<!-- reins:begin <block> -->`…`<!-- reins:end <block> -->`: ① 폴더 구조 ② 설정(`.agents/harness/bindings.yaml`; `audit.required`가 true면 버전마다 감사 필수, 끄는 것은 사용자만) ③ 흐름과 스킬 순서 ④ 위임 표(켜진 역할의 모델; 다른 벤더 모델은 그 CLI의 실행 줄, 예: `codex exec -m <model> -s read-only`) ⑤ 승인·건너뛰기 기록 규칙 ⑥ 멈추고 물을 때(§3-2). 블록 밖은 프로젝트 것이다. 블록은 흐름을 강하게 명시해, 차단 없이도 에이전트가 따르게 한다.
+관리 블록 `<!-- reins:begin <block> -->`…`<!-- reins:end <block> -->`: ① 폴더 구조 ② 설정(`.agents/harness/bindings.yaml`; `audit.required`가 true면 버전마다 감사 필수, 끄는 것은 사용자만) ③ 흐름과 스킬 순서 ④ 위임 표(첫 줄은 "`.loctx/delegation.local.md`가 있으면 이 절 대신 그것을 따른다"; 켜진 역할의 모델; 다른 벤더 모델은 그 CLI의 실행 줄, 예: `codex exec -m <model> -s read-only`) ⑤ 승인·건너뛰기 기록 규칙 ⑥ 멈추고 물을 때(§3-2). 블록 밖은 프로젝트 것이다. 블록은 흐름을 강하게 명시해, 차단 없이도 에이전트가 따르게 한다.
 
 **온보딩 표시.** install·migrate는 프로젝트 절 위에 `<!-- reins:onboarding pending -->`과 할 일 목록(목표와 범위, 스택과 명령, 기존 규칙과 관례, 금지선, 문서 언어, 훅 도구가 없으면 훅 도구 정하기)을 둔다. **재구성 표시.** migrate 충돌이나 0.x 이전이면 `<!-- reins:reconcile pending -->`을 두고 이전 본문을 `.agents/AGENTS.previous.md`(참고 자료, 지침 아님)로 옮긴다. 진행 중인 작업이 있으면 재개 지점을 함께 적는다. **모드 변경 표시.** `config`로 모드를 바꾸면 바뀌는 것은 위임 블록뿐이므로 사본을 만들지 않고 `<!-- reins:mode-changed pending -->`만 둔다. PM은 프로젝트 절에 바뀐 모드와 어긋나는 문장이 있는지만 확인한다. 어느 표시든 PM은 다음 첫 대화에서 `onboard` 스킬로 처리하고 `done`으로 바꾼다.
 
@@ -146,7 +147,7 @@ groups:                 # 적지 않은 군 = 꺼짐(PM이 함)
   implementer: { vendor: claude, model: claude-sonnet-5-5 }
   auditor: { vendor: openai, model: gpt-6.1-sol }
 ```
-상속: 상세 역할 > 군 > 꺼짐. 로컬 파일의 빈 군(`{}`)은 팀이 켠 군을 그 사람에게만 끈다. vendor와 model은 한 묶음으로 상속한다. `models`는 pl·advisor만. 실행 중 해석이 필요한 키(`escalation`, `limits`, `parallel`, `fallback`)는 없다. `config`가 쓸 때 상속을 풀어 생성물과 위임 표에 적는다. 로컬 덮어쓰기 `.loctx/bindings.local.yaml`(같은 모양, 키 단위로 이김)은 사람마다 다를 수 있으므로 생성물에는 쓰지 않고, 위임 표에 "로컬 설정이 있으면 그것을 따른다"를 적는다.
+상속: 상세 역할 > 군 > 꺼짐. 로컬 파일의 빈 군(`{}`)은 팀이 켠 군을 그 사람에게만 끈다. vendor와 model은 한 묶음으로 상속한다. `models`는 pl·advisor만. 실행 중 해석이 필요한 키(`escalation`, `limits`, `parallel`, `fallback`)는 없다. `config`가 쓸 때 상속을 풀어 생성물과 위임 표에 적는다. 로컬 덮어쓰기 `.loctx/bindings.local.yaml`(같은 모양, 키 단위로 이김)은 사람마다 다를 수 있으므로 생성물에는 쓰지 않는다. 그 사람의 위임이 팀과 달라지면, 위임 블록을 쓰는 명령(`config` 두 범위, `install`, `update`)이 같은 렌더러로 그 사람의 위임 표를 `.loctx/delegation.local.md`에 쓰고, 같아지면 지운다(그린 결과로 비교). 이 표의 Claude 역할은 팀이 같은 이름·모델의 `rs-*`를 생성했으면 그 이름을, 아니면 "그 모델의 일반 서브에이전트에 `.agents/harness/roles/<group>.md`의 해당 역할을 넘겨"를 적는다(로컬용 `rs-*`는 만들지 않음 — `.claude/agents/`는 팀 생성물). 따르게 하는 것은 차단이 아니라 문서다: 스킬 ③의 첫 문장, 위임 절 첫 줄, 그리고 `config`가 표를 쓰거나 지울 때 "열린 세션에는 다시 읽으라고 하거나 새 세션" 안내(intent 020).
 
 ## 6. 생성과 드리프트
 원본 → 생성물: `harness/roles/` + bindings → `.claude/agents/rs-<group>-<role>.md`(멀티에서 켜진 Claude 역할만; 모델·`tools`가 박힘) · `skills/` → `.agents/skills/`(Claude는 `.claude/skills/`에 복사) · 템플릿 → AGENTS.md 관리 블록. 생성물 머리에 "generated — do not edit". 다른 벤더 모델이 할당된 역할은 에이전트 파일 대신 위임 표의 실행 줄로 다룬다. 한 역할에 Claude 모델이 여럿이면(discussion, committee) 모델마다 번호를 붙인 파일(`rs-advisor-committee-1` …)을 만든다. 단일 모드면 에이전트 파일이 없다. install은 `generated.yaml`에 없는 같은 이름 파일을 덮어쓰지 않는다. 그 파일만 건너뛰고 알리며, 나머지 설치는 계속한다.
@@ -168,7 +169,7 @@ groups:                 # 적지 않은 군 = 꺼짐(PM이 함)
 - `install [--mode manual|auto] [--hooks]`: 하네스 배치, 도구 감지, 게이트 확인, 훅 제안, 온보딩 표시. 기본 모드 single. 3·4세대 위에서는 거부하고 `migrate`로 안내.
 - `migrate [--legacy local|committed]`: 세대 판별 후 이전, 재구성 표시.
 - `update [--yes] [--force]`: 원본 → 생성물, 손 수정 확인, 0.x 이전.
-- `config`: TTY면 화면 — `models and roles`(단순/상세 할당, 군별·상세 역할별 모델, 군 켜기/끄기와 켤 만한 조건: PM 컨텍스트 저하, 독립 작업 병렬, 다른 모델로 리뷰·감사) · `agent tools`(claude, codex, agy, gemini, copilot, cursor agent 다시 감지와 사용 여부) · `mode`(single/multi; 바꾸면 모드 변경 표시) · `audit`(필수 끄기는 한 번 더 확인). 범위는 project(팀, 커밋되는 `bindings.yaml`)와 local(나만, `.loctx/bindings.local.yaml`) 둘이고 PC 전체 기본값은 없다. project에 쓰면 생성물을 다시 만든다. single 모드에서는 역할군 할당을 "multi에서만 쓰임"으로, auditor를 "감사 권장 모델"로 표시한다. 모델 목록은 벤더 CLI가 주면 그것을, 아니면 `harness/models.yaml`의 알려진 목록을 쓴다. TTY가 아니면 플래그(`config bindings --set …`, `config gates --add …` 등; 지금의 `configure` 플래그를 그대로 받음).
+- `config`: TTY면 화면 — `models and roles`(단순/상세 할당, 군별·상세 역할별 모델, 군 켜기/끄기와 켤 만한 조건: PM 컨텍스트 저하, 독립 작업 병렬, 다른 모델로 리뷰·감사) · `agent tools`(claude, codex, agy, gemini, copilot, cursor agent 다시 감지와 사용 여부) · `mode`(single/multi; 바꾸면 모드 변경 표시) · `audit`(필수 끄기는 한 번 더 확인). 범위는 project(팀, 커밋되는 `bindings.yaml`)와 local(나만, `.loctx/bindings.local.yaml`; 위임이 팀과 다르면 `.loctx/delegation.local.md`도) 둘이고 PC 전체 기본값은 없다. project에 쓰면 생성물을 다시 만든다. single 모드에서는 역할군 할당을 "multi에서만 쓰임"으로, auditor를 "감사 권장 모델"로 표시한다. 모델 목록은 벤더 CLI가 주면 그것을, 아니면 `harness/models.yaml`의 알려진 목록을 쓴다. TTY가 아니면 플래그(`config bindings --set …`, `config gates --add …` 등; 지금의 `configure` 플래그를 그대로 받음).
 - 설치 시점에 npx로 reins를 받는 것은 괜찮다. 생성물 안의 사람용 안내("설정을 바꾸려면 터미널에서 `npx @bluenyang/reins config`")는 허용하되, 에이전트에게 reins 실행을 지시하는 문장은 없다.
 - 저장소 = npm 패키지 + Claude Code 플러그인. 플러그인은 설치 안내만 담는다(사용자에게 `npx @bluenyang/reins install`을 보여 줌).
 

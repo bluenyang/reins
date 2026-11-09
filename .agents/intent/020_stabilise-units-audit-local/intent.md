@@ -2,9 +2,10 @@
 id: "020"
 slug: stabilise-units-audit-local
 version: "0.3.0"
-status: draft
+status: approved
 origin: user
-approvals: []
+approvals:
+  - { role: user, by: BlueNyang, at: 2026-11-10, words: "승인", rev: a8fac69 }
 waivers: []
 supersedes: null
 ---

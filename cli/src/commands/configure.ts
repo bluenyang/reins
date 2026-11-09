@@ -81,7 +81,10 @@ export function refreshAgents(root: string, doc: BindingsV2, modeFrom?: string):
   let text = applyBlocks(before, renderBlocks(packageHarness(), doc, language)).text;
   if (modeFrom !== undefined) {
     // a pending note from an earlier switch is replaced by one that names the latest change
-    text = text.replace(/<!-- reins:mode-changed (?:pending|done) -->\n(?:> [^\n]*\n)?\n?/, '');
+    text = text.replace(
+      /<!-- reins:mode-changed (?:pending|done) -->\n(?:> \*\*Mode changed from [^\n]*\n)?\n?/,
+      '',
+    );
     text = placeNote(text, modeChangedNote(modeFrom, doc.mode ?? 'single'), 'mode-changed');
   }
   if (text !== before) writeFileSync(ap, text);

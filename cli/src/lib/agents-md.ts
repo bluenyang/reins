@@ -137,7 +137,14 @@ export function placeNote(
 ): string {
   if (text.includes(`<!-- reins:${kind} pending -->`)) return text;
   // a finished one gives way to the new one (e.g. a second mode switch)
-  text = text.replace(new RegExp(`<!-- reins:${kind} done -->\\n(?:> [^\\n]*\\n)?\\n?`), '');
+  // only the note reins wrote goes with its marker; a project quote under it stays
+  const lead = { onboarding: 'Onboarding', reconcile: 'Reconcile', 'mode-changed': 'Mode changed' }[
+    kind
+  ];
+  text = text.replace(
+    new RegExp(`<!-- reins:${kind} done -->\\n(?:> \\*\\*${lead}[^\\n]*\\n)?\\n?`),
+    '',
+  );
   const m = /^# .*\n/m.exec(text);
   if (!m) return `${note}\n\n${text}`;
   const at = m.index + m[0].length;

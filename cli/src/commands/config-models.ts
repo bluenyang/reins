@@ -64,20 +64,25 @@ export function catalogue(): Record<string, string[]> {
   return doc?.vendors ?? {};
 }
 
-/** Models of `vendor` known here: the packaged list, confirmed ones and those in the current files. */
+/** Models of `vendor` known here: the packaged list, confirmed ones, and the current files' bindings of that vendor. */
 export function knownModels(vendor: string, current: BindingsV2[]): string[] {
-  const out: string[] = [...(catalogue()[vendor] ?? []), ...CONFIRMED_MODELS];
+  const out: string[] = [
+    ...(catalogue()[vendor] ?? []),
+    ...[...CONFIRMED_MODELS].filter((m) => vendorOf(m) === vendor),
+  ];
+  const take = (b: Binding | undefined) => {
+    if (b && b.vendor === vendor) out.push(b.model);
+  };
   for (const d of current) {
-    if (d.default) out.push(d.default.model);
+    take(d.default);
     for (const g of Object.values(d.groups ?? {})) {
       if (!g) continue;
-      if (g.model) out.push(g.model);
-      for (const m of g.models ?? []) out.push(m.model);
-      for (const r of Object.values(g.roles ?? {})) out.push(r.model);
+      if (g.vendor && g.model) take({ vendor: g.vendor, model: g.model });
+      for (const m of g.models ?? []) take(m);
+      for (const r of Object.values(g.roles ?? {})) take(r);
     }
   }
-  const listed = new Set(catalogue()[vendor] ?? []);
-  return [...new Set(out)].filter((m) => listed.has(m) || vendorOf(m) === vendor);
+  return [...new Set(out)];
 }
 
 /**
@@ -151,7 +156,7 @@ export async function modelsScreen(o: ModelsScreenOptions): Promise<'back' | 'ex
       if (b) await write({ set: [`default=${b.vendor}:${b.model}`] }, `PM → ${show(b)}`);
       continue;
     }
-    const r = await groupScreen(o, v as Group, doc.groups?.[v as Group], write);
+    const r = await groupScreen(o, v as Group, doc.groups?.[v as Group], write, doc.mode);
     if (r === 'exit') return 'exit';
   }
 }
@@ -161,12 +166,13 @@ async function groupScreen(
   group: Group,
   spec: GroupSpec | undefined,
   write: (opts: Omit<ConfigureBindingsOptions, 'cwd' | 'local'>, label: string) => Promise<void>,
+  mode?: string,
 ): Promise<'back' | 'exit'> {
   const { prompter } = o;
   const many = group === 'pl' || group === 'advisor';
   const roles = GROUP_ROLES[group];
   const pick = await prompter.select<string>({
-    message: `${group}: ${groupLine(group, spec).slice(12).trim()}`,
+    message: `${group}: ${groupLine(group, spec, mode).slice(12).trim()}`,
     options: [
       { value: 'back', label: '< back' },
       { value: 'one', label: many ? 'one model' : 'set the model' },

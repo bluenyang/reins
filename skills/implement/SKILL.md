@@ -12,8 +12,9 @@ The spec is accepted and has open work units.
 1. Work on a feature branch (`type/topic`), never the default branch.
 2. Take the next open work unit. Implement it so the requirement holds everywhere it applies — never to pass.
 3. Run the project's gates (`.agents/harness/gates.yaml`; the hooks run them too). Keep the raw output under `.loctx/reports/<version>/`.
-4. Commit: `type(scope): title` naming the spec items (S-n, W-n). Tick the work unit in `spec.md` with the commit.
-5. When the plan turns out wrong, update the intent or spec in the same commit, or stop and ask.
+4. Before committing, check that the commit is exactly one of the spec's work units (W-n, or a stabilisation unit), and all of it. If units must be merged, split or reordered, stop: change the spec's work units with the reason, get the user's 진행 or 수정 on the summary, then go on.
+5. Commit: `type(scope): title` naming the spec items (S-n, W-n). Tick the work unit in `spec.md` with the commit.
+6. When the plan turns out wrong, update the intent or spec in the same commit, or stop and ask.
 
 ## 3. Delegation
 Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Implementer (code, qa, doc) does the units when switched on; independent units may run in parallel; the code, tests and documents of one feature stay in one run.
@@ -28,3 +29,4 @@ Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table 
 ## 6. Stop and ask
 - Two failures in the same work unit: stop, find the cause (pl or advisor opinions by severity), or bring options to the user.
 - A change outside the work unit.
+- Work units that need merging, splitting or reordering: the spec changes and is approved first.

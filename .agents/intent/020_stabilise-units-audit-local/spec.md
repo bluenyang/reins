@@ -1,7 +1,8 @@
 ---
 intent: "020"
-status: draft
-approvals: []
+status: accepted
+approvals:
+  - { role: user, by: BlueNyang, at: 2026-11-10, words: "진행해", rev: 37b3c48, kind: summary }
 summary_for_user: |
   W-1(ST-4): 개인 설정 때문에 실제 위임이 팀 표와 달라지면, reins가 `.loctx/delegation.local.md`에 그 사람의 위임 표를 만든다(같아지면 지운다). 위임 블록을 쓰는 명령(config 두 범위, install, update)이 이 파일도 맞춘다. 따르게 하는 자리 셋: 스킬 11개의 ③ 위임 첫 문장("로컬 표가 있으면 그것, 없으면 AGENTS.md 표"), AGENTS.md 위임 절 제목 바로 아래 줄, `config --local`이 끝날 때 "열린 세션에는 다시 읽으라고 하거나 새 세션" 안내.
   W-2(ST-6): implement 스킬·AGENTS.md 흐름 블록·감사 판정에 "작업 단위 하나 = 커밋 하나, 묶기·나누기·순서 변경은 먼저 spec을 고치고 승인"을 넣는다. 차단은 없다. 이 저장소 AGENTS.md에도 같은 줄.

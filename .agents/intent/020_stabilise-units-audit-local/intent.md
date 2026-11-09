@@ -29,13 +29,14 @@ supersedes: null
 3. 리뷰: GPT-6.1 Sol(읽기 전용, `codex exec -m gpt-6.1-sol -s read-only`). 지적을 고친다.
 4. 머지: `fix/…` 브랜치 → PR → CI → 사용자가 머지(에이전트의 머지는 Claude Code 권한 검사에 막힌다).
 5. 감사: GPT-6 Astra 새 실행. ST-7대로 PM이 PR·CI 기록을 먼저 `.loctx/reports/0.3.0/`에 모아 넘긴다.
-6. 릴리스: 다음 rc(아래 "현재 상태" 참고). 릴리스 문서 PR → `gh workflow run publish.yml -f version=0.3.0-rc.N -f dry_run=false`(사용자 지시) → npm staged → 사용자 2FA 승인.
+6. 릴리스: 0.3.0-rc.3. 릴리스 문서 PR → `gh workflow run publish.yml -f version=0.3.0-rc.N -f dry_run=false`(사용자 지시) → npm staged → 사용자 2FA 승인.
 
 ## 현재 상태 (다른 세션이 이어받을 때)
 - master: PR #23(rc.2 안정화 ST-1·2·3·5)까지 머지됨(`50199c2`). npm에는 0.3.0-rc.1이 `rc` 태그로 있고 rc.2는 아직 내지 않았다.
 - 브랜치 `chore/audit-0.3.0-rc.2`: spec 019에 ST-4 처리 기록과 이 intent가 있다(push됨, PR 없음).
-- **rc.2 추가 감사의 사용자 처리가 아직 없다.** 결과는 `.loctx/reports/0.3.0/audit-rc2-astra.md`(로컬): 단위 묶음 위반, S-12 누락 위반, 커밋별 `pnpm check`·CI 확인 불가. PM 제안은 위반 1(단위 묶음) 수용, 위반 2와 확인 불가는 보완(실제 반영 커밋 연결, PR #23 CI 증거)이다. 사용자 결정을 받아 `.agents/audit/0.3.0.md`에 "## 추가 감사 — rc.2 안정화" 절로 커밋해야 한다.
-- 릴리스 순서는 사용자가 정한다: rc.2를 지금 상태로 먼저 내고 이 intent를 rc.3로 할지, 이 intent까지 넣어 rc.2를 낼지.
+- rc.2 추가 감사: 사용자 처리 "위반 1수용, 2 보완"(2026-11-09) — `.agents/audit/0.3.0.md`의 추가 감사 절에 기록됨. (아래는 그 전의 기록)
+- ~~rc.2 추가 감사의 사용자 처리가 아직 없다.~~ 결과는 `.loctx/reports/0.3.0/audit-rc2-astra.md`(로컬): 단위 묶음 위반, S-12 누락 위반, 커밋별 `pnpm check`·CI 확인 불가. PM 제안은 위반 1(단위 묶음) 수용, 위반 2와 확인 불가는 보완(실제 반영 커밋 연결, PR #23 CI 증거)이다. 사용자 결정을 받아 `.agents/audit/0.3.0.md`에 "## 추가 감사 — rc.2 안정화" 절로 커밋해야 한다.
+- 릴리스 순서(사용자 2026-11-09 "rc.2 릴리스 후 rc.3 진행"): rc.2를 먼저 내고 이 intent는 0.3.0-rc.3로 낸다.
 
 ## 영향 범위
 `cli/src/commands/configure.ts`(local 쓰기 뒤 로컬 위임 표), `cli/src/lib/agents-md.ts`(위임 렌더러 재사용, 로컬 표), `harness/templates/agents-md-blocks.md`(위임·흐름 블록), `skills/implement/SKILL.md`, `skills/audit/SKILL.md`, `harness/roles/auditor.md`, `docs/design.md`·`design.ko.md`(§3-1, §3-3, §5), README 양판(필요하면), 테스트.
@@ -47,7 +48,7 @@ supersedes: null
 - 출시물은 TypeScript(R65).
 
 ## 열린 질문
-- 이 intent를 rc.2에 넣을지 rc.3로 낼지(위 "현재 상태").
+—
 
 ## 질의서 기록
 - "그 두 개랑, 아까 미뤄둔 ST-4까지 하자"(사용자 2026-11-09): ST-6·ST-7과 ST-4를 함께 한다. ST-4는 처음에 "ST-4는 c, 다음 버전에서 a로 하자"였다가 이 말로 당겼다.

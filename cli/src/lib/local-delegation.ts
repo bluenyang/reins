@@ -2,6 +2,8 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { dirname, join } from 'node:path';
 import { LOCAL_DELEGATION, localDelegation } from './agents-md.js';
 import { effectiveBindings, readTeam } from './bindings.js';
+import { sha } from './generate.js';
+import { readManifest } from './vendor-write.js';
 
 /**
  * Bring `.loctx/delegation.local.md` in line with this person's settings (spec 020 S-1, S-2): written when
@@ -15,7 +17,14 @@ export function syncLocalDelegation(
   const team = readTeam(root).doc;
   if (!team) return undefined;
   const p = join(root, LOCAL_DELEGATION);
-  const want = localDelegation(team, effectiveBindings(root)!);
+  const files = readManifest(root).files;
+  // a team agent file counts only when reins wrote it and it is unchanged (review: a refused file is not ours)
+  const managed = (name: string) => {
+    const f = `.claude/agents/${name}.md`;
+    const abs = join(root, f);
+    return files[f] !== undefined && existsSync(abs) && sha(readFileSync(abs, 'utf8')) === files[f];
+  };
+  const want = localDelegation(team, effectiveBindings(root)!, managed);
   const have = existsSync(p) ? readFileSync(p, 'utf8') : null;
   if (want === have) return undefined;
   if (want === null) {

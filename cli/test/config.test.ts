@@ -468,6 +468,17 @@ describe('the personal delegation table (020 V-1)', () => {
     expect(existsSync(join(d, '.claude/agents/rs-executor-researcher.md'))).toBe(false);
   });
 
+  it('(e) a team agent file reins did not write, or one edited since, is not named', async () => {
+    const d = await repo();
+    await configureBindings({ cwd: d, mode: 'multi', set: ['implementer=claude-sonnet-5-5'] });
+    const f = join(d, '.claude/agents/rs-implementer-code.md');
+    writeFileSync(f, `${readFileSync(f, 'utf8')}\nhand edit\n`);
+    await configureBindings({ cwd: d, local: true, set: ['executor=claude-haiku-5-5'] });
+    expect(table(d)).toContain(
+      '| implementer/code | claude claude-sonnet-5-5 | a general subagent on `claude-sonnet-5-5`, given the `code` section',
+    );
+  });
+
   it('(f) install and update follow the same rule', async () => {
     const d = await repo();
     await configureBindings({

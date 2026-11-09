@@ -107,14 +107,21 @@ export function renderDelegation(
 /**
  * A person's own delegation table, or null when their settings delegate exactly as the team's do
  * (compared as rendered text, so a personal file that repeats the team's values makes none).
+ * `managed` says whether the team's agent file of that name is one reins wrote and nobody changed since;
+ * only those are named, so the table never sends work to a file reins refused to write.
  */
-export function localDelegation(team: BindingsV2, effective: BindingsV2): string | null {
+export function localDelegation(
+  team: BindingsV2,
+  effective: BindingsV2,
+  managed: (name: string) => boolean = () => true,
+): string | null {
   if (renderDelegation(effective) === renderDelegation(team)) return null;
   const teamAgents =
     team.mode === 'multi'
       ? resolveRoles(team)
           .filter((r) => r.on)
           .flatMap(claudeAgents)
+          .filter((a) => managed(a.name))
       : [];
   return [
     '# Personal delegation table',

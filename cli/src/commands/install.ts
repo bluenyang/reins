@@ -19,7 +19,8 @@ import { harnessVersion, packageHarness, packageSkills, packageVersion } from '.
 import { generateVendorFiles } from '../lib/generate.js';
 import { defaultBindings, readTeam, type BindingsV2 } from '../lib/bindings.js';
 import { overlayReader, workTreeReader } from '../lib/reader.js';
-import { onboardingNote, placeNote, renderBlocks } from '../lib/agents-md.js';
+import { LOCAL_DELEGATION, onboardingNote, placeNote, renderBlocks } from '../lib/agents-md.js';
+import { syncLocalDelegation } from '../lib/local-delegation.js';
 import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
 
 export interface InstallOptions {
@@ -483,5 +484,10 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     applied.removed.push(...generated.removed);
     for (const r of generated.refused) notes.push(`left alone ${r.path}: ${r.why}`);
   }
+  // a person's own delegation table follows the delegation block just written (spec 020 S-2)
+  const hadLocal = existsSync(join(root, LOCAL_DELEGATION));
+  const local = syncLocalDelegation(root, !!o.dryRun);
+  if (local === 'removed') applied.removed.push(LOCAL_DELEGATION);
+  else if (local) (hadLocal ? applied.changed : applied.created).push(LOCAL_DELEGATION);
   return { root, generation: gen, applied, generated, notes };
 }

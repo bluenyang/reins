@@ -22,6 +22,7 @@ import { generateVendorFiles } from '../lib/generate.js';
 import { repoRoot } from '../lib/git.js';
 import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
 import { packageHarness } from '../lib/upstream.js';
+import { syncLocalDelegation } from '../lib/local-delegation.js';
 
 export type Scope = 'local' | 'project';
 
@@ -58,6 +59,8 @@ export interface ConfigureResult {
   generated?: GenWriteResult;
   /** the mode changed: AGENTS.md got a mode-changed note (spec ST-5) */
   modeChanged?: boolean;
+  /** `.loctx/delegation.local.md` was written or removed (spec 020 S-1) */
+  localDelegation?: 'written' | 'removed';
 }
 
 /** A model given alone, or `vendor:model`. */
@@ -221,7 +224,8 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
   }
   writeBindings(root, next, o.local ? 'local' : 'project');
   const doc = effective();
-  if (o.local) return { changed, doc, roles: resolveRoles(doc) };
+  const local = syncLocalDelegation(root);
+  if (o.local) return { changed, doc, roles: resolveRoles(doc), localDelegation: local };
   const teamNow = readTeam(root).doc!;
   const from = team.doc.mode ?? 'single';
   const modeChanged = from !== (teamNow.mode ?? 'single');
@@ -233,6 +237,7 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
     roles: resolveRoles(doc),
     generated,
     modeChanged: modeChanged || undefined,
+    localDelegation: local,
   };
 }
 

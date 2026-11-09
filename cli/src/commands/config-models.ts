@@ -22,6 +22,7 @@ import {
 } from '../lib/bindings.js';
 import { BACK, EXIT, type Option, type Prompter } from '../lib/prompter.js';
 import { configureBindings, type ConfigureBindingsOptions, type Scope } from './configure.js';
+import { LOCAL_DELEGATION_NOTE } from '../lib/local-delegation.js';
 
 export interface ModelsScreenOptions {
   root: string;
@@ -103,6 +104,7 @@ export async function modelsScreen(o: ModelsScreenOptions): Promise<'back' | 'ex
       prompter.note(
         `${label}: written to .agents/harness/bindings.yaml, generated files and AGENTS.md refreshed — commit them`,
       );
+    if (r.localDelegation) prompter.note(LOCAL_DELEGATION_NOTE(r.localDelegation));
   };
 
   for (;;) {

@@ -15,7 +15,7 @@ A settled roadmap item has no approved intent.
 4. Show the intent and ask for approval. When the user approves, add `{ role: user, by, at, words, rev }` to `approvals:` (quote the words; `rev` is the commit you showed), set `status: approved`, commit.
 
 ## 3. Delegation
-Check the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. The intent itself is always written by the PM.
+Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. The intent itself is always written by the PM.
 
 ## 4. Files and lifetime
 - `intent.md` — committed, kept.

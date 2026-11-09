@@ -16,7 +16,7 @@ The spec is accepted and has open work units.
 5. When the plan turns out wrong, update the intent or spec in the same commit, or stop and ask.
 
 ## 3. Delegation
-Check the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Implementer (code, qa, doc) does the units when switched on; independent units may run in parallel; the code, tests and documents of one feature stay in one run.
+Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Implementer (code, qa, doc) does the units when switched on; independent units may run in parallel; the code, tests and documents of one feature stay in one run.
 
 ## 4. Files and lifetime
 - Commits — kept.

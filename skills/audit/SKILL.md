@@ -16,7 +16,7 @@ After the merge, before the rc. While `audit.required` in `.agents/harness/bindi
 5. The PM reports to the user: fix it, or the user accepts it. Commit the record with the user's decision.
 
 ## 3. Delegation
-Check the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. The audit never runs inside the working conversation.
+Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. The audit never runs inside the working conversation.
 
 ## 4. Files and lifetime
 - `.agents/audit/<version>.md` — committed, kept.

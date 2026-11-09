@@ -15,7 +15,7 @@ The user brings an idea, a change of plan, or asks what comes next.
 4. Name the version of the next work and hand over to `intent`.
 
 ## 3. Delegation
-Check the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you.
+Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you.
 
 ## 4. Files and lifetime
 - `.loctx/ROADMAP.local.md` — local, the user keeps it.

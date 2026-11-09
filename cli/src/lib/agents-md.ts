@@ -45,10 +45,24 @@ export function callLine(b: Binding, cli: string, writes: boolean): string {
 
 const WRITES = new Set(['implementer', 'planner', 'auditor']);
 
-/** The `## Delegation` section for this bindings file. */
-export function renderDelegation(doc: BindingsV2): string {
+/** Where `config`, `install` and `update` write a person's own delegation table (spec 020 S-1). */
+export const LOCAL_DELEGATION = '.loctx/delegation.local.md';
+
+/**
+ * The `## Delegation` section for this bindings file. `local` renders a person's own table: no pointer to
+ * itself, and a Claude role names its `rs-*` file only when the team generated that file with the same model.
+ */
+export function renderDelegation(
+  doc: BindingsV2,
+  local?: { teamAgents: { name: string; model: string }[] },
+): string {
   const pm = pmBinding(doc);
   const lines = ['## Delegation', ''];
+  if (!local)
+    lines.push(
+      `If \`${LOCAL_DELEGATION}\` exists, follow it instead of this section (your personal settings; \`reins config --local\` writes it).`,
+      '',
+    );
   if (doc.mode !== 'multi') {
     lines.push(
       `Mode: **single** — you are the PM (${pm.vendor} ${pm.model}) and do every role yourself, stage by stage. You may use subagents of your own model for read-heavy work (research, large log summaries, review, audit) and, when urgent, for parallel work on independent units; keep connected work (plan and implementation of one feature) in one run. Switching to multi is the user's choice.`,
@@ -65,10 +79,15 @@ export function renderDelegation(doc: BindingsV2): string {
       let k = 0;
       for (const b of r.models) {
         const cli = doc.tools?.[b.vendor]?.cli ?? b.vendor;
-        const how =
-          b.vendor === 'claude'
-            ? `subagent \`${agents[k++]!.name}\``
-            : callLine(b, cli, WRITES.has(r.group));
+        let how: string;
+        if (b.vendor !== 'claude') how = callLine(b, cli, WRITES.has(r.group));
+        else {
+          const name = agents[k++]!.name;
+          how =
+            !local || local.teamAgents.some((a) => a.name === name && a.model === b.model)
+              ? `subagent \`${name}\``
+              : `a general subagent on \`${b.model}\`, given the \`${r.role}\` section of \`.agents/harness/roles/${r.group}.md\``;
+        }
         lines.push(`| ${r.group}/${r.role} | ${b.vendor} ${b.model} | ${how} |`);
       }
     }
@@ -81,9 +100,30 @@ export function renderDelegation(doc: BindingsV2): string {
   lines.push(
     '',
     `Audit: ${doc.audit?.required === false ? '**switched off by the user**' : '**required every version**'}; run it on ${a.vendor} ${a.model} in a fresh run that gets only the records, never this conversation.`,
-    'If `.loctx/bindings.local.yaml` exists, it overrides this section for you.',
   );
   return lines.join('\n');
+}
+
+/**
+ * A person's own delegation table, or null when their settings delegate exactly as the team's do
+ * (compared as rendered text, so a personal file that repeats the team's values makes none).
+ */
+export function localDelegation(team: BindingsV2, effective: BindingsV2): string | null {
+  if (renderDelegation(effective) === renderDelegation(team)) return null;
+  const teamAgents =
+    team.mode === 'multi'
+      ? resolveRoles(team)
+          .filter((r) => r.on)
+          .flatMap(claudeAgents)
+      : [];
+  return [
+    '# Personal delegation table',
+    '',
+    `> Written by reins from \`.agents/harness/bindings.yaml\` and your \`.loctx/bindings.local.yaml\` — this machine only. Do not edit it; the user changes it with \`reins config --local\` in a terminal, which removes it once it matches the team's table again. Follow it instead of the \`## Delegation\` section of AGENTS.md.`,
+    '',
+    renderDelegation(effective, { teamAgents }),
+    '',
+  ].join('\n');
 }
 
 /** The managed blocks for this project, from the packaged template. */

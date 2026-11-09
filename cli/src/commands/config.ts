@@ -3,6 +3,7 @@ import { newModelCache, vendors, type ModelCache, type Vendor } from '../lib/det
 import { repoRoot } from '../lib/git.js';
 import { groupLine, modelsScreen } from './config-models.js';
 import { configureBindings } from './configure.js';
+import { LOCAL_DELEGATION_NOTE } from '../lib/local-delegation.js';
 import { clackPrompter, isInteractive, type Prompter } from '../lib/prompter.js';
 
 export interface ConfigOptions {
@@ -112,6 +113,7 @@ export async function runConfig(o: ConfigOptions = {}): Promise<number> {
       prompter.note(
         r.refused ? `not changed: ${r.refused}` : 'agent tools written — commit bindings.yaml',
       );
+      if (r.localDelegation) prompter.note(LOCAL_DELEGATION_NOTE(r.localDelegation));
       continue;
     }
     if (v === 'mode') {
@@ -132,6 +134,7 @@ export async function runConfig(o: ConfigOptions = {}): Promise<number> {
             ? `mode ${m}: AGENTS.md has a mode-changed note — the PM checks the project sections in the next conversation`
             : `mode ${m}: already so`,
       );
+      if (r.localDelegation) prompter.note(LOCAL_DELEGATION_NOTE(r.localDelegation));
       continue;
     }
     const off = doc?.audit?.required !== false;
@@ -144,5 +147,6 @@ export async function runConfig(o: ConfigOptions = {}): Promise<number> {
     }
     const r = await configureBindings({ cwd: root, audit: off ? 'off' : 'on' });
     prompter.note(r.refused ? `not changed: ${r.refused}` : `audit ${off ? 'off' : 'required'}`);
+    if (r.localDelegation) prompter.note(LOCAL_DELEGATION_NOTE(r.localDelegation));
   }
 }

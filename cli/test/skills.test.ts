@@ -68,6 +68,12 @@ describe('stage skills (019 S-9, design §3-1)', () => {
         .toSorted(),
     ).toEqual([...STAGES].toSorted());
   });
+  it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
+    const t = read(n);
+    expect(t.slice(t.indexOf('## 3. Delegation')).split('\n')[1]).toMatch(
+      /^Check `\.loctx\/delegation\.local\.md` if it exists, otherwise the delegation table in AGENTS\.md\./,
+    );
+  });
   it.each(STAGES)('%s conforms, has the six sections and never runs reins', (n) => {
     expect(validateSkillFile(join(process.cwd(), 'skills', n, 'SKILL.md'))).toEqual([]);
     const t = read(n);

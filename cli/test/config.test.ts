@@ -4,6 +4,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
@@ -13,6 +14,8 @@ import { describe, expect, it } from 'vitest';
 import { runConfig } from '../src/commands/config.js';
 import { configureBindings } from '../src/commands/configure.js';
 import { runInstall } from '../src/commands/install.js';
+import { runUpdate } from '../src/commands/update.js';
+import { LOCAL_DELEGATION_NOTE } from '../src/lib/local-delegation.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { askerPrompter, BACK, EXIT, isInteractive, scriptedPrompter } from '../src/lib/prompter.js';
 
@@ -381,5 +384,104 @@ describe('reins config bindings (flags)', () => {
     const off = await configureBindings({ cwd: d, off: ['implementer'] });
     expect(off.roles.filter((x) => x.on)).toEqual([]);
     expect(existsSync(join(d, '.claude/agents/rs-implementer-code.md'))).toBe(false);
+  });
+});
+
+describe('the personal delegation table (020 V-1)', () => {
+  const LD = '.loctx/delegation.local.md';
+  const table = (d: string) => readFileSync(join(d, LD), 'utf8');
+  /** everything the team commits: a personal write must leave it as it is */
+  const teamFiles = (d: string) =>
+    Object.fromEntries(Object.entries(snapshot(d)).filter(([k]) => !k.startsWith('.loctx/')));
+
+  it('(a) no personal settings: no table; (g) the delegation section points to it first', async () => {
+    const d = await repo();
+    expect(existsSync(join(d, LD))).toBe(false);
+    const agents = readFileSync(join(d, 'AGENTS.md'), 'utf8');
+    const section = agents.slice(agents.indexOf('## Delegation'));
+    expect(section.split('\n')[2]).toContain('If `.loctx/delegation.local.md` exists, follow it');
+    expect(agents).not.toContain('it overrides this section for you');
+  });
+
+  it('(b) --local switching multi on writes the table and nothing of the team; (h) says so', async () => {
+    const d = await repo();
+    const before = teamFiles(d);
+    const r = await configureBindings({
+      cwd: d,
+      local: true,
+      mode: 'multi',
+      set: ['implementer=claude-sonnet-5-5', 'pl.code-reviewer=openai:gpt-6.1-sol'],
+    });
+    expect(r.localDelegation).toBe('written');
+    expect(LOCAL_DELEGATION_NOTE('written')).toContain('re-read it, or start a new one');
+    const t = table(d);
+    expect(t).toContain('Mode: **multi**');
+    expect(t).toContain(
+      '| pl/code-reviewer | openai gpt-6.1-sol | `openai exec -m gpt-6.1-sol -s read-only -` (task on stdin) |',
+    );
+    // (e) the team generated no rs-* file for it: a general subagent given the role file
+    expect(t).toContain(
+      'a general subagent on `claude-sonnet-5-5`, given the `code` section of `.agents/harness/roles/implementer.md`',
+    );
+    expect(t).not.toContain('If `.loctx/delegation.local.md` exists');
+    expect(teamFiles(d)).toEqual(before);
+  });
+
+  it('(c) a personal file that repeats the team makes no table', async () => {
+    const d = await repo();
+    const r = await configureBindings({ cwd: d, local: true, set: ['default=claude-opus-5-5'] });
+    expect(r.changed).toEqual(['default']);
+    expect(r.localDelegation).toBeUndefined();
+    expect(existsSync(join(d, LD))).toBe(false);
+  });
+
+  it('(d) the team catching up removes the table, and says so', async () => {
+    const d = await repo();
+    await configureBindings({
+      cwd: d,
+      local: true,
+      mode: 'multi',
+      set: ['implementer=claude-sonnet-5-5'],
+    });
+    expect(existsSync(join(d, LD))).toBe(true);
+    const r = await configureBindings({
+      cwd: d,
+      mode: 'multi',
+      set: ['implementer=claude-sonnet-5-5'],
+    });
+    expect(r.localDelegation).toBe('removed');
+    expect(existsSync(join(d, LD))).toBe(false);
+  });
+
+  it('(e) a role the team generated with the same model keeps its rs-* name', async () => {
+    const d = await repo();
+    await configureBindings({ cwd: d, mode: 'multi', set: ['implementer=claude-sonnet-5-5'] });
+    // a personal group replaces the team's as a whole (mergeLocal); implementer stays the team's
+    await configureBindings({ cwd: d, local: true, set: ['executor=claude-haiku-5-5'] });
+    const t = table(d);
+    expect(t).toContain(
+      '| implementer/code | claude claude-sonnet-5-5 | subagent `rs-implementer-code` |',
+    );
+    expect(t).toContain(
+      '| executor/researcher | claude claude-haiku-5-5 | a general subagent on `claude-haiku-5-5`',
+    );
+    expect(existsSync(join(d, '.claude/agents/rs-executor-researcher.md'))).toBe(false);
+  });
+
+  it('(f) install and update follow the same rule', async () => {
+    const d = await repo();
+    await configureBindings({
+      cwd: d,
+      local: true,
+      mode: 'multi',
+      set: ['executor=claude-haiku-5-5'],
+    });
+    const t = table(d);
+    rmSync(join(d, LD));
+    await runUpdate({ cwd: d, detectVendors: detect });
+    expect(table(d)).toBe(t);
+    rmSync(join(d, '.loctx/bindings.local.yaml'));
+    await runUpdate({ cwd: d, detectVendors: detect });
+    expect(existsSync(join(d, LD))).toBe(false);
   });
 });

@@ -82,6 +82,15 @@ describe('stage skills (019 S-9, design §3-1)', () => {
       'Merging, splitting or reordering units needs the spec changed and approved first.',
     );
   });
+  it('the audit gets the PR and CI records from the PM and stays offline (020 S-9, S-10)', () => {
+    const audit = read('audit');
+    expect(audit).toContain('the PM collects for every PR merged in the version');
+    expect(audit).toContain('`gh pr checks <n>`');
+    expect(audit).toContain('The audit runs without a network');
+    const role = readFileSync(join(process.cwd(), 'harness/roles/auditor.md'), 'utf8');
+    expect(role).toContain('fetch from the network');
+    expect(role).toContain('the PR and CI records the PM collected');
+  });
   it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
     const t = read(n);
     expect(t.slice(t.indexOf('## 3. Delegation')).split('\n')[1]).toMatch(

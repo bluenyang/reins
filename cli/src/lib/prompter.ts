@@ -83,6 +83,7 @@ export interface Asked {
   kind: 'select' | 'multiselect' | 'text' | 'confirm';
   message: string;
   values?: unknown[];
+  labels?: string[];
 }
 
 /** Tests: answers come from a queue in order; every question is recorded. An empty queue answers EXIT. */
@@ -92,8 +93,13 @@ export function scriptedPrompter(
   const queue = [...answers];
   const asked: Asked[] = [];
   const notes: string[] = [];
-  const next = (kind: Asked['kind'], message: string, values?: unknown[]): unknown => {
-    asked.push({ kind, message, values });
+  const next = (
+    kind: Asked['kind'],
+    message: string,
+    values?: unknown[],
+    labels?: string[],
+  ): unknown => {
+    asked.push({ kind, message, values, ...(labels ? { labels } : {}) });
     return queue.length ? queue.shift() : EXIT;
   };
   return {
@@ -105,12 +111,14 @@ export function scriptedPrompter(
         'select',
         q.message,
         q.options.map((o) => o.value),
+        q.options.map((o) => o.label),
       ) as never,
     multiselect: async (q) =>
       next(
         'multiselect',
         q.message,
         q.options.map((o) => o.value),
+        q.options.map((o) => o.label),
       ) as never,
     text: async (q) => next('text', q.message) as never,
     confirm: async (q) => next('confirm', q.message) as never,

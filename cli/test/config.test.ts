@@ -184,14 +184,14 @@ describe('reins config (019 S-6, design §9)', () => {
     expect(p.asked[0]?.values).toEqual(['models', 'tools', 'mode', 'audit', 'exit']);
   });
 
-  it('the screen sets a group model on the global scope and regenerates', async () => {
+  it('the screen sets a group model on the project scope and regenerates', async () => {
     const d = await repo();
     const p = scriptedPrompter([
       'mode',
       'multi',
       'models',
       'scope',
-      'global',
+      'project',
       'implementer',
       'one',
       'claude',
@@ -208,7 +208,9 @@ describe('reins config (019 S-6, design §9)', () => {
     expect(b).toMatch(/implementer:\n\s+vendor: claude\n\s+model: claude-sonnet-5-5/);
     expect(existsSync(join(d, '.claude/agents/rs-implementer-code.md'))).toBe(true);
     const agents = readFileSync(join(d, 'AGENTS.md'), 'utf8');
-    expect(agents).toContain('<!-- reins:reconcile pending -->');
+    expect(agents).toContain('<!-- reins:mode-changed pending -->');
+    expect(agents).not.toContain('reins:reconcile pending');
+    expect(existsSync(join(d, '.agents/AGENTS.previous.md'))).toBe(false); // ST-5: no copy on a mode switch
     expect(agents).toContain(
       '| implementer/code | claude claude-sonnet-5-5 | subagent `rs-implementer-code` |',
     );
@@ -221,6 +223,46 @@ describe('reins config (019 S-6, design §9)', () => {
     expect(readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8')).toMatch(
       /audit:\n\s+required: false/,
     );
+  });
+});
+
+describe('single mode shows kept assignments as unused (ST-1)', () => {
+  it('the text output and the screen mark them used in multi only; the auditor as the audit model', async () => {
+    const d = await repo();
+    await configureBindings({
+      cwd: d,
+      set: ['implementer=claude-sonnet-5-5', 'auditor=openai:gpt-6-astra'],
+    });
+    let out = '';
+    await runConfig({
+      cwd: d,
+      interactive: false,
+      detectVendors: detect,
+      write: (s) => (out += s),
+    });
+    expect(out).toContain('every role: the PM');
+    expect(out).toMatch(/implementer\s+claude claude-sonnet-5-5\s+\(used in multi only\)/);
+    expect(out).toMatch(/auditor\s+openai gpt-6-astra\s+\(recommended audit model\)/);
+    const p = scriptedPrompter(['models', 'back', 'exit']);
+    await runConfig({ cwd: d, interactive: true, prompter: p, detectVendors: detect });
+    expect(p.notes.join('\n')).toContain('single: the PM does every role');
+    const labels = p.asked[1]?.labels ?? [];
+    expect(
+      labels.some((l) => l.startsWith('implementer') && l.endsWith('(used in multi only)')),
+    ).toBe(true);
+  });
+});
+
+describe('known models (ST-2)', () => {
+  it('OpenAI and Claude lists are never empty, even with every group off', async () => {
+    const { knownModels } = await import('../src/commands/config-models.js');
+    expect(knownModels('openai', [])).toEqual(
+      expect.arrayContaining(['gpt-6.1-sol', 'gpt-6-astra']),
+    );
+    expect(knownModels('claude', [])).toEqual(
+      expect.arrayContaining(['claude-sonnet-5-5', 'claude-opus-5-5']),
+    );
+    expect(knownModels('openai', [])).not.toContain('claude-opus-5-5');
   });
 });
 
@@ -265,19 +307,21 @@ describe('reins config bindings (flags)', () => {
     expect(agents).toContain('subagent `rs-advisor-committee-2`');
   });
 
-  it('a second mode switch after a finished reconcile asks for a new one', async () => {
+  it('a mode switch adds one light mode-changed note naming the latest change (ST-5)', async () => {
     const d = await repo();
     await configureBindings({ cwd: d, mode: 'multi' });
     const p = join(d, 'AGENTS.md');
+    expect(readFileSync(p, 'utf8')).toContain('Mode changed from single to multi.');
     writeFileSync(
       p,
-      readFileSync(p, 'utf8').replace('reins:reconcile pending', 'reins:reconcile done'),
+      readFileSync(p, 'utf8').replace('reins:mode-changed pending', 'reins:mode-changed done'),
     );
     await configureBindings({ cwd: d, mode: 'single' });
     const text = readFileSync(p, 'utf8');
-    expect(text).toContain('<!-- reins:reconcile pending -->');
-    expect(text).not.toMatch(/^<!-- reins:reconcile done -->$/m); // the note itself names the done marker
-    expect(text.match(/^<!-- reins:reconcile pending -->$/gm)).toHaveLength(1);
+    expect(text.match(/^<!-- reins:mode-changed pending -->$/gm)).toHaveLength(1);
+    expect(text).toContain('Mode changed from multi to single.');
+    expect(text).not.toContain('Mode changed from single to multi.');
+    expect(existsSync(join(d, '.agents/AGENTS.previous.md'))).toBe(false);
   });
 
   it('--local --off hides a group the team switched on', async () => {

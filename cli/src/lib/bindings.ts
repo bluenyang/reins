@@ -230,7 +230,10 @@ export function convertV1(v1: Record<string, unknown>): { doc: BindingsV2; notes
     }
   }
   for (const k of DROPPED_V1_KEYS) if (k in v1) notes.push(`${k}: dropped (no run-time keys)`);
-  if (doc.groups) notes.push('mode: single; switch to multi with config to use the groups above');
+  if (doc.groups)
+    notes.push(
+      'mode: single — the groups above are kept for multi and unused until then; switch with `reins config`, or remove them with `reins config bindings --off <group>…`',
+    );
   return { doc, notes };
 }
 
@@ -277,9 +280,9 @@ const HEADER =
 export function writeBindings(
   root: string,
   doc: Partial<BindingsV2>,
-  scope: 'global' | 'local',
+  scope: 'project' | 'local',
 ): void {
-  const p = join(root, scope === 'global' ? TEAM_BINDINGS : LOCAL_BINDINGS);
+  const p = join(root, scope === 'project' ? TEAM_BINDINGS : LOCAL_BINDINGS);
   mkdirSync(dirname(p), { recursive: true });
   writeFileSync(p, `${HEADER}${stringify({ ...doc, schema: 'reins/bindings@2' })}`);
 }

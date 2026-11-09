@@ -122,7 +122,19 @@ export function reconcileNote(why: string): string {
 }
 
 /** Put a note right after the first H1 (or at the top) unless one of that kind is still pending. */
-export function placeNote(text: string, note: string, kind: 'onboarding' | 'reconcile'): string {
+/** The light check after a mode switch (design §5, spec ST-5): only the delegation block changed. */
+export function modeChangedNote(from: string, to: string): string {
+  return [
+    '<!-- reins:mode-changed pending -->',
+    `> **Mode changed from ${from} to ${to}.** reins rewrote the delegation section. In the next conversation (the \`onboard\` skill), check that the project sections below say nothing that contradicts the new mode, then change the marker above to \`<!-- reins:mode-changed done -->\`.`,
+  ].join('\n');
+}
+
+export function placeNote(
+  text: string,
+  note: string,
+  kind: 'onboarding' | 'reconcile' | 'mode-changed',
+): string {
   if (text.includes(`<!-- reins:${kind} pending -->`)) return text;
   // a finished one gives way to the new one (e.g. a second mode switch)
   text = text.replace(new RegExp(`<!-- reins:${kind} done -->\\n(?:> [^\\n]*\\n)?\\n?`), '');

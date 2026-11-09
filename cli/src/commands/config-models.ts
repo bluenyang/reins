@@ -1,3 +1,7 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { parse } from 'yaml';
+import { packageHarness } from '../lib/upstream.js';
 import {
   CONFIRMED_MODELS,
   listModels,
@@ -35,20 +39,34 @@ export const WHEN_TO_SWITCH_ON =
 const show = (b: Binding | undefined) => (b ? `${b.vendor} ${b.model}` : 'off (PM)');
 
 /** One line per group: `pl  claude claude-sonnet-5-5, openai gpt-6.1-terra  +1 role`. */
-export function groupLine(group: Group, spec: GroupSpec | undefined): string {
+export function groupLine(group: Group, spec: GroupSpec | undefined, mode?: string): string {
   if (!spec) return `${group.padEnd(12)} off — the PM does it`;
+  const tag =
+    mode === 'multi'
+      ? ''
+      : group === 'auditor'
+        ? '  (recommended audit model)'
+        : '  (used in multi only)';
   const models = spec.models?.length
     ? spec.models.map(show).join(', ')
     : spec.vendor && spec.model
       ? show({ vendor: spec.vendor, model: spec.model })
       : '—';
   const n = Object.keys(spec.roles ?? {}).length;
-  return `${group.padEnd(12)} ${models}${n ? `  +${n} role${n > 1 ? 's' : ''}` : ''}`;
+  return `${group.padEnd(12)} ${models}${n ? `  +${n} role${n > 1 ? 's' : ''}` : ''}${tag}`;
 }
 
-/** Models of `vendor` already known here: confirmed ones and those in the current files. */
+/** The packaged list of known models per vendor (`harness/models.yaml`, spec ST-2). */
+export function catalogue(): Record<string, string[]> {
+  const p = join(packageHarness(), 'models.yaml');
+  if (!existsSync(p)) return {};
+  const doc = parse(readFileSync(p, 'utf8')) as { vendors?: Record<string, string[]> } | null;
+  return doc?.vendors ?? {};
+}
+
+/** Models of `vendor` known here: the packaged list, confirmed ones and those in the current files. */
 export function knownModels(vendor: string, current: BindingsV2[]): string[] {
-  const out: string[] = [...CONFIRMED_MODELS];
+  const out: string[] = [...(catalogue()[vendor] ?? []), ...CONFIRMED_MODELS];
   for (const d of current) {
     if (d.default) out.push(d.default.model);
     for (const g of Object.values(d.groups ?? {})) {
@@ -58,7 +76,8 @@ export function knownModels(vendor: string, current: BindingsV2[]): string[] {
       for (const r of Object.values(g.roles ?? {})) out.push(r.model);
     }
   }
-  return [...new Set(out)].filter((m) => vendorOf(m) === vendor || !vendorOf(m));
+  const listed = new Set(catalogue()[vendor] ?? []);
+  return [...new Set(out)].filter((m) => listed.has(m) || vendorOf(m) === vendor);
 }
 
 /**
@@ -87,16 +106,21 @@ export async function modelsScreen(o: ModelsScreenOptions): Promise<'back' | 'ex
       prompter.note('no version-2 bindings.yaml here — run `reins install` or `reins update`');
       return 'back';
     }
-    prompter.note(WHEN_TO_SWITCH_ON);
+    const single = doc.mode !== 'multi';
+    prompter.note(
+      single
+        ? 'single: the PM does every role; the assignments below are used only after switching to multi (the auditor model is the recommended audit model either way)'
+        : WHEN_TO_SWITCH_ON,
+    );
     const options: Option<string>[] = [
       { value: 'back', label: '< Configuration' },
       { value: 'exit', label: 'exit' },
       {
         value: 'scope',
-        label: `scope: ${scope === 'local' ? 'local | global' : 'global | local'}`,
+        label: `scope: ${scope === 'local' ? 'local | project' : 'project | local'}`,
       },
       { value: 'default', label: `${'PM'.padEnd(12)} ${show(doc.default)}` },
-      ...GROUPS.map((g) => ({ value: g, label: groupLine(g, doc.groups?.[g]) })),
+      ...GROUPS.map((g) => ({ value: g, label: groupLine(g, doc.groups?.[g], doc.mode) })),
     ];
     const v = await prompter.select<string>({
       message: `Models and roles (mode: ${doc.mode ?? 'single'})`,
@@ -110,7 +134,11 @@ export async function modelsScreen(o: ModelsScreenOptions): Promise<'back' | 'ex
         initial: scope,
         options: [
           { value: 'local', label: 'local', hint: '.loctx/bindings.local.yaml, this user only' },
-          { value: 'global', label: 'global', hint: 'bindings.yaml, committed, regenerates files' },
+          {
+            value: 'project',
+            label: 'project',
+            hint: 'the team: .agents/harness/bindings.yaml, committed, regenerates files',
+          },
         ],
       });
       if (s === EXIT) return 'exit';

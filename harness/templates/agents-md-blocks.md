@@ -30,7 +30,7 @@ Follow these steps in order; each has a skill in `.agents/skills/`, and each ski
 4. `implement` → `review` — one work unit, one commit, naming its spec items.
 5. `test` → `merge` → **`audit`** (after the merge, before the rc) → `release` → `retro` (after stable), then delete the version's working files.
 
-The first conversation after installation (or after a reconcile marker appears in this file) starts with `onboard`.
+The first conversation after installation (or after a reconcile or mode-changed marker appears in this file) starts with `onboard`.
 <!-- reins:end flow -->
 
 <!-- reins:begin delegation v=0.3.0 -->

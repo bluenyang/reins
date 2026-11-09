@@ -127,7 +127,7 @@ install·update는 history에 쓰지 않는다. 각 스킬의 ④가 이 표를 
 ### `AGENTS.md`
 관리 블록 `<!-- reins:begin <block> -->`…`<!-- reins:end <block> -->`: ① 폴더 구조 ② 설정(`.agents/harness/bindings.yaml`; `audit.required`가 true면 버전마다 감사 필수, 끄는 것은 사용자만) ③ 흐름과 스킬 순서 ④ 위임 표(켜진 역할의 모델; 다른 벤더 모델은 그 CLI의 실행 줄, 예: `codex exec -m <model> -s read-only`) ⑤ 승인·건너뛰기 기록 규칙 ⑥ 멈추고 물을 때(§3-2). 블록 밖은 프로젝트 것이다. 블록은 흐름을 강하게 명시해, 차단 없이도 에이전트가 따르게 한다.
 
-**온보딩 표시.** install·migrate는 프로젝트 절 위에 `<!-- reins:onboarding pending -->`과 할 일 목록(목표와 범위, 스택과 명령, 기존 규칙과 관례, 금지선, 문서 언어, 훅 도구가 없으면 훅 도구 정하기)을 둔다. **재구성 표시.** migrate 충돌이나 모드 전환이면 `<!-- reins:reconcile pending -->`을 두고 이전 본문을 `.agents/AGENTS.previous.md`(참고 자료, 지침 아님)로 옮긴다. 진행 중인 작업이 있으면 재개 지점을 함께 적는다. PM은 다음 첫 대화에서 `onboard` 스킬로 처리하고 표시를 `done`으로 바꾼다.
+**온보딩 표시.** install·migrate는 프로젝트 절 위에 `<!-- reins:onboarding pending -->`과 할 일 목록(목표와 범위, 스택과 명령, 기존 규칙과 관례, 금지선, 문서 언어, 훅 도구가 없으면 훅 도구 정하기)을 둔다. **재구성 표시.** migrate 충돌이나 0.x 이전이면 `<!-- reins:reconcile pending -->`을 두고 이전 본문을 `.agents/AGENTS.previous.md`(참고 자료, 지침 아님)로 옮긴다. 진행 중인 작업이 있으면 재개 지점을 함께 적는다. **모드 변경 표시.** `config`로 모드를 바꾸면 바뀌는 것은 위임 블록뿐이므로 사본을 만들지 않고 `<!-- reins:mode-changed pending -->`만 둔다. PM은 프로젝트 절에 바뀐 모드와 어긋나는 문장이 있는지만 확인한다. 어느 표시든 PM은 다음 첫 대화에서 `onboard` 스킬로 처리하고 `done`으로 바꾼다.
 
 ### `gates.yaml`
 `gates.<name>.cmd`(명령 하나) · `order` · `optional`. 발견 절차와 하위 디렉터리 제안은 v1.0과 같다. 훅과 `test` 스킬은 이 명령을 그대로 부른다.
@@ -168,7 +168,7 @@ groups:                 # 적지 않은 군 = 꺼짐(PM이 함)
 - `install [--mode manual|auto] [--hooks]`: 하네스 배치, 도구 감지, 게이트 확인, 훅 제안, 온보딩 표시. 기본 모드 single. 3·4세대 위에서는 거부하고 `migrate`로 안내.
 - `migrate [--legacy local|committed]`: 세대 판별 후 이전, 재구성 표시.
 - `update [--yes] [--force]`: 원본 → 생성물, 손 수정 확인, 0.x 이전.
-- `config`: TTY면 화면 — `models and roles`(단순/상세 할당, 군별·상세 역할별 모델, 군 켜기/끄기와 켤 만한 조건: PM 컨텍스트 저하, 독립 작업 병렬, 다른 모델로 리뷰·감사) · `agent tools`(claude, codex, agy, gemini, copilot, cursor agent 다시 감지와 사용 여부) · `mode`(single/multi; 바꾸면 재구성 표시) · `audit`(필수 끄기는 한 번 더 확인). 범위 local/global, global에 쓰면 생성물을 다시 만든다. TTY가 아니면 플래그(`config bindings --set …`, `config gates --add …` 등; 지금의 `configure` 플래그를 그대로 받음).
+- `config`: TTY면 화면 — `models and roles`(단순/상세 할당, 군별·상세 역할별 모델, 군 켜기/끄기와 켤 만한 조건: PM 컨텍스트 저하, 독립 작업 병렬, 다른 모델로 리뷰·감사) · `agent tools`(claude, codex, agy, gemini, copilot, cursor agent 다시 감지와 사용 여부) · `mode`(single/multi; 바꾸면 모드 변경 표시) · `audit`(필수 끄기는 한 번 더 확인). 범위는 project(팀, 커밋되는 `bindings.yaml`)와 local(나만, `.loctx/bindings.local.yaml`) 둘이고 PC 전체 기본값은 없다. project에 쓰면 생성물을 다시 만든다. single 모드에서는 역할군 할당을 "multi에서만 쓰임"으로, auditor를 "감사 권장 모델"로 표시한다. 모델 목록은 벤더 CLI가 주면 그것을, 아니면 `harness/models.yaml`의 알려진 목록을 쓴다. TTY가 아니면 플래그(`config bindings --set …`, `config gates --add …` 등; 지금의 `configure` 플래그를 그대로 받음).
 - 설치 시점에 npx로 reins를 받는 것은 괜찮다. 생성물 안의 사람용 안내("설정을 바꾸려면 터미널에서 `npx @bluenyang/reins config`")는 허용하되, 에이전트에게 reins 실행을 지시하는 문장은 없다.
 - 저장소 = npm 패키지 + Claude Code 플러그인. 플러그인은 설치 안내만 담는다(사용자에게 `npx @bluenyang/reins install`을 보여 줌).
 

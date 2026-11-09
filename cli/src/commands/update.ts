@@ -273,7 +273,7 @@ async function updateNow(o: UpdateOptions): Promise<UpdateResult> {
   if (team.v1) {
     const { doc, notes } = convertV1(team.v1);
     res.converted = notes;
-    if (!o.dryRun) writeBindings(root, doc, 'global');
+    if (!o.dryRun) writeBindings(root, doc, 'project');
     else pending.push({ path: '.agents/harness/bindings.yaml', content: stringify(doc) });
   }
   // 0.x pieces

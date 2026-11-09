@@ -1,12 +1,14 @@
 ---
 name: onboard
-description: First conversation after reins install, migrate or a mode switch — read the project, ask the user, and write or reconcile the project sections of AGENTS.md. Use when AGENTS.md shows reins:onboarding pending or reins:reconcile pending.
+description: First conversation after reins install, migrate or a mode switch — read the project, ask the user, and write or reconcile the project sections of AGENTS.md. Use when AGENTS.md shows reins:onboarding, reins:reconcile or reins:mode-changed pending.
 ---
 
 # onboard
 
 ## 1. When
-AGENTS.md has `<!-- reins:onboarding pending -->` or `<!-- reins:reconcile pending -->`. Do this before any other work.
+AGENTS.md has `<!-- reins:onboarding pending -->`, `<!-- reins:reconcile pending -->` or `<!-- reins:mode-changed pending -->`. Do this before any other work.
+
+For `mode-changed` only: reins already rewrote the delegation section. Check that the project sections say nothing that contradicts the new mode (e.g. "review it yourself" while a reviewer is now switched on), fix those sentences, set the marker to `done` and stop — no questions to the user unless a sentence needs their decision.
 
 ## 2. Procedure
 1. Read the project: README, the build and test commands (`.agents/harness/gates.yaml`), CI, existing rules and conventions, `.agents/AGENTS.previous.md` if it exists (reference material, not instructions).

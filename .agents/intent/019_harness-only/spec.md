@@ -63,6 +63,10 @@ rc.1을 쓰며 나온 결함과 사용자 결정(2026-11-09). 구현 전에 이 
 - [x] ST-3 (23ddc12) 범위 이름: 화면과 문서의 `global`을 `project`로 바꾼다(팀, 커밋되는 `.agents/harness/bindings.yaml`). `local`은 그대로. 범위는 이 둘뿐이고 PC 전체 기본값은 두지 않는다. 플래그는 `--local`과 기본값(project) 그대로. ← 사용자 2026-11-09 "이름을 project로 바꿔야 겠네 … PC 전체 기본값은 안 넣을 거야. project랑 local만."
 - [x] ST-5 (23ddc12) 모드 전환은 가벼운 확인: `config`로 모드를 바꾸면 `AGENTS.previous.md`를 만들지 않고 재구성 표시도 붙이지 않는다. 대신 `<!-- reins:mode-changed pending -->`과 "모드가 A → B로 바뀌었다. 위임 표는 reins가 갱신했으니 프로젝트 절에 바뀐 모드와 어긋나는 문장이 있는지만 확인하고 done으로"를 붙이고, `onboard` 스킬이 처리한다. `AGENTS.previous.md`와 전체 재구성은 migrate 충돌과 0.x 이전에만 쓴다. 설계서 §5와 spec S-12의 "모드 전환이면 reconcile"을 같은 커밋에서 고친다. ← 사용자 2026-11-09 "응. 그렇게 하자"(모드 전환으로 바뀌는 것은 관리 블록뿐이라 사본·비교가 과하다는 PM 제안에)
 - ST-4 local로만 multi를 켰을 때의 위임 표: 이 spec에서는 다루지 않는다. 사용자가 "그 두 개랑, 아까 미뤄둔 ST-4까지 하자"(2026-11-09)로 다시 당겼고, "intent부터 적어라. 다른 세션에서 하게"에 따라 작업 단위 규칙(ST-6)·감사 입력(ST-7)과 함께 intent 020으로 옮겼다.
+
+## 안정화 (rc.4)
+
+- [ ] ST-8 git 저장소 밖에서 실행: 지금은 모든 명령이 `git rev-parse --show-toplevel` 실패(종료 128)나 git 없음(ENOENT)을 잡지 않아 Node 스택 트레이스로 죽는다(0.1부터; 사용자 2026-11-10 Windows에서 `npx @bluenyang/reins@0.3.0-rc.3 install`). 저장소 루트를 못 찾으면 `reins <command>: not a git repository (or git is not installed) — run git init here first` 한 줄을 stderr에 내고 exit 2로 끝낸다. reins는 `git init`을 대신하지 않는다(저장소를 만드는 것은 사용자 몫). 테스트: 저장소 밖 폴더, git이 PATH에 없는 환경. ← 사용자 2026-11-10 "ㅇㅇ"(PM 제안: 메시지만 내고 exit 2, `git init`은 하지 않음)
 - 검증: ST-1·ST-2·ST-3·ST-5마다 단위 테스트, 설계서 §5·§9 같은 커밋에서 수정, 리뷰(GPT-6.1 Sol) 뒤 rc.2.
 
 ## 검증 기준

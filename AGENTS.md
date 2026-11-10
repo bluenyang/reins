@@ -1,5 +1,8 @@
 # AGENTS.md
 
+<!-- reins:mode-changed pending -->
+> **Mode changed from single to multi.** reins rewrote the delegation section. In the next conversation (the `onboard` skill), check that the project sections below say nothing that contradicts the new mode, then change the marker above to `<!-- reins:mode-changed done -->`.
+
 <!-- reins:onboarding pending -->
 > **Onboarding — do this first in the next conversation.** Run the `onboard` skill: read the project, ask the user, and write the project sections of this file: goals and scope; stack and commands; existing rules and conventions; red lines (paths not to touch, secret files); the language of documents the user reads. Then change the marker above to `<!-- reins:onboarding done -->`.
 
@@ -105,7 +108,29 @@ The first conversation after installation (or after a reconcile or mode-changed 
 
 If `.loctx/delegation.local.md` exists, follow it instead of this section (your personal settings; `reins config --local` writes it).
 
-Mode: **single** — you are the PM (claude claude-opus-5-5) and do every role yourself, stage by stage. You may use subagents of your own model for read-heavy work (research, large log summaries, review, audit) and, when urgent, for parallel work on independent units; keep connected work (plan and implementation of one feature) in one run. Switching to multi is the user's choice.
+Mode: **multi** — you are the PM (claude claude-opus-5-5). Hand a role its work with the list of files and decisions it needs; every report comes back to you, and a role never calls another model itself. Roles not listed are yours.
+
+| role | model | how to call |
+|---|---|---|
+| pl/control | claude claude-sonnet-5-5 | subagent `rs-pl-control` |
+| pl/plan-reviewer | claude claude-sonnet-5-5 | subagent `rs-pl-plan-reviewer` |
+| pl/code-reviewer | openai gpt-6.1-sol | `codex exec -m gpt-6.1-sol -s read-only -` (task on stdin) |
+| pl/qa-plan-reviewer | claude claude-sonnet-5-5 | subagent `rs-pl-qa-plan-reviewer` |
+| pl/doc-reviewer | claude claude-sonnet-5-5 | subagent `rs-pl-doc-reviewer` |
+| pl/retrospector | claude claude-sonnet-5-5 | subagent `rs-pl-retrospector` |
+| pl/discussion | claude claude-sonnet-5-5 | subagent `rs-pl-discussion` |
+| planner/spec-writer | claude claude-opus-5-5 | subagent `rs-planner-spec-writer` |
+| planner/qa-designer | google gemini-4-argon-high | `agy -p "<task>" --model gemini-4-argon-high` |
+| implementer/code | claude claude-sonnet-5-5 | subagent `rs-implementer-code` |
+| implementer/qa | claude claude-sonnet-5-5 | subagent `rs-implementer-qa` |
+| implementer/doc | claude claude-sonnet-5-5 | subagent `rs-implementer-doc` |
+| executor/tool-executor | claude claude-haiku-5-5 | subagent `rs-executor-tool-executor` |
+| executor/researcher | cursor cursor-grok-4.5-high-fast | `cursor-agent -p --model cursor-grok-4.5-high-fast "<task>"` |
+| executor/qa-runner | google gemini-3.8-flash-medium | `agy -p "<task>" --model gemini-3.8-flash-medium --mode plan` |
+| executor/deployer | claude claude-haiku-5-5 | subagent `rs-executor-deployer` |
+| advisor/committee | claude claude-fable-5-1 | subagent `rs-advisor-committee` |
+
+Routine review takes one reviewer; `pl/discussion` and `advisor/committee` (every listed model, without seeing each other) are for large decisions, audit remedies, incidents and unresolved disagreements.
 
 Audit: **required every version**; run it on claude claude-opus-5-5 in a fresh run that gets only the records, never this conversation.
 <!-- reins:end delegation -->

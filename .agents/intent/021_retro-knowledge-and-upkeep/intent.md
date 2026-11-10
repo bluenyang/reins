@@ -2,9 +2,10 @@
 id: "021"
 slug: retro-knowledge-and-upkeep
 version: "0.3.1"
-status: draft
+status: approved
 origin: user
-approvals: []
+approvals:
+  - { role: user, by: BlueNyang, at: 2026-11-10, words: "승인", rev: 5dc135a }
 waivers: []
 supersedes: null
 ---

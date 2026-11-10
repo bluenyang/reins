@@ -2,7 +2,7 @@
 id: "021"
 slug: retro-knowledge-and-upkeep
 version: "0.3.1"
-status: approved
+status: draft
 origin: user
 approvals:
   - { role: user, by: BlueNyang, at: 2026-11-10, words: "승인", rev: 5dc135a }
@@ -10,7 +10,7 @@ waivers: []
 supersedes: null
 ---
 ## 문제
-0.3.0을 내고 회고하면서 여섯 가지가 남았고, 준비 중에 하나(대체 모델)를 더했다. 모두 사용자가 0.3.1로 정했다(`.loctx/ROADMAP.local.md` "0.3.1 예약", `docs/ROADMAP.md` "0.3.1 — planned").
+0.3.0을 내고 회고하면서 여섯 가지가 남았고, 준비 중에 둘(대체 모델, 검사 다시 찾기)을 더했다. 검사 다시 찾기는 승인(개정 `5dc135a`) 뒤 2026-11-11에 더한 것이라 이 개정은 다시 승인받는다. 모두 사용자가 0.3.1로 정했다(`.loctx/ROADMAP.local.md` "0.3.1 예약", `docs/ROADMAP.md` "0.3.1 — planned").
 
 - **회고가 knowledge 후보를 내지 않는다.** 설계 §8은 "retrospector나 PM이 history·감사에서 반복된 결정·실패를 찾아 제안"한다고 적는데, `retro` 스킬 ②는 AGENTS.md·스킬·하네스 개선안만 말한다. 0.2.0은 회고 없이 지나갔고 0.3 동안 knowledge 승격이 없었다(사용자 "회고 하면서 주요한 결정은 knowledge 승격 하고 있는거야?").
 - **`.claude/settings.json`에 허가 한 줄만 더해도 update가 건너뛴다.** 생성물을 통째 해시로 비교해서 "손으로 고침"으로 보고, `--force`면 사용자가 넣은 허가(allow 등)가 사라진다. 이 저장소에서 확인했다(`3b2709d` 뒤).
@@ -19,6 +19,7 @@ supersedes: null
 - **알려진 모델 목록이 낡았다.** `harness/models.yaml`, `cli/src/lib/detect.ts`의 `CONFIRMED_MODELS`, 설계서 예시에 `claude-fable-5-2`, `gpt-6-luna`, `gpt-6-sol`이 없다.
 - **`AGENTS.previous.md`에 옛 reins 명령이 그대로 남는다.** 0.2.0 이하 설치를 update로 옮기면 옛 AGENTS.md가 그대로 복사되어 `reins status`·`reins check` 줄이 남는다. "참고 자료, 지침 아님"은 AGENTS.md의 재구성 표시와 `onboard` 스킬에만 적혀 있고 사본 자체에는 없다.
 - **대체 모델을 적을 곳이 없다.** bindings 2판은 `fallback` 키를 뺐다(설계 §5 "실행 중 해석이 필요한 키는 없다"; reins가 작업 중에 불리지 않아 대신 골라 줄 주체가 없음). 그래서 역할의 모델 호출이 안 되면(한도, CLI 오류, 모델 없음) 정해진 동작이 없고 PM이 멈추고 묻는다.
+- **`gates.yaml`을 프로젝트 변화에 맞출 방법이 없다.** `config gates`는 하위 디렉터리 제안을 보여 주고 `--add`로 덧붙이기만 한다. 루트 검사를 다시 찾지 않고, 적힌 검사의 명령이 바뀌었거나 출처가 사라진 것을 알려 주지 않으며, `config` 화면에는 검사 항목이 없다. 검사 스크립트(커밋별 검사 출력)가 `gates.yaml`을 따라가게 되므로 훅이 낡은 검사를 돌릴 수 있다.
 
 ## 바라는 결과
 - **retro 스킬.** ②에 "history·감사에서 반복된 결정·실패를 knowledge 후보로 제안한다"가 들어가고, ③의 승격 절차(`approved: {by, at, words}`)와 이어진다. retrospector 역할 문장과 설계 §3-4·§8이 같은 말을 한다.
@@ -28,6 +29,7 @@ supersedes: null
 - **모델 목록.** `models.yaml`·`CONFIRMED_MODELS`·설계서 예시가 구현 시점에 다시 확인한 목록과 맞는다.
 - **previous 머리 경고.** 0.2.0 이하 설치를 update로 옮길 때 만드는 `.agents/AGENTS.previous.md` 머리에 "0.2.0 이하의 지시 사본 — 여기 적힌 reins 명령(`reins status`·`reins check` 등)은 0.3에 없으니 실행하지 말 것"이 붙는다.
 - **대체 모델(fallback).** `bindings.yaml`과 `bindings.local.yaml`에서 역할(군 또는 상세 역할)에 대체 모델을 적을 수 있다. `config`가 쓸 때 위임 표(AGENTS.md 블록과 `.loctx/delegation.local.md`)의 그 행에 대체 실행 줄을 함께 적고, 위임 절에 "첫 실행 줄로 호출이 안 되면 대체 줄을 쓰고, 썼다는 것을 보고에 적는다"가 들어간다. 작업 중에 reins가 해석하는 것은 없다. 설계 §5의 "`fallback` 키 없음"을 이에 맞게 고친다. 0.2.0 이하 설정의 `fallback`을 옮길 때 버리던 동작도 다시 정한다.
+- **검사 다시 찾기.** `config gates --refresh`가 설치 때와 같은 탐색을 다시 돌려 지금 `gates.yaml`과의 차이를 세 가지로 보여 준다: 새로 찾은 검사, 명령이 달라진 검사, 출처가 사라진 검사. 사용자가 고른 것만 반영하고, 손으로 넣은 검사는 건드리지 않으며, 자동으로 덮어쓰지 않는다. 반영하면 검사 스크립트도 다시 만들어지고 훅 줄은 그대로다. `config` 화면에 검사 항목이 생겨 지금 설정을 보고 같은 다시 찾기를 할 수 있다.
 - 설계서 양판, README 양판(해당되면), `harness/CHANGELOG.md`가 바뀐 동작과 맞는다.
 
 ## 계획
@@ -39,6 +41,7 @@ supersedes: null
    - W-5 모델 목록 갱신
    - W-6 `AGENTS.previous.md` 머리 경고
    - W-7 대체 모델: bindings 스키마, `config`(플래그와 화면), 위임 표 렌더러, 설계 §5·§9, 테스트
+   - W-9 검사 다시 찾기: `config gates --refresh`, 화면의 검사 항목, 설계 §9, 테스트 (W-8은 릴리스 뒤 이 저장소의 훅)
 2. 구현: 브랜치 `feat/retro-knowledge-upkeep`. 설계서 변경은 해당 단위의 커밋에 함께 넣는다.
 3. 리뷰: GPT-6.1 Sol(읽기 전용, diff만).
 4. 테스트 → 머지: PR 본문에 검사 로그 경로와 마지막 출력, CI, 머지는 사용자 지시("PR #N 머지해").
@@ -47,7 +50,7 @@ supersedes: null
 7. 회고: 새 retro 스킬로 한다.
 
 ## 영향 범위
-`skills/retro/SKILL.md`, `skills/audit/SKILL.md`, `harness/roles/auditor.md`, `harness/roles/pl.md`(retrospector), `skills/onboard/SKILL.md`, 검사 스크립트(새 파일, 위치는 spec), `harness/schemas/bindings.schema.json`, `harness/templates/agents-md-blocks.md`, `cli/src/lib/bindings.ts`, `cli/src/commands/configure.ts`, `cli/src/lib/local-delegation.ts`, `harness/models.yaml`, `harness/CHANGELOG.md`, `cli/src/commands/update.ts`, `cli/src/commands/install.ts`(훅 제안), `cli/src/lib/generate.ts`, `cli/src/lib/agents-md.ts`(실행 줄), `cli/src/lib/detect.ts`, `docs/design.md`·`design.ko.md`(§3-3, §3-4, §4-2, §5, §6, §8, §9), README 양판, `.husky/`, 테스트.
+`skills/retro/SKILL.md`, `skills/audit/SKILL.md`, `harness/roles/auditor.md`, `harness/roles/pl.md`(retrospector), `skills/onboard/SKILL.md`, 검사 스크립트(새 파일, 위치는 spec), `harness/schemas/bindings.schema.json`, `harness/templates/agents-md-blocks.md`, `cli/src/lib/bindings.ts`, `cli/src/commands/configure.ts`, `cli/src/commands/config.ts`(화면), `cli/src/reins.ts`, `cli/src/lib/local-delegation.ts`, `harness/models.yaml`, `harness/CHANGELOG.md`, `cli/src/commands/update.ts`, `cli/src/commands/install.ts`(훅 제안), `cli/src/lib/generate.ts`, `cli/src/lib/agents-md.ts`(실행 줄), `cli/src/lib/detect.ts`, `docs/design.md`·`design.ko.md`(§3-3, §3-4, §4-2, §5, §6, §8, §9), README 양판, `.husky/`, 테스트.
 
 ## 제약
 - reins는 작업 중에 불리지 않는다. 훅은 프로젝트 검사만 돌린다(0.3 원칙).
@@ -68,6 +71,7 @@ supersedes: null
 - "안 A로 가자. 이해했어."(사용자 2026-11-10): 커밋별 검사 출력은 설치되는 훅 줄과 이 저장소의 훅 둘 다. 대안 (B) 이 저장소만 고치고 적용 저장소용은 0.4로 — 채택하지 않음.
 - "현재는 install 이후에 husky나 lefthook을 하면 나중에 설정해야 하는데, 지금 이거 자체는 맞는 방향으로 보임"(사용자 2026-11-10): 훅 도구를 나중에 정하면 그때 설정하는 방식은 유지.
 - "fallback은 0.3.1에 포함해 보자"(사용자 2026-11-10): 대체 모델. PM이 설명한 방식(설정에 적으면 `config`가 위임 표에 대체 실행 줄을 미리 적고, 실패 때 PM이 따름)에 대한 답.
+- "맞다. config에 gate재감지? 같은 거도 필요할 듯"(사용자 2026-11-10) → "0.3.1에서 `config gates --refresh`를 넣고, TUI에서도 gate 쪽 설정을 볼 수 있게"(사용자 2026-11-11): 검사 다시 찾기. PM이 낸 모양(차이를 보여 주고 고른 것만 반영)에 "ㅇㅇ".
 
 ### 에이전트가 정한 것
 | # | 정한 것 | 대안 | 이유 |
@@ -86,4 +90,5 @@ supersedes: null
 - 감사자에게 네트워크·쓰기 권한을 여는 것.
 - PC 전체 기본값.
 - 작업 중에 reins가 대체 모델을 고르거나 호출하는 것, 실패 감지·재시도 장치.
+- 화면에서 검사 명령을 직접 고쳐 쓰는 편집기(보기와 다시 찾기까지).
 - knowledge 승격의 자동화(제안까지만, 승격은 사용자가 받아들일 때).

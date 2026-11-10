@@ -43,6 +43,13 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - S-19 **0.x 이전.** 0.2.0 이하 `bindings.yaml`의 `fallback`은 옮겨 갈 자리(군 또는 상세 역할)의 모델과 함께 옮긴다. 읽을 수 없는 모양이면 지금처럼 버리고 알린다. `parallel`은 계속 버린다. ← "0.2.0 이하 설정의 `fallback`을 옮길 때 버리던 동작도 다시 정한다"
 - S-20 **설계 §5.** "실행 중 해석이 필요한 키(`escalation`, `limits`, `parallel`, `fallback`)는 없다"를 "… (`escalation`, `limits`, `parallel`)는 없다. `fallback`은 reins가 실행 중에 해석하지 않는다: `config`가 쓸 때 위임 표의 대체 실행 줄로 풀어 적고, 호출이 안 될 때 PM이 그 줄을 따른다"로 고친다. §9 `config` 설명에 플래그를 더한다. ← "설계 §5의 … 고친다"
 
+### 검사 다시 찾기 (W-9)
+- S-22 **`config gates --refresh`.** 설치 때와 같은 탐색(루트와 하위 디렉터리)을 다시 돌려 `gates.yaml`과 비교하고 차이를 세 가지로 낸다: **new**(찾았는데 파일에 없음), **changed**(같은 출처 `from`인데 명령이 다름), **gone**(파일의 검사에 `from`이 있는데 탐색이 그 출처를 더는 찾지 못함). `from`이 없는 검사(손으로 넣은 것)는 "yours"로 표시만 하고 건드리지 않는다. ← "설치 때와 같은 탐색을 다시 돌려 … 세 가지로 보여 준다", "손으로 넣은 검사는 건드리지 않으며"
+- S-23 **고른 것만 반영.** 터미널(TTY)에서는 차이 목록에서 여러 개를 골라 확인한다. 비대화형에서는 `--refresh`만 주면 차이만 내고 아무것도 쓰지 않으며(종료 0), `--refresh --apply <이름…|all>`로 고른 것을 반영한다. 반영: new는 `gates`와 `order` 끝에 더하고, changed는 명령만 바꾸고, gone은 `gates`와 `order`에서 뺀다. 파일의 주석과 다른 키는 그대로 둔다. 차이가 없으면 "up to date"를 내고 쓰지 않는다. 기존 `--add`는 그대로다. ← "사용자가 고른 것만 반영하고 … 자동으로 덮어쓰지 않는다"
+- S-24 **스크립트.** 반영으로 `gates.yaml`이 바뀌면 검사 스크립트(S-9)를 같은 때에 다시 만든다. 훅 줄은 그대로다. ← "반영하면 검사 스크립트도 다시 만들어지고 훅 줄은 그대로다"
+- S-25 **화면.** `config` 화면에 `gates` 항목을 더한다: 지금 검사(이름, 명령, 출처, 순서, optional 여부)와 감지한 훅 도구를 보여 주고, "refresh"(S-22·S-23의 고르기)와 지금 있는 하위 디렉터리 제안 더하기를 고를 수 있다. 명령을 직접 고쳐 쓰는 편집은 없다. ← "`config` 화면에 검사 항목이 생겨 지금 설정을 보고 같은 다시 찾기를 할 수 있다"
+- S-26 설계 §9 `config` 설명과 README 양판에 `gates`(화면 항목, `--refresh`, `--apply`)를 더한다.
+
 ### 문서
 - S-21 설계서 양판은 각 단위의 커밋에 함께 넣는다. `harness/CHANGELOG.md`의 0.3.1 절에 단위마다 한 줄. README 양판은 해당 문장이 있으면 그 단위에서 고친다. ← "설계서 양판, README 양판, `harness/CHANGELOG.md`가 바뀐 동작과 맞는다"
 
@@ -51,6 +58,7 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - **W-3**: `agents-md.ts`의 `WRITES`에서 auditor를 뺀다(역할 파일의 `tools.write`와 맞춤). 나머지는 문서다.
 - **W-4**: 스크립트 본문은 한 함수(`gates.yaml` 명령 목록 → 텍스트)가 만들고, `gates.yaml`을 쓰는 곳마다 함께 쓴다. husky 블록은 `# reins:begin hooks … # reins:end hooks` 안만 바꾼다. 안내 줄은 도구 형식에 맞춘다(lefthook `run:`, pre-commit `entry:` + `language: system` + `pass_filenames: false`). 테스트는 임시 git 저장소에서 스크립트를 실제로 돌린다. Windows에서 lefthook이 `sh`를 어떻게 부르는지는 구현 때 확인해 안내 줄과 설계서에 적는다.
 - **W-7**: `GroupSpec.fallback`, 상세 역할 binding의 `fallback`을 타입·스키마(`bindings.schema.json`)에 더하고, `resolveRoles`가 역할마다 `fallback`을 함께 내며, `renderDelegation`이 칸에 붙인다. `callLine`을 그대로 쓴다.
+- **W-9**: 차이 계산은 순수 함수 하나(탐색 결과, 지금 `gates.yaml` → new·changed·gone·yours)로 두고 플래그와 화면이 같이 쓴다. 쓰기는 지금 `configureGates`처럼 yaml 문서를 고쳐 주석을 보존한다.
 - W-1·W-5·W-6은 문서·목록·문자열 한 곳씩이다.
 
 ## 작업 단위
@@ -63,6 +71,7 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - [ ] W-5 모델 목록(S-14): `harness/models.yaml`, `cli/src/lib/detect.ts`, 설계서·README 예시, 테스트.
 - [ ] W-6 previous 머리 경고(S-15): `cli/src/commands/update.ts`, 설계서 양판 §5 재구성 표시 문장, 테스트.
 - [ ] W-7 대체 모델(S-16~S-20): `bindings.ts`, `bindings.schema.json`, `agents-md.ts`, `configure.ts`, `config-models.ts`, `harness/templates/agents-md-blocks.md`(해당되면), 설계서 양판 §5·§9, README 양판, 테스트.
+- [ ] W-9 검사 다시 찾기(S-22~S-26): `configure.ts`(gates), `config.ts`(화면), `reins.ts`, 설계서 양판 §9, README 양판, 테스트. W-4 다음에 한다(스크립트를 다시 만드는 함수를 쓴다); 구현 순서는 W-1~W-7, W-9이고 W-8은 릴리스 뒤다.
 - [ ] W-8 이 저장소의 훅(S-13): 0.3.1 stable 뒤, 자기 업데이트(`reins update`, 별도 커밋) 다음에 `.husky/pre-commit`·`pre-push`를 바꾼다. 릴리스 뒤 단위라 0.3.1 감사 범위 밖이고, 0.3.1 회고에서 확인한다.
 
 ## 검증 기준
@@ -75,6 +84,7 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - V-5 (W-5) `models.test.ts`: 목록에 세 ID가 있다. `.loctx/reports/0.3.1/models-check.log`에 ID마다 확인한 출처(문서 URL 또는 CLI 출력)가 있다. 설계서·README의 모델 ID가 모두 목록에 있다.
 - V-6 (W-6) `update.test.ts`: 0.2.0 설치 픽스처를 `update` → `.agents/AGENTS.previous.md`가 S-15 문단으로 시작하고 그 아래가 옛 본문과 같다; `migrate.test.ts`: migrate의 사본에는 그 문단이 없다.
 - V-7 (W-7) 테스트(`bindings-v2.test.ts`, `config.test.ts`, `blocks.test.ts`): (a) 스키마가 군·상세 역할의 `fallback`을 받고, `default`의 fallback·중첩 fallback은 거부 (b) 상속 네 경우(군만, 역할만, 둘 다, 자기 모델 없는 역할) (c) 표의 칸: 다른 벤더, Claude, 쓰기 군, 감사 줄 (d) 대체가 없는 설정의 표가 0.3.0 출력과 안내 문장 한 줄만 다름 (e) `--fallback`의 설정·`none`·거부 두 가지 (f) `--local`이면 팀 생성물은 그대로이고 개인 위임 표에 대체 줄 (g) 0.2.0 설정의 `fallback`이 옮겨짐, 읽을 수 없는 모양은 버리고 알림 (h) 화면 흐름 테스트(`install-update-tui`·config 화면 테스트 방식).
+- V-10 (W-9) 테스트(`gate-proposals.test.ts`, `config.test.ts`): (a) new·changed·gone·yours가 각각 맞게 분류됨 (b) `--refresh`만 → 차이 출력, 파일·스크립트 변화 없음, 종료 0 (c) `--apply`로 일부만 → 고른 것만 반영, 나머지 그대로 (d) `--apply all` (e) 반영 뒤 스크립트의 명령이 `gates.yaml`과 같고 훅 파일은 그대로 (f) 주석·다른 키·`order`의 기존 순서 보존 (g) 차이 없음 → "up to date", 쓰지 않음 (h) 없는 이름을 `--apply`에 주면 아무것도 쓰지 않고 종료 1 (i) 화면 흐름: 항목 표시, 고르기, 취소 시 변화 없음.
 - V-8 전체: `pnpm check > .loctx/reports/0.3.1/check.log 2>&1` 종료 0, `pnpm build` 종료 0. 설계서 양판의 고친 절이 같은 내용이다(doc-reviewer 또는 PM 대조, 대조 표를 같은 폴더에). 생성물 불변식(reins 호출 없음) e2e 통과.
 - V-9 rc 뒤(릴리스 단계): `.loctx/context/scripts/smoke-published.sh`를 npm의 0.3.1-rc.N으로 돌려 0 실패, 그리고 0.3.0 설치 → 0.3.1 `update` 한 번으로 V-2(b), V-4(i)가 실제로 성립함을 임시 저장소에서 확인.
 
@@ -95,4 +105,5 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - 대체용 `rs-*` 에이전트 파일, 벤더 단위 대체.
 - knowledge 승격의 자동화, 검사 출력을 세거나 판정하는 CLI.
 - lefthook·pre-commit 설정 파일을 reins가 직접 고치는 것.
+- 화면에서 검사 명령을 직접 고쳐 쓰는 편집기.
 - 역할의 기본 모델 할당 변경.

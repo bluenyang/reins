@@ -1,7 +1,7 @@
-import { execFileSync, spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 
@@ -32,6 +32,41 @@ afterAll(() => {
 });
 
 describe('robustness of the built cli', () => {
+  it('outside a git repository, or without git on PATH, a command says so in one line and exits 2 (019 ST-8)', () => {
+    const plain = mkdtempSync(join(tmpdir(), 'reins-nogit-'));
+    dirs.push(plain);
+    const run = (cwd: string, env: NodeJS.ProcessEnv, ...args: string[]) =>
+      spawnSync(process.execPath, [CLI, ...args], { cwd, env, encoding: 'utf8' });
+    // a folder that is no repository (the GIT_CEILING_DIRECTORIES keeps git from finding one above it)
+    const env = { ...process.env, GIT_CEILING_DIRECTORIES: tmpdir() };
+    for (const args of [
+      ['install', '--mode', 'auto'],
+      ['update'],
+      ['config', 'bindings', '--show'],
+    ]) {
+      const r = run(plain, env, ...args);
+      expect(r.status, args.join(' ')).toBe(2);
+      expect(r.stderr.trim()).toBe(
+        `reins ${args[0]}: not a git repository (or git is not installed) — run git init here first`,
+      );
+      expect(r.stderr).not.toMatch(/node:internal|at .*\.js:\d+/);
+    }
+    // git not on PATH at all, inside a real repository — only where node's folder holds no git
+    const nodeDir = dirname(process.execPath);
+    if (!['git', 'git.exe'].some((g) => existsSync(join(nodeDir, g)))) {
+      const d = repo();
+      const noGit = run(
+        d,
+        { ...process.env, PATH: nodeDir, Path: nodeDir },
+        'install',
+        '--mode',
+        'auto',
+      );
+      expect(noGit.status).toBe(2);
+      expect(noGit.stderr).toContain('not a git repository (or git is not installed)');
+    }
+  });
+
   it('a closed stdout ends any command quietly, not only check (install, update)', async () => {
     const d = repo();
     for (const args of [

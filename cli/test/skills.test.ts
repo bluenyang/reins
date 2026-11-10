@@ -68,19 +68,35 @@ describe('stage skills (019 S-9, design §3-1)', () => {
         .toSorted(),
     ).toEqual([...STAGES].toSorted());
   });
-  it('one work unit, one commit: implement checks it, the audit judges it (020 S-5, S-7)', () => {
-    const impl = read('implement');
-    expect(impl).toContain("check that the commit is exactly one of the spec's work units");
-    expect(impl).toContain('Work units that need merging, splitting or reordering');
-    const rule =
-      'a commit that holds several units, a unit split without approval, or units reordered without approval is a violation';
-    expect(read('audit')).toContain(rule);
-    expect(readFileSync(join(process.cwd(), 'harness/roles/auditor.md'), 'utf8')).toContain(rule);
-    expect(
-      readFileSync(join(process.cwd(), 'harness/templates/agents-md-blocks.md'), 'utf8'),
-    ).toContain(
-      'Merging, splitting or reordering units needs the spec changed and approved first.',
+  it('commits at meaningful units: implement does it, the audit judges it (020 S-13)', () => {
+    const mean =
+      'a point you can revert or reset to without taking other working work or features with it';
+    const harness = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
+    for (const t of [
+      read('implement'),
+      read('audit'),
+      harness('harness/roles/auditor.md'),
+      harness('harness/roles/implementer.md'),
+      harness('harness/templates/agents-md-blocks.md'),
+      harness('docs/design.md'),
+    ])
+      expect(t).toContain(mean);
+    expect(harness('docs/design.ko.md')).toContain(
+      '되돌려도 다른 멀쩡한 작업·기능은 되돌아가지 않는',
     );
+    // the commit-count rule is gone everywhere it was written
+    for (const t of [
+      ...STAGES.map(read),
+      ...['auditor', 'implementer', 'planner'].map((g) => harness(`harness/roles/${g}.md`)),
+      harness('harness/templates/agents-md-blocks.md'),
+      harness('docs/design.md'),
+      harness('docs/design.ko.md'),
+    ]) {
+      expect(t).not.toMatch(
+        /one work unit, one commit|lands as one commit|작업 단위 하나 = 커밋 하나/i,
+      );
+      expect(t).not.toContain('a unit split without approval');
+    }
   });
   it('the audit gets the PR and CI records from the PM and stays offline (020 S-9, S-10)', () => {
     const audit = read('audit');

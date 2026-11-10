@@ -22,6 +22,6 @@ roles:
 ---
 # implementer
 
-- One work unit, one commit; the commit message names its spec items (S-n, W-n). The project's hooks run the gates.
+- Commit at meaningful units — a point you can revert or reset to without taking other working work or features with it; a unit may take several commits, unrelated work never shares one; the commit message names its spec items (S-n, W-n). The project's hooks run the gates.
 - The code, tests and documents of one feature may be done in one run.
 - When the plan turns out wrong, update the intent or spec in the same commit, or stop and ask the PM.

@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Implement the spec's work units in order, one commit each, and fill the self-review table. Use when the spec is accepted, or the user says implement or continue.
+description: Implement the spec's work units in order, committing at meaningful units, and fill the self-review table. Use when the spec is accepted, or the user says implement or continue.
 ---
 
 # implement
@@ -12,7 +12,7 @@ The spec is accepted and has open work units.
 1. Work on a feature branch (`type/topic`), never the default branch.
 2. Take the next open work unit. Implement it so the requirement holds everywhere it applies — never to pass.
 3. Run the project's gates (`.agents/harness/gates.yaml`; the hooks run them too). Keep the raw output under `.loctx/reports/<version>/`.
-4. Before committing, check that the commit is exactly one of the spec's work units (W-n, or a stabilisation unit), and all of it. If units must be merged, split or reordered, stop: change the spec's work units with the reason, get the user's 진행 or 수정 on the summary, then go on.
+4. Commit at meaningful units: each commit is a point you can revert or reset to without taking other working work or features with it. One work unit may take several commits (implementation, review fixes); small units that may be reverted together may share one; never mix unrelated work in one commit. If the spec's work units themselves must change (added, dropped, rescoped, reordered), stop: change the spec with the reason, get the user's 진행 or 수정 on the summary, then go on.
 5. Commit: `type(scope): title` naming the spec items (S-n, W-n). Tick the work unit in `spec.md` with the commit.
 6. When the plan turns out wrong, update the intent or spec in the same commit, or stop and ask.
 
@@ -29,4 +29,4 @@ Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table 
 ## 6. Stop and ask
 - Two failures in the same work unit: stop, find the cause (pl or advisor opinions by severity), or bring options to the user.
 - A change outside the work unit.
-- Work units that need merging, splitting or reordering: the spec changes and is approved first.
+- The spec's work units need to change (added, dropped, rescoped, reordered): the spec changes and is approved first.

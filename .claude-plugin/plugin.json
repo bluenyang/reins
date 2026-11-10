@@ -1,6 +1,6 @@
 {
   "name": "reins",
-  "version": "0.3.0-rc.4",
+  "version": "0.3.0",
   "description": "Shows how to install, migrate, update and configure the reins agent harness; exposes /reins:reins-setup. reins never runs while your project works.",
   "author": {
     "name": "BlueNyang"

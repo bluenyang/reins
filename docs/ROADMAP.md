@@ -52,6 +52,17 @@ State: **0.3.0 published** (2026-11-10, stable from the rc.4 commit). rc.3 carri
 - **Every file has a lifetime when it is created.** Working records are deleted after the retro; history keeps one page per version.
 - **Existing installs move with `update`.** reins calls in skills and hooks are removed, and accumulated `.loctx` files are deleted after the user confirms.
 
+### 0.3.1 — planned
+
+Follow-ups from the 0.3 retro (maintainer, 2026-11-10).
+
+- **The retro proposes knowledge candidates.** The `retro` skill finds decisions and failures repeated in history and the audit and proposes them as knowledge candidates. Design §8 said so, but the skill did not: 0.2.0 passed without a retro and nothing was promoted during 0.3.
+- **`.claude/settings.json` is merged.** `update` no longer compares the file as a whole; it keeps the user's entries (allow and others) and changes only reins' own. Today one added permission makes `update` skip the file as edited by hand, and `--force` drops the user's permissions.
+- **The auditor is read-only.** The auditor's call line becomes read-only, and the PM writes the audit record.
+- **Check output is kept for every commit.** The output of the project checks a hook runs is kept, so the audit can confirm that each commit passed. Hooks run the project's checks only and never call reins.
+- **Known models refreshed.** The model list `config` offers follows the current models.
+- **A warning at the head of `AGENTS.previous.md`.** The copy made when `update` moves an install of 0.2.0 or earlier starts by saying that it is a copy of instructions from 0.2.0 or earlier and that the reins commands it names do not exist in 0.3 and must not be run.
+
 ## 0.4 — rollout
 
 - Application to Team Croffle repositories, repository by repository with the owner's permission.

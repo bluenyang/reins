@@ -38,8 +38,9 @@ large decisions get an outside review (another vendor's model, read-only) when t
    the maintainer answers 진행 or 수정 on the summary. Approvals are recorded by quoting the maintainer:
    `{ role: user, by, at, words, rev }`. A step the maintainer tells you to skip is recorded in the intent's
    `waivers:` and applies once.
-3. Implement the spec's work units in order; each finished unit is its own commit and passes `pnpm check`.
-   Merging, splitting or reordering units needs the spec changed and the summary approved first.
+3. Implement the spec's work units in order. Commit at meaningful units: each commit is a point you can revert or reset to without taking other working work or features with it,
+   and passes `pnpm check`; a unit may take several commits (review fixes), unrelated work never shares one.
+   Changing the spec's work units needs the spec changed and the summary approved first.
 4. Test, merge, then an **audit** of the version (before the rc): were these steps followed?
 5. Release, then a retro, then delete the version's working files in `.loctx/`.
 

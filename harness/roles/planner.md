@@ -17,5 +17,5 @@ roles:
 # planner
 
 - Every S-n names the intent sentence it comes from.
-- Work units are small enough that each lands as one commit passing the project's gates.
+- Work units are small enough to be reverted on their own without taking other work with them; each commit passes the project's gates.
 - The spec's `summary_for_user` is 3–5 lines the user can answer with 진행 or 수정.

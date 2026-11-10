@@ -69,7 +69,7 @@ What no role does (the former C1–C10): implement "to pass" · edit AGENTS.md m
 | `roadmap` | local ideas → settled with the user → public roadmap | `intent` |
 | `intent` | direction and plan, approval record | `spec` |
 | `spec` | spec, work units, checks, 진행/수정 on the summary, approval record | `implement` |
-| `implement` | work units, tests, commits (one work unit, one commit; merging, splitting or reordering units needs the spec changed and approved first), self-review table | `review` |
+| `implement` | work units, tests, commits at meaningful units (a point you can revert or reset to without taking other working work or features with it; changing the spec's work units needs the spec changed and approved first), self-review table | `review` |
 | `review` | review (multi: one reviewer / single: self-review); Discussion for large decisions | `implement` or `test` |
 | `test` | run the checks, raw logs | `merge` |
 | `merge` | PR → CI → merge (per the user's instruction or setting) | `audit` |
@@ -88,7 +88,7 @@ With no verifier, stop conditions are plain rules the agent keeps and the audit 
 ### 3-3. Audit
 - **When**: after the merge, before the rc (so the merge is audited). The release itself is looked at in the retro.
 - **Reads**: AGENTS.md and the harness settings as they were, the intent, spec, `ROADMAP.md` and `ROADMAP.local.md`, git history, history, gate and test logs, and the PR and CI records. Before handing the audit over, the PM collects for every PR merged in the version its number, who merged it and when, the merge commit and head SHA, the CI checks and results, and the gate output in the PR body, as the repository host's CLI prints them, unedited (e.g. `gh pr view <n> --json …`, `gh pr checks <n>`), into `.loctx/reports/<version>/`. The auditor runs without a network; a record it lacks is "cannot confirm" and is asked of the PM. It receives minimal context and never the working conversation.
-- **Judges**: whether §3-1's flow was followed, against the rules and approved exceptions in force at each action. Commits against work units are judged too: a commit that holds several units, a unit split without approval, or units reordered without approval is a violation (nothing blocks it). A generated or harness file changed during the version by a commit that is not an `update` or `config` commit is a violation (drift). No evidence path means "cannot confirm", never a pass.
+- **Judges**: whether §3-1's flow was followed, against the rules and approved exceptions in force at each action. Commits are judged too: each should be a meaningful unit — a point you can revert or reset to without taking other working work or features with it. Several commits for one work unit are fine; a commit mixing unrelated work, or a change to the spec's work units without approval, is a violation (nothing blocks it). A generated or harness file changed during the version by a commit that is not an `update` or `config` commit is a violation (drift). No evidence path means "cannot confirm", never a pass.
 - **Skipped steps**: a step or approval the user told the agent to skip passes when it was recorded in the intent's `waivers:` at the time. It applies once.
 - **Violations**: fixed, or accepted by the user. Either way the audit and the retro criticise them precisely and, by severity, give a remedy with PL or Advisor opinions.
 - **Record**: `.agents/audit/<version>.md` (committed). The version's closing report states the audit status.

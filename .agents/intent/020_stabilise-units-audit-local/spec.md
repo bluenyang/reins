@@ -47,7 +47,7 @@ intent 020의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - [x] W-2 (216a739) ST-6 작업 단위 ↔ 커밋(S-5~S-8, S-12의 §3-1·§3-3 판정): `skills/implement`, 흐름 블록, `skills/audit` ③, `harness/roles/auditor.md`, 이 저장소 `AGENTS.md`, 설계서 양판, 테스트 기대값.
 - [x] W-3 (39d105d) ST-7 감사 입력(S-9~S-11, S-12의 §3-3 읽는 것): `skills/audit` ②, `harness/roles/auditor.md`, 설계서 양판.
 
-- [ ] W-4 S-13: W-2가 쓴 자리(`skills/implement` ②·⑥, 흐름 블록, 이 저장소 `AGENTS.md`, `skills/audit` ③, `harness/roles/auditor.md`, 설계서 양판 §3-1·§3-3)를 의미 있는 작업 단위 기준으로 고친다, 테스트. rc.3 감사 지적 1에 대한 사용자 결정(2026-11-10)으로 더함.
+- [x] W-4 S-13: W-2가 쓴 자리(`skills/implement` ②·⑥, 흐름 블록, 이 저장소 `AGENTS.md`, `skills/audit` ③, `harness/roles/auditor.md`, 설계서 양판 §3-1·§3-3)를 의미 있는 작업 단위 기준으로 고친다, 테스트. rc.3 감사 지적 1에 대한 사용자 결정(2026-11-10)으로 더함.
 
 순서는 W-1 → W-2 → W-3 (→ W-4). 단위마다 커밋 하나. W-2와 W-3은 같은 파일(`skills/audit`, `auditor.md`, §3-3)을 고치지만 다른 줄이라 나눠 커밋한다.
 

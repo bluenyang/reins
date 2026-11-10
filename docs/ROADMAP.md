@@ -41,7 +41,7 @@ The 0.2 plan answered "agents do not follow the harness" by putting reins into t
 
 ## 0.3 — reins manages the harness, nothing more
 
-State: 0.3.0-rc.3 (2026-11-10, intent 020); stable on the maintainer's instruction.
+State: 0.3.0-rc.4 (2026-11-10); stable on the maintainer's instruction. rc.3 carried intent 020 (a personal delegation table, commits at meaningful units, PR and CI records for the audit). rc.4 is stabilisation 019 ST-8: a clear message instead of a stack trace when reins runs outside a git repository, found while checking rc.3 (added here after the fact, as the rc.4 audit asked).
 
 - **reins has four commands: `install`, `migrate`, `update`, `config`.** No hook, skill or agent calls reins while the project works; the installed harness works without reins and without a network. The commands used during work (`check`, `gate`, `new`, `status` and others) are removed.
 - **Checks belong to the project.** Stage checks run in hook tools such as lefthook or husky, or in scripts inside the project; reins proposes or sets them up at installation.

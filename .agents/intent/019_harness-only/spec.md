@@ -67,7 +67,7 @@ rc.1을 쓰며 나온 결함과 사용자 결정(2026-11-09). 구현 전에 이 
 
 ## 안정화 (rc.4)
 
-- [x] ST-8 git 저장소 밖에서 실행: 지금은 모든 명령이 `git rev-parse --show-toplevel` 실패(종료 128)나 git 없음(ENOENT)을 잡지 않아 Node 스택 트레이스로 죽는다(0.1부터; 사용자 2026-11-10 Windows에서 `npx @bluenyang/reins@0.3.0-rc.3 install`). 저장소 루트를 못 찾으면 한 줄을 stderr에 내고 exit 2로 끝낸다: 저장소 밖이면 `reins <command>: not a git repository — run git init here first`, git이 없으면 `… git is not installed or not on PATH`, 그 밖의 git 실패(소유권·권한·깨진 설정)는 `… git cannot read this repository: <git의 첫 줄>`(git init을 권하지 않음; 리뷰 지적으로 구분). reins는 `git init`을 대신하지 않는다(저장소를 만드는 것은 사용자 몫). 테스트: 저장소 밖 폴더, git이 PATH에 없는 환경. ← 사용자 2026-11-10 "ㅇㅇ"(PM 제안: 메시지만 내고 exit 2, `git init`은 하지 않음)
+- [x] ST-8 (b6cab3a; 리뷰 수정 b41ec3d) git 저장소 밖에서 실행: 지금은 모든 명령이 `git rev-parse --show-toplevel` 실패(종료 128)나 git 없음(ENOENT)을 잡지 않아 Node 스택 트레이스로 죽는다(0.1부터; 사용자 2026-11-10 Windows에서 `npx @bluenyang/reins@0.3.0-rc.3 install`). 저장소 루트를 못 찾으면 한 줄을 stderr에 내고 exit 2로 끝낸다: 저장소 밖이면 `reins <command>: not a git repository — run git init here first`, git이 없으면 `… git is not installed or not on PATH`, 그 밖의 git 실패(소유권·권한·깨진 설정)는 `… git cannot read this repository: <git의 첫 줄>`(git init을 권하지 않음; 리뷰 지적으로 구분). reins는 `git init`을 대신하지 않는다(저장소를 만드는 것은 사용자 몫). 테스트: 저장소 밖 폴더, git이 PATH에 없는 환경. ← 사용자 2026-11-10 "ㅇㅇ"(PM 제안: 메시지만 내고 exit 2, `git init`은 하지 않음)
 - 검증: ST-1·ST-2·ST-3·ST-5마다 단위 테스트, 설계서 §5·§9 같은 커밋에서 수정, 리뷰(GPT-6.1 Sol) 뒤 rc.2.
 
 ## 검증 기준

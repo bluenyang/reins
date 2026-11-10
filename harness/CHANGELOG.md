@@ -3,6 +3,7 @@
 Read by `reins update`: it lists the entries newer than a project's pinned version.
 
 ## 0.3.0
+- rc.3: every skill's delegation section and the delegation block point to `.loctx/delegation.local.md` first; the flow block, `implement`, `spec`, `audit` and the implementer, planner and auditor roles commit at meaningful units (revertible without taking other work along) instead of one commit per unit; the audit reads PR and CI records the PM collects and stays offline.
 - rc.2: `models.yaml` lists known models per vendor; a mode switch adds `reins:mode-changed` (no AGENTS.previous.md); the `onboard` skill handles it.
 - Seven role groups replace the twelve roles; bindings.yaml version 2 (mode, audit, groups); `update` converts version 1.
 - Eleven stage skills without the `reins-` prefix replace the ten `reins-*` skills; none calls reins.

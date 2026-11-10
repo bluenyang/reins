@@ -11,7 +11,7 @@ has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md).
 
 ## [Unreleased] — 0.3.0
 
-rc.1: 2026-11-09. rc.2 (2026-11-09): single mode shows kept assignments as used in multi only; a known-model list per vendor; the scope global is now project (only project and local); a mode switch adds a light mode-changed note instead of a reconcile. reins manages the harness only (intent 019). 0.2.1–0.2.8 were cancelled. Audit: [.agents/audit/0.3.0.md](.agents/audit/0.3.0.md).
+rc.1: 2026-11-09. rc.3 (2026-11-10): a personal delegation table `.loctx/delegation.local.md` when local settings delegate differently from the team, pointed to by every skill and the delegation block; commits at meaningful units (revertible without taking other work along) in the flow, the skills and the audit; the audit reads PR and CI records the PM collects (intent 020). rc.2 (2026-11-09): single mode shows kept assignments as used in multi only; a known-model list per vendor; the scope global is now project (only project and local); a mode switch adds a light mode-changed note instead of a reconcile. reins manages the harness only (intent 019). 0.2.1–0.2.8 were cancelled. Audit: [.agents/audit/0.3.0.md](.agents/audit/0.3.0.md).
 
 ### Removed
 - The commands used during work: `check`, `gate`, `new`, `status`, `metrics`, `retro`, `knowledge`,

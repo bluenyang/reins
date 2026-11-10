@@ -33,6 +33,7 @@ supersedes: null
 6. 릴리스: 0.3.0-rc.3. 릴리스 문서 PR → `gh workflow run publish.yml -f version=0.3.0-rc.N -f dry_run=false`(사용자 지시) → npm staged → 사용자 2FA 승인.
 
 ## 현재 상태 (다른 세션이 이어받을 때)
+- 2026-11-10: 구현·리뷰·머지 끝(PR #25, #26), 감사 두 번(`.agents/audit/0.3.0.md` rc.3 절), 다음은 0.3.0-rc.3 배포. 아래는 그 전의 기록.
 - master: PR #23(rc.2 안정화 ST-1·2·3·5)까지 머지됨(`50199c2`). npm에는 0.3.0-rc.1이 `rc` 태그로 있고 rc.2는 아직 내지 않았다.
 - 브랜치 `chore/audit-0.3.0-rc.2`: spec 019의 ST-4 처리 기록, 이 intent, rc.2 추가 감사와 rc.2 릴리스 문서가 있다(PR #24). 머지 뒤 rc.2를 내고, 이 intent는 master에서 시작한다.
 - rc.2 추가 감사: 사용자 처리 "위반 1수용, 2 보완"(2026-11-09) — `.agents/audit/0.3.0.md`의 추가 감사 절에 기록됨. (아래는 그 전의 기록)

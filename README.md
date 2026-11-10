@@ -15,7 +15,7 @@ knowledge lost in gitignored space, copies that drift apart. The full list is in
 
 ## Status
 
-**0.3.0-rc.2 is the release candidate** (intent 019): `npx @bluenyang/reins@0.3.0-rc.2`. 0.2.0, the latest stable, still installs the older design, in which skills and hooks called `npx @bluenyang/reins` during work; 0.3 removes that, and `reins update` moves a 0.1.x or 0.2.0 install over. What changed in each version is in [CHANGELOG.md](CHANGELOG.md); what comes next is in the [roadmap](docs/ROADMAP.md).
+**0.3.0-rc.3 is the release candidate** (intents 019, 020): `npx @bluenyang/reins@0.3.0-rc.3`. 0.2.0, the latest stable, still installs the older design, in which skills and hooks called `npx @bluenyang/reins` during work; 0.3 removes that, and `reins update` moves a 0.1.x or 0.2.0 install over. What changed in each version is in [CHANGELOG.md](CHANGELOG.md); what comes next is in the [roadmap](docs/ROADMAP.md).
 
 ## How it works
 

@@ -41,7 +41,7 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 
 ## 0.3 — reins는 하네스 관리만 한다
 
-상태: 0.3.0-rc.2(2026-11-09). 이어서 rc.3(intent 020). stable은 관리자 지시가 있을 때.
+상태: 0.3.0-rc.3(2026-11-10, intent 020). stable은 관리자 지시가 있을 때.
 
 - **reins의 명령은 `install`, `migrate`, `update`, `config` 넷뿐입니다.** 프로젝트가 일하는 동안 어떤 훅도, 스킬도, 에이전트도 reins를 부르지 않습니다. 설치된 하네스는 reins와 네트워크 없이 동작합니다. 작업 중 쓰던 명령(`check`, `gate`, `new`, `status` 등)은 없앱니다.
 - **검사는 프로젝트가 소유합니다.** 단계 검사는 lefthook·husky 같은 훅 도구나 프로젝트 안의 스크립트가 돌리고, reins는 설치할 때 제안하거나 설정합니다.

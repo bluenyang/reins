@@ -41,7 +41,7 @@ The 0.2 plan answered "agents do not follow the harness" by putting reins into t
 
 ## 0.3 — reins manages the harness, nothing more
 
-State: 0.3.0-rc.2 (2026-11-09); rc.3 (intent 020) follows; stable on the maintainer's instruction.
+State: 0.3.0-rc.3 (2026-11-10, intent 020); stable on the maintainer's instruction.
 
 - **reins has four commands: `install`, `migrate`, `update`, `config`.** No hook, skill or agent calls reins while the project works; the installed harness works without reins and without a network. The commands used during work (`check`, `gate`, `new`, `status` and others) are removed.
 - **Checks belong to the project.** Stage checks run in hook tools such as lefthook or husky, or in scripts inside the project; reins proposes or sets them up at installation.

@@ -1,0 +1,8 @@
+# Known models per vendor (design §9): what `reins config` offers when a vendor's CLI cannot list its own.
+# agy and cursor-agent list theirs; this list is their fallback. `other` always lets the user type an ID.
+schema: reins/models@1
+vendors:
+  claude: [claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5, claude-fable-5-1]
+  openai: [gpt-6.1-sol, gpt-6.1-terra, gpt-6-astra]
+  google: [gemini-4-argon-high, gemini-4-argon-medium, gemini-4-argon-low, gemini-3.8-flash-medium]
+  cursor: [cursor-grok-4.5-high-fast]

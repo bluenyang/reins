@@ -38,8 +38,20 @@ export function isAncestor(ancestor: string, descendant: string, cwd: string): b
   }
 }
 
+/** Outside a git repository, or without git on PATH: every command stops with one line (spec 019 ST-8). */
+export class NotARepository extends Error {
+  constructor() {
+    super('not a git repository (or git is not installed) — run git init here first');
+    this.name = 'NotARepository';
+  }
+}
+
 export function repoRoot(cwd: string): string {
-  return git(['rev-parse', '--show-toplevel'], cwd);
+  try {
+    return git(['rev-parse', '--show-toplevel'], cwd);
+  } catch {
+    throw new NotARepository();
+  }
 }
 
 /** Subjects of the commits an update of an existing ref adds: `remote..local`. */

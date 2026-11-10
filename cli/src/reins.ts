@@ -5,6 +5,7 @@ import { runInstall } from './commands/install.js';
 import { runMigrate } from './commands/migrate.js';
 import { formatUpdate, runUpdate } from './commands/update.js';
 import { configureBindings, configureGates } from './commands/configure.js';
+import { NotARepository } from './lib/git.js';
 import { LOCAL_DELEGATION_NOTE } from './lib/local-delegation.js';
 import { formatBindings, runConfig } from './commands/config.js';
 import { defaultsAsker, stdinAsker } from './lib/ask.js';
@@ -268,4 +269,11 @@ config
     for (const g of r.available) process.stdout.write(`  ${g.name}  ${g.cmd}   (${g.from})\n`);
   });
 
-program.parseAsync(process.argv);
+program.parseAsync(process.argv).catch((e: unknown) => {
+  if (!(e instanceof NotARepository)) throw e;
+  // no stack trace for a folder that is not a repository: say what to do (spec 019 ST-8)
+  process.stderr.write(
+    `reins ${process.argv[2] ?? ''}: ${e.message}\n`.replace(/^reins : /, 'reins: '),
+  );
+  process.exit(2);
+});

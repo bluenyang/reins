@@ -97,6 +97,7 @@ describe('stage skills (019 S-9, design §3-1)', () => {
       );
       expect(t).not.toContain('a unit split without approval');
     }
+    expect(read('implement')).not.toContain('- A change outside the work unit.');
   });
   it('the audit gets the PR and CI records from the PM and stays offline (020 S-9, S-10)', () => {
     const audit = read('audit');

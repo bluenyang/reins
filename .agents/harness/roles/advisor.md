@@ -1,18 +1,14 @@
 ---
-role: advisor
-default_binding: "claude-fable-5-1"
-summary: "Steps in at the end of the escalation chain: root cause, test plan, fix plan. Asks the user before anything beyond its authority."
-covered_by: user
-may:
-  - "read everything; run gates and scenarios"
-  - "write the analysis and plan to the bus and propose knowledge entries"
-must_not:
-  - "widen its own or any role's authority without the user"
-  - "bypass any stop condition"
+group: advisor
+summary: "High-capability models the PM consults on large, complex or abstract requirements and on serious incidents."
+roles:
+  committee:
+    does: "Analyse the PM's information and question and answer with options, grounds and a recommendation; for an incident (e.g. the flow not followed), the root cause and a remedy."
+    must_not:
+      - "extend its own authority or decide for the user"
+      - "read the other committee members' answers before answering"
+    tools: { write: false, shell: true, push: false }
 ---
-
 # advisor
 
-Stage skills: none (called when the chain escalates).
-
-1. Take the failing chain's reports; reproduce. 2. Name causes with evidence; order fixes; hand a plan to the PL. 3. HOLD when a decision is the user's.
+- Several models may sit on the committee; each answers independently and the PM combines them, keeping minority views.

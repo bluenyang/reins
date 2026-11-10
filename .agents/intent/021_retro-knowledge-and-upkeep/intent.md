@@ -14,7 +14,7 @@ supersedes: null
 
 - **회고가 knowledge 후보를 내지 않는다.** 설계 §8은 "retrospector나 PM이 history·감사에서 반복된 결정·실패를 찾아 제안"한다고 적는데, `retro` 스킬 ②는 AGENTS.md·스킬·하네스 개선안만 말한다. 0.2.0은 회고 없이 지나갔고 0.3 동안 knowledge 승격이 없었다(사용자 "회고 하면서 주요한 결정은 knowledge 승격 하고 있는거야?").
 - **`.claude/settings.json`에 허가 한 줄만 더해도 update가 건너뛴다.** 생성물을 통째 해시로 비교해서 "손으로 고침"으로 보고, `--force`면 사용자가 넣은 허가(allow 등)가 사라진다. 이 저장소에서 확인했다(`3b2709d` 뒤).
-- **감사자 실행 줄이 쓰기 가능이다.** auditor 역할의 `tools.write: true` 때문에 위임 표가 `codex exec … -s workspace-write`를 낸다. 설계 §3-3과 실제 운영은 읽기 전용·오프라인 실행이고, 감사 기록은 PM이 받아 커밋해 왔다.
+- **감사자 실행 줄이 쓰기 가능이다.** 위임 표가 auditor의 실행 줄을 `codex exec … -s workspace-write`로 낸다(실행 줄의 쓰기 여부는 `agents-md.ts`의 군 목록에서 나오고, auditor 역할 파일도 `tools.write: true`다). 설계 §3-3과 실제 운영은 읽기 전용·오프라인 실행이고, 감사 기록은 PM이 받아 커밋해 왔다.
 - **커밋별 검사 출력이 남지 않는다.** 훅이 `pnpm check`를 돌리지만 출력을 남기지 않아, 0.3.0 감사가 네 번 "커밋별 통과 확인 불가"로 적었다(rc.3 감사 지적 2).
 - **알려진 모델 목록이 낡았다.** `harness/models.yaml`, `cli/src/lib/detect.ts`의 `CONFIRMED_MODELS`, 설계서 예시에 `claude-fable-5-2`, `gpt-6-luna`, `gpt-6-sol`이 없다.
 - **`AGENTS.previous.md`에 옛 reins 명령이 그대로 남는다.** 0.2.0 이하 설치를 update로 옮기면 옛 AGENTS.md가 그대로 복사되어 `reins status`·`reins check` 줄이 남는다. "참고 자료, 지침 아님"은 AGENTS.md의 재구성 표시와 `onboard` 스킬에만 적혀 있고 사본 자체에는 없다.

@@ -38,19 +38,36 @@ export function isAncestor(ancestor: string, descendant: string, cwd: string): b
   }
 }
 
-/** Outside a git repository, or without git on PATH: every command stops with one line (spec 019 ST-8). */
+/**
+ * Why a command cannot find its repository (spec 019 ST-8): every command stops with this one line instead of
+ * a stack trace. Only a folder outside a repository is told to run git init; any other git failure keeps git's
+ * own words (dubious ownership, permissions, a broken config).
+ */
 export class NotARepository extends Error {
-  constructor() {
-    super('not a git repository (or git is not installed) — run git init here first');
+  constructor(message: string) {
+    super(message);
     this.name = 'NotARepository';
   }
 }
 
 export function repoRoot(cwd: string): string {
   try {
-    return git(['rev-parse', '--show-toplevel'], cwd);
-  } catch {
-    throw new NotARepository();
+    return execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      // git's own messages in English, so "not a git repository" can be recognised
+      env: { ...process.env, LC_ALL: 'C', LANGUAGE: 'C' },
+    }).trim();
+  } catch (e) {
+    const err = e as { code?: string; stderr?: string };
+    if (err.code === 'ENOENT') throw new NotARepository('git is not installed or not on PATH');
+    const said = String(err.stderr ?? '').trim();
+    if (/not a git repository/i.test(said))
+      throw new NotARepository('not a git repository — run git init here first');
+    throw new NotARepository(
+      `git cannot read this repository: ${said.split(/\r?\n/)[0] || 'unknown error'}`,
+    );
   }
 }
 

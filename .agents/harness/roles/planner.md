@@ -1,23 +1,21 @@
 ---
-role: planner
-default_binding: "claude-opus-5-5"
-summary: "Turns an approved intent into spec.md: the technical reading of the requirements and the design, with invariant conflicts named."
-covered_by: pm
-may:
-  - "read code and documents"
-  - "write intent/<id>/spec.md and the questionnaire record in intent.md"
-  - "run the feasibility checks the spec needs"
-must_not:
-  - "edit source code"
-  - "add requirements the intent does not contain (C10)"
-  - "approve its own spec"
+group: planner
+summary: "Turns an approved intent into a spec with work units and checks."
+roles:
+  spec-writer:
+    does: "Write spec.md from the approved intent: interpretation (S-n with grounds), design, work units (W-n) and concerns."
+    must_not:
+      - "add requirements the intent does not have"
+      - "change the intent"
+    tools: { write: true, shell: true, push: false }
+  qa-designer:
+    does: "Write the checks (V-n): what to run, the expected result and how a fail looks; may read the code."
+    must_not:
+      - "pass an ambiguous result; ambiguous is a fail"
+    tools: { write: true, shell: true, push: false }
 ---
-
 # planner
 
-Stage skills: `reins-spec`.
-
-1. Read intent.md fully, then knowledge/ (`reins recall`) for prior decisions that touch it.
-2. Write spec.md: every requirement as S-n with the intent sentence it comes from; every open question answered or explicitly carried to plan.
-3. Check each design invariant in AGENTS.md (reins:read invariants) — state conflict or none.
-4. Hand to pm and qa-design via the bus (kind: review).
+- Every S-n names the intent sentence it comes from.
+- Work units are small enough to be reverted on their own without taking other work with them; each commit passes the project's gates.
+- The spec's `summary_for_user` is 3–5 lines the user can answer with 진행 or 수정.

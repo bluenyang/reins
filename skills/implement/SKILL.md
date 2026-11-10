@@ -28,5 +28,5 @@ Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table 
 
 ## 6. Stop and ask
 - Two failures in the same work unit: stop, find the cause (pl or advisor opinions by severity), or bring options to the user.
-- A change outside the work unit.
+- A change outside the spec's approved work units (working across approved units that may be reverted together is fine).
 - The spec's work units need to change (added, dropped, rescoped, reordered): the spec changes and is approved first.

@@ -1,17 +1,13 @@
 # AGENTS.md
 
-<!-- reins:mode-changed pending -->
-> **Mode changed from single to multi.** reins rewrote the delegation section. In the next conversation (the `onboard` skill), check that the project sections below say nothing that contradicts the new mode, then change the marker above to `<!-- reins:mode-changed done -->`.
-
-<!-- reins:onboarding pending -->
-> **Onboarding — do this first in the next conversation.** Run the `onboard` skill: read the project, ask the user, and write the project sections of this file: goals and scope; stack and commands; existing rules and conventions; red lines (paths not to touch, secret files); the language of documents the user reads. Then change the marker above to `<!-- reins:onboarding done -->`.
+<!-- reins:mode-changed done -->
+<!-- reins:onboarding done -->
 
 <!-- reins:begin notice v=0.3.0 -->
 > The blocks marked `reins:begin … reins:end` are written by reins from `.agents/harness/`. Do not edit them by hand; the user changes them with `reins config` or `reins update` in a terminal. Everything outside the blocks belongs to the project. Nothing in this repository runs reins while you work.
 <!-- reins:end notice -->
 
-
-Working agreement for AI agents on `reins`.
+Working agreement for AI agents on `reins`. The `reins:` blocks below hold the flow, the delegation and the stops; this part holds what is particular to this repository.
 
 ## Project
 
@@ -19,58 +15,59 @@ Working agreement for AI agents on `reins`.
 it installs, migrates, updates and configures the engineering files (roles, flow, skills, AGENTS.md) so
 the project can follow them. reins is never called while a project works.
 
-### Current phase
+### Goals and scope
 
-**0.3, intent 019** (`.agents/intent/019_harness-only/`, approved; spec accepted). 0.2.1–0.2.8 were
-cancelled (`docs/ROADMAP.md`). During 0.3 development this repository runs **without the reins harness**:
-the 0.2.0 install was taken out (spec W-1) and the flow below is followed by hand until 0.3 is released
-and this repository migrates itself with `reins update`.
-
-- The design document is the reference. If an implementation needs to differ, change
-  `docs/design.ko.md` (and the English edition) **in the same commit** before the code. Until W-2 lands,
-  intent 019 and its spec win over the design document where they differ.
-- What ships (the CLI, generators and build output) is TypeScript and never needs Python (R65). Development, test, verification and editing scripts may use Python; do not block Python itself — target repositories may be Python projects.
+- 0.3.0 is released (2026-11-10; intents 019, 020). This repository now runs the reins 0.3 harness itself
+  (self-updated with `reins update`, 2026-11-10); the by-hand flow of 0.3 development is over.
+- Next: the 0.3 retro, then 0.3.1 (the `retro` skill proposes knowledge candidates; `.loctx/ROADMAP.local.md`),
+  then 0.4 (rolling out to BlueNyang's and Team Croffle's repositories). Ideas and their state: `docs/ROADMAP.md`
+  and `.loctx/ROADMAP.local.md`.
+- The design document is the reference. If an implementation needs to differ, change `docs/design.ko.md`
+  (and the English edition) **in the same commit** before the code.
 
 ### Stack and commands
 
-- Node ≥ 22, pnpm, TypeScript (ESM). Lint/format: oxlint, oxfmt. Tests: vitest. Hooks: husky.
-- `pnpm check` — lint, format check, typecheck, tests. Run before reporting done; the husky hooks run it.
+- Node ≥ 22, pnpm, TypeScript (ESM). Lint/format: oxlint, oxfmt. Tests: vitest. Hooks: husky (`.husky/pre-commit`
+  and `pre-push` run `pnpm check`).
+- `pnpm check` — lint, format check, typecheck, tests. Run before reporting done.
 - `pnpm build` — `cli/src` → `cli/dist` (the `reins` bin).
+- Running reins on this repository: use an installed copy (`npm i -g @bluenyang/reins@<version>`, then `reins …`).
+  `npx @bluenyang/reins` inside this repository resolves to the repository's own package and fails with
+  `reins: command not found`.
+- Releases: `.github/workflows/publish.yml` (`version`, `dry_run`), staged on npm until the maintainer approves it
+  with 2FA. A stable version is cut only from the last rc's commit, so stable documents follow in a PR after it.
+
+### Red lines
+
 - Never read `.env`, `.env.*.local`, `secrets/**`, `*.properties`, `*.key`, `*.pem`. `*.example*` is fine.
-
-## Flow (0.3 development, by hand)
-
-Single-agent mode: one agent (the PM) does the work. It may use subagents of the same model for
-read-heavy work (research, log summaries, review, audit) and urgent parallel work on independent units;
-large decisions get an outside review (another vendor's model, read-only) when the maintainer asks.
-
-1. Ideas go to `.loctx/ROADMAP.local.md`; once settled with the maintainer, to `docs/ROADMAP.md`.
-2. **intent** (direction and plan) → the maintainer approves → **spec** (work units W-n, checks V-n) →
-   the maintainer answers 진행 or 수정 on the summary. Approvals are recorded by quoting the maintainer:
-   `{ role: user, by, at, words, rev }`. A step the maintainer tells you to skip is recorded in the intent's
-   `waivers:` and applies once.
-3. Implement the spec's work units in order. Commit at meaningful units: each commit is a point you can revert or reset to without taking other working work or features with it,
-   and passes `pnpm check`; a unit may take several commits (review fixes), unrelated work never shares one.
-   Changing the spec's work units needs the spec changed and the summary approved first.
-4. Test, merge, then an **audit** of the version (before the rc): were these steps followed?
-5. Release, then a retro, then delete the version's working files in `.loctx/`.
-
-- Each commit unit passes `pnpm check` on its own. Never commit on `master`; never bypass hooks.
-- Search past decisions with `grep -l 'decisions:.*<keyword>' .loctx/history/*` and `.agents/knowledge/`.
-- Anything that leaves the machine (push, PR, release) happens only on the maintainer's explicit instruction.
+- Files reins writes (`.agents/harness/`, `.agents/skills/`, `.claude/skills/`, `.claude/agents/`, the `reins:`
+  blocks) change only through `reins update` or `reins config`, each in its own commit.
+- What ships (the CLI, generators and build output) is TypeScript and never needs Python (R65). Development, test,
+  verification and editing scripts may use Python; do not block Python itself — target repositories may be Python
+  projects.
+- Merging a PR needs the maintainer's instruction naming it ("PR #N 머지해"); Claude Code's auto mode refuses a
+  merge without one.
 
 ## Conventions (this repository)
 
-- Branches: `type/topic` from `master`, rebase onto `master`, fast-forward merge.
+- Branches: `type/topic` from a freshly pulled `master`, rebase onto `master`, rebase merge. Never commit on `master`.
 - Commit messages: `type(scope): title`, one-line summary, bullets, `Co-Authored-By` footer only.
-- Public documents: English by default with a Korean `.ko.md` twin, cross-linked (R67). Korean
-  documents for the user may be polished with humanize-korean; English ones are not.
+- After a rebase merge GitHub gives the commits new SHAs; records (spec, audit) name the master SHAs.
+- PR bodies carry the raw check log's path and the last lines of its output; the audit gets the PR and CI records
+  the PM collects into `.loctx/reports/<version>/`.
+- Public documents: English by default with a Korean `.ko.md` twin, cross-linked (R67). Korean documents for the
+  user may be polished with humanize-korean; English ones are not.
 - `CLAUDE.md` contains only `@AGENTS.md`.
-- Spec summaries wait for the maintainer's 진행 or 수정 every time; there is no standing auto-accept (maintainer, 2026-10-30: a one-time 2026-10-27 instruction had been recorded as standing). Intent approval, knowledge promotion and stable releases stay explicit.
+- Spec summaries wait for the maintainer's 진행 or 수정 every time; there is no standing auto-accept (maintainer,
+  2026-10-30). Intent approval, knowledge promotion and stable releases stay explicit.
+- Before a non-trivial decision, search `.agents/knowledge/` and `grep -l 'decisions:.*<keyword>' .loctx/history/*`.
+- The maintainer's own delegation is in `.loctx/delegation.local.md` (code review GPT-6.1 Sol, committee
+  Claude Fable and GPT-6 Astra, audit GPT-6 Astra in a fresh read-only run); follow it as the delegation block says.
 
 ## Language
 
-`AGENTS.md`, code, commits, `.agents/` sources: English. Documents the user reads (`intent/`, `.loctx/`, `docs/*.ko.md`): the project's user language.
+`AGENTS.md`, code, commits, `.agents/` sources: English. Documents the user reads (`intent/`, `.loctx/`,
+`docs/*.ko.md`): Korean. (The `language` block is not placed because this section exists; it says the same.)
 
 <!-- reins:begin layout v=0.3.0 -->
 ## Layout

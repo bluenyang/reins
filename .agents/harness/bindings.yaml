@@ -1,6 +1,6 @@
 # reins model assignment (design §5) — the user changes it with `reins config`; nothing reads it while you work
 schema: reins/bindings@2
-mode: single
+mode: multi
 audit:
   required: true
 default:
@@ -58,4 +58,10 @@ tools:
     use: true
   cursor:
     cli: cursor-agent
+    use: true
+  gemini:
+    cli: gemini
+    use: false
+  copilot:
+    cli: copilot
     use: true

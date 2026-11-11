@@ -57,7 +57,7 @@ describe('Claude Code generator (design §6)', () => {
     });
     const openai = renderDelegation(doc('openai', 'gpt-6-astra'));
     expect(openai).toContain(
-      '| auditor/auditor | openai gpt-6-astra | `openai exec -m gpt-6-astra -s read-only -` (task on stdin) |',
+      '| auditor/auditor | openai gpt-6-astra | `codex exec -m gpt-6-astra -s read-only -` (task on stdin) |',
     );
     expect(openai).not.toContain('workspace-write');
     expect(renderDelegation(doc('google', 'gemini-4-argon-high'))).toContain(

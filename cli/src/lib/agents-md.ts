@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseBlocks, type Block } from './blocks.js';
 import {
+  KNOWN_TOOLS,
   auditBinding,
   auditFallback,
   pmBinding,
@@ -50,6 +51,13 @@ export const WRITES: ReadonlySet<string> = new Set(['implementer', 'planner']);
 /** Where `config`, `install` and `update` write a person's own delegation table (spec 020 S-1). */
 export const LOCAL_DELEGATION = '.loctx/delegation.local.md';
 
+/**
+ * The command that runs a vendor's agent: what the settings record, else the CLI reins knows for that vendor
+ * (openai is `codex`, not `openai`), else the vendor's name.
+ */
+export const cliOf = (doc: BindingsV2, vendor: string): string =>
+  doc.tools?.[vendor]?.cli ?? KNOWN_TOOLS[vendor] ?? vendor;
+
 /** When the PM may use a role's fallback line (design §5): the call cannot be made, not a disliked answer. */
 export const FALLBACK_RULE =
   "When a role's call cannot be made (its CLI is missing, the model is refused or over its limit — not when you dislike the answer), use the role's `fallback` once, and say that you did and why in your report to the user and in the record of that step. Without a fallback, or when the fallback cannot be called either, stop and ask.";
@@ -61,7 +69,7 @@ function fallbackHow(doc: BindingsV2, r: ResolvedRole): string {
   const how =
     f.vendor === 'claude'
       ? `a general subagent on \`${f.model}\`, given the \`${r.role}\` section of \`.agents/harness/roles/${r.group}.md\``
-      : callLine(f, doc.tools?.[f.vendor]?.cli ?? f.vendor, WRITES.has(r.group));
+      : callLine(f, cliOf(doc, f.vendor), WRITES.has(r.group));
   return `; fallback: ${f.vendor} ${f.model} — ${how}`;
 }
 
@@ -95,7 +103,7 @@ export function renderDelegation(
       const agents = claudeAgents(r);
       let k = 0;
       for (const b of r.models) {
-        const cli = doc.tools?.[b.vendor]?.cli ?? b.vendor;
+        const cli = cliOf(doc, b.vendor);
         let how: string;
         if (b.vendor !== 'claude') how = callLine(b, cli, WRITES.has(r.group));
         else {

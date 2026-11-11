@@ -182,6 +182,10 @@ config
   .option('--set <pairs...>', 'default|<group>|<group>.<role>=<model> or =<vendor>:<model>')
   .option('--models <pairs...>', '<pl|advisor>=<model>,<model>,… (several models)')
   .option('--off <groups...>', 'switch groups off (the PM does their work)')
+  .option(
+    '--fallback <pairs...>',
+    '<group>|<group>.<role>=<model>|none — what to call when that model cannot be called',
+  )
   .option('--mode <mode>', 'single | multi')
   .option('--audit <state>', 'on | off — the per-version audit')
   .option('--tools <pairs...>', '<tool>=on|off')
@@ -194,6 +198,7 @@ config
       set?: string[];
       models?: string[];
       off?: string[];
+      fallback?: string[];
       mode?: string;
       audit?: string;
       tools?: string[];
@@ -214,6 +219,7 @@ config
         set: o.set,
         models: o.models,
         off: o.off,
+        fallback: o.fallback,
         mode: o.mode as 'single' | 'multi' | undefined,
         audit: o.audit as 'on' | 'off' | undefined,
         tools: o.tools,

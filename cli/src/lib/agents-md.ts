@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { parseBlocks, type Block } from './blocks.js';
 import {
   auditBinding,
+  auditFallback,
   pmBinding,
   resolveRoles,
   type Binding,
@@ -49,6 +50,21 @@ export const WRITES: ReadonlySet<string> = new Set(['implementer', 'planner']);
 /** Where `config`, `install` and `update` write a person's own delegation table (spec 020 S-1). */
 export const LOCAL_DELEGATION = '.loctx/delegation.local.md';
 
+/** When the PM may use a role's fallback line (design §5): the call cannot be made, not a disliked answer. */
+export const FALLBACK_RULE =
+  "When a role's call cannot be made (its CLI is missing, the model is refused or over its limit — not when you dislike the answer), use the role's `fallback` once, and say that you did and why in your report to the user and in the record of that step. Without a fallback, or when the fallback cannot be called either, stop and ask.";
+
+/** The fallback part of a role's "how to call" cell; empty when the role has none. */
+function fallbackHow(doc: BindingsV2, r: ResolvedRole): string {
+  const f = r.fallback;
+  if (!f) return '';
+  const how =
+    f.vendor === 'claude'
+      ? `a general subagent on \`${f.model}\`, given the \`${r.role}\` section of \`.agents/harness/roles/${r.group}.md\``
+      : callLine(f, doc.tools?.[f.vendor]?.cli ?? f.vendor, WRITES.has(r.group));
+  return `; fallback: ${f.vendor} ${f.model} — ${how}`;
+}
+
 /**
  * The `## Delegation` section for this bindings file. `local` renders a person's own table: no pointer to
  * itself, and a Claude role names its `rs-*` file only when the team generated that file with the same model.
@@ -89,18 +105,23 @@ export function renderDelegation(
               ? `subagent \`${name}\``
               : `a general subagent on \`${b.model}\`, given the \`${r.role}\` section of \`.agents/harness/roles/${r.group}.md\``;
         }
-        lines.push(`| ${r.group}/${r.role} | ${b.vendor} ${b.model} | ${how} |`);
+        lines.push(
+          `| ${r.group}/${r.role} | ${b.vendor} ${b.model} | ${how}${fallbackHow(doc, r)} |`,
+        );
       }
     }
     lines.push(
       '',
       'Routine review takes one reviewer; `pl/discussion` and `advisor/committee` (every listed model, without seeing each other) are for large decisions, audit remedies, incidents and unresolved disagreements.',
     );
+    // said only when some role has one, so a table without fallbacks reads exactly as before
+    if (resolveRoles(doc).some((x) => x.on && x.fallback)) lines.push('', FALLBACK_RULE);
   }
   const a = auditBinding(doc);
+  const af = auditFallback(doc);
   lines.push(
     '',
-    `Audit: ${doc.audit?.required === false ? '**switched off by the user**' : '**required every version**'}; run it on ${a.vendor} ${a.model} in a fresh run that gets only the records, never this conversation.`,
+    `Audit: ${doc.audit?.required === false ? '**switched off by the user**' : '**required every version**'}; run it on ${a.vendor} ${a.model}${af ? ` (fallback: ${af.vendor} ${af.model}, when that model cannot be called — say so in the audit report)` : ''} in a fresh run that gets only the records, never this conversation.`,
   );
   return lines.join('\n');
 }

@@ -6,6 +6,7 @@ import {
   GROUP_ROLES,
   GROUPS,
   effectiveBindings,
+  fallbackProblems,
   readLocalBindings,
   readTeam,
   resolveRoles,
@@ -34,6 +35,8 @@ export interface ConfigureBindingsOptions {
   models?: string[];
   /** switch these groups off (the PM does their work) */
   off?: string[];
+  /** `<group>=model`, `<group>.<role>=model`, or `=none` to clear — what to call when that model cannot be called */
+  fallback?: string[];
   mode?: 'single' | 'multi';
   /** `on` | `off` — whether the per-version audit is required */
   audit?: 'on' | 'off';
@@ -143,7 +146,9 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
       if (role) {
         if (!roles.includes(role))
           return refuse(`unknown role "${role}" in ${group} — roles: ${roles.join(', ') || group}`);
-        spec.roles = { ...spec.roles, [role]: b };
+        // a new model keeps the role's fallback; the check below refuses it when they are now the same
+        const kept = spec.roles?.[role]?.fallback;
+        spec.roles = { ...spec.roles, [role]: kept ? { ...b, fallback: kept } : b };
       } else {
         delete spec.models;
         spec.vendor = b.vendor;
@@ -184,6 +189,46 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
       changed.push(group);
     }
   }
+  // fallbacks last, so they are checked against the models this same call set
+  for (const pair of o.fallback ?? []) {
+    const eq = pair.indexOf('=');
+    const target = pair.slice(0, eq).trim();
+    const value = eq > 0 ? pair.slice(eq + 1).trim() : '';
+    const b = value === 'none' ? null : parseBinding(value);
+    if (!target || (!b && value !== 'none')) return refuse(`"${pair}" is not target=model|none`);
+    const [g, role] = target.split('.');
+    const group = groupOf(g ?? '');
+    if (!group) return refuse(`unknown group "${g}" — groups: ${GROUPS.join(', ')}`);
+    const where = o.local ? 'your personal file' : 'bindings.yaml';
+    next.groups = { ...next.groups };
+    const spec = { ...next.groups[group] };
+    if (role) {
+      if (!GROUP_ROLES[group].includes(role))
+        return refuse(
+          `unknown role "${role}" in ${group} — roles: ${GROUP_ROLES[group].join(', ') || group}`,
+        );
+      const own = spec.roles?.[role];
+      if (!own)
+        return b
+          ? refuse(
+              `${group}.${role} has no model of its own in ${where} — set it with --set ${group}.${role}=<model>, or give the group a fallback`,
+            )
+          : refuse(`${group}.${role} has no fallback to clear in ${where}`);
+      const { fallback: _old, ...rest } = own;
+      spec.roles = { ...spec.roles, [role]: b ? { ...rest, fallback: b } : rest };
+    } else {
+      if (b && !spec.vendor && !spec.models?.length)
+        return refuse(
+          `${group} has no model in ${where} — set it with --set ${group}=<model> first (a fallback goes with the model beside it)`,
+        );
+      if (b) spec.fallback = b;
+      else delete spec.fallback;
+    }
+    next.groups[group] = spec;
+    changed.push(`${target} fallback`);
+  }
+  const wrong = fallbackProblems(next);
+  if (wrong.length) return refuse(wrong.join('; '));
   if (o.mode && next.mode !== o.mode) {
     next.mode = o.mode;
     changed.push('mode');

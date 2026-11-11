@@ -177,6 +177,17 @@ describe('stage skills (019 S-9, design §3-1)', () => {
       expect(design(f)).toContain('worktree: clean|dirty');
     }
   });
+  it('the design describes fallback models in both editions (021 S-20)', () => {
+    const design = (f: string) => readFileSync(join(process.cwd(), 'docs', f), 'utf8');
+    for (const f of ['design.md', 'design.ko.md']) {
+      const t = design(f);
+      expect(t).toContain('`; fallback: <vendor> <model> — <');
+      expect(t).toContain('config bindings --fallback <');
+      // `fallback` is no longer on the list of keys that are gone
+      expect(t).not.toMatch(/`escalation`, `limits`, `parallel`, `fallback`/);
+      expect(t).toContain('fallback: { vendor: openai, model: gpt-6.1-terra }');
+    }
+  });
   it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
     const t = read(n);
     expect(t.slice(t.indexOf('## 3. Delegation')).split('\n')[1]).toMatch(

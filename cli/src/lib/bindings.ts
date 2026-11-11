@@ -15,12 +15,23 @@ export interface Binding {
 
 export type Group = 'pl' | 'planner' | 'implementer' | 'executor' | 'advisor' | 'auditor';
 
+/** A role's own model, and the one to use when that model cannot be called (design §5). */
+export interface RoleBinding extends Binding {
+  fallback?: Binding;
+}
+
 export interface GroupSpec {
   vendor?: string;
   model?: string;
   /** pl and advisor only: several models. */
   models?: Binding[];
-  roles?: Record<string, Binding>;
+  roles?: Record<string, RoleBinding>;
+  /**
+   * The model to use when the group's model cannot be called. It goes with the group's model: a role with
+   * a model of its own has its own fallback or none. reins resolves nothing at run time — `config` writes
+   * the fallback's call line into the delegation table and the PM follows it.
+   */
+  fallback?: Binding;
 }
 
 export interface BindingsV2 {
@@ -73,6 +84,8 @@ export interface ResolvedRole {
   /** One model, or several for discussion and the committee; empty when off. */
   models: Binding[];
   source: 'role' | 'group' | 'off';
+  /** What to call when those cannot be called; it comes from where the models came from. */
+  fallback?: Binding;
 }
 
 const pair = (b: Binding): Binding => ({ vendor: b.vendor, model: b.model });
@@ -102,14 +115,28 @@ export function resolveRoles(doc: BindingsV2): ResolvedRole[] {
         continue;
       }
       if (own) {
-        out.push({ group, role, on: true, models: [pair(own)], source: 'role' });
+        out.push({
+          group,
+          role,
+          on: true,
+          models: [pair(own)],
+          source: 'role',
+          ...(own.fallback ? { fallback: pair(own.fallback) } : {}),
+        });
         continue;
       }
       let picked: Binding[];
       if (ALL_MODELS.has(`${group}/${role}`)) picked = models;
       else if (group === 'pl' && PL_REVIEWERS.has(role)) picked = [models[1] ?? models[0]!];
       else picked = [models[0]!];
-      out.push({ group, role, on: true, models: picked, source: 'group' });
+      out.push({
+        group,
+        role,
+        on: true,
+        models: picked,
+        source: 'group',
+        ...(spec?.fallback ? { fallback: pair(spec.fallback) } : {}),
+      });
     }
   }
   return out;
@@ -127,6 +154,39 @@ export function auditBinding(doc: BindingsV2): Binding {
   if (own) return pair(own);
   const ms = a ? groupModels(a) : [];
   return ms[0] ?? pmBinding(doc);
+}
+
+/** The fallback of the model `auditBinding` names, if the file gives one. */
+export function auditFallback(doc: BindingsV2): Binding | undefined {
+  const a = doc.groups?.auditor;
+  const own = a?.roles?.auditor;
+  if (own) return own.fallback ? pair(own.fallback) : undefined;
+  return a && groupModels(a).length && a.fallback ? pair(a.fallback) : undefined;
+}
+
+const same = (a: Binding, b: Binding): boolean => a.vendor === b.vendor && a.model === b.model;
+
+/**
+ * What is wrong with the fallbacks of one file (team or personal), judged on that file alone: a fallback
+ * needs a model beside it in the same place, and must be another model. A group with a fallback and no
+ * model would switch the group off for that person (`mergeLocal` replaces a group as a whole).
+ */
+export function fallbackProblems(doc: Partial<BindingsV2>): string[] {
+  const out: string[] = [];
+  for (const [g, spec] of Object.entries(doc.groups ?? {})) {
+    if (!spec) continue;
+    const models = groupModels(spec);
+    if (spec.fallback) {
+      if (models.length === 0)
+        out.push(`${g}: a fallback needs the group's model in the same file — set the model first`);
+      else if (models.some((m) => same(m, spec.fallback!)))
+        out.push(`${g}: the fallback is the group's own model (${spec.fallback.model})`);
+    }
+    for (const [r, b] of Object.entries(spec.roles ?? {}))
+      if (b.fallback && same(b, b.fallback))
+        out.push(`${g}.${r}: the fallback is the role's own model (${b.model})`);
+  }
+  return out;
 }
 
 /** Whether the per-version audit is mandatory (design §3-3): true unless the file says false. */
@@ -177,7 +237,7 @@ const DROPPED_V1_KEYS = ['escalation', 'limits'] as const;
 
 /**
  * A version-1 `bindings.yaml` (`roles.<r>: {vendor, model, enabled, fallback, parallel}`, `vendors`)
- * as version 2. The result is single mode; the converted groups take effect once the user switches to
+ * as version 2. A role's `fallback` moves with its model; `parallel` has no place. The result is single mode; the converted groups take effect once the user switches to
  * multi with `config`. `notes` says what moved and what was dropped, for the user to confirm.
  */
 export function convertV1(v1: Record<string, unknown>): { doc: BindingsV2; notes: string[] } {
@@ -190,6 +250,19 @@ export function convertV1(v1: Record<string, unknown>): { doc: BindingsV2; notes
     isObj(v) && typeof v['vendor'] === 'string' && typeof v['model'] === 'string'
       ? { vendor: v['vendor'], model: v['model'] }
       : null;
+  // a version-1 fallback: `{vendor, model}`, or a model id alone (its vendor read from the id)
+  const fallbackOf = (v: unknown): Binding | null => {
+    if (typeof v !== 'string' || !v.trim()) return bindingOf(v);
+    const m = v.trim();
+    const vendor = m.startsWith('gpt')
+      ? 'openai'
+      : m.startsWith('gemini')
+        ? 'google'
+        : m.startsWith('cursor-')
+          ? 'cursor'
+          : 'claude';
+    return { vendor, model: m };
+  };
   const pm = bindingOf(roles['pm']);
   if (pm) doc.default = pm;
   for (const [name, raw] of Object.entries(roles)) {
@@ -207,17 +280,31 @@ export function convertV1(v1: Record<string, unknown>): { doc: BindingsV2; notes
     if (!b) continue;
     doc.groups ??= {};
     const spec = (doc.groups[target.group] ??= {});
+    // the fallback moves with the model it belongs to (design §5); it is dropped when that model did not
+    // become the group's, when it cannot be read, or when it is the model itself
+    const fb = isObj(raw) && 'fallback' in raw ? fallbackOf(raw['fallback']) : null;
+    const usable = fb && !(fb.vendor === b.vendor && fb.model === b.model) ? fb : null;
+    let carried = false;
     if (target.role) {
       spec.roles ??= {};
-      spec.roles[target.role] = b;
+      spec.roles[target.role] = usable ? { ...b, fallback: usable } : b;
+      carried = !!usable;
     } else if (!spec.vendor) {
       spec.vendor = b.vendor;
       spec.model = b.model;
+      if (usable) spec.fallback = usable;
+      carried = !!usable;
     }
     const where = target.role ? `${target.group}.${target.role}` : target.group;
     notes.push(`role ${name} → ${where} (${b.vendor} ${b.model})`);
-    for (const k of ['fallback', 'parallel'] as const)
-      if (isObj(raw) && k in raw) notes.push(`role ${name}: ${k} dropped (no run-time keys)`);
+    if (isObj(raw) && 'fallback' in raw)
+      notes.push(
+        carried
+          ? `role ${name}: fallback → ${where} (${usable!.vendor} ${usable!.model})`
+          : `role ${name}: fallback dropped (${fb ? (usable ? 'its model is not the one kept' : 'same as the model') : 'not a model'})`,
+      );
+    if (isObj(raw) && 'parallel' in raw)
+      notes.push(`role ${name}: parallel dropped (no run-time keys)`);
   }
   if (isObj(v1['vendors'])) {
     doc.tools = {};

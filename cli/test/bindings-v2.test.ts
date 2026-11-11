@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { localDelegation, renderDelegation, FALLBACK_RULE } from '../src/lib/agents-md.js';
 import {
   auditBinding,
+  auditFallback,
   auditRequired,
   convertV1,
+  fallbackProblems,
   mergeLocal,
   pmBinding,
   resolveRoles,
@@ -133,7 +136,12 @@ describe('version 1 → 2 (019 S-15, design §7)', () => {
     expect(doc.mode).toBe('single');
     expect(doc.default).toEqual({ vendor: 'claude', model: 'claude-opus-5-5' });
     expect(doc.groups?.pl).toMatchObject({ vendor: 'openai', model: 'gpt-6.1-sol' });
-    expect(doc.groups?.pl?.roles?.['code-reviewer']).toEqual(sol);
+    // a fallback moves with the model it belonged to (021 S-19)
+    expect(doc.groups?.pl?.roles?.['code-reviewer']).toEqual({
+      ...sol,
+      fallback: { vendor: 'claude', model: 'x' },
+    });
+    expect(notes).toContain('role code-review: fallback → pl.code-reviewer (claude x)');
     expect(doc.groups?.planner?.roles?.['qa-designer']?.vendor).toBe('google');
     expect(doc.groups?.executor).toBeUndefined();
     expect(doc.tools).toEqual({
@@ -144,5 +152,162 @@ describe('version 1 → 2 (019 S-15, design §7)', () => {
     expect(notes).toContain('escalation: dropped (no run-time keys)');
     expect(notes.some((n) => n.includes('parallel dropped'))).toBe(true);
     expect(notes.some((n) => n.startsWith('mode: single'))).toBe(true);
+  });
+});
+
+describe('fallback models (021 S-16, S-17, S-19)', () => {
+  const astra = { vendor: 'openai', model: 'gpt-6-astra' };
+  const base: BindingsV2 = { schema: 'reins/bindings@2', mode: 'multi' };
+  const withGroups = (groups: BindingsV2['groups']): BindingsV2 => ({ ...base, groups });
+
+  it('(a) the schema takes one on a group and on a role, and nowhere else', () => {
+    expect(
+      validateBindings(
+        withGroups({
+          implementer: { ...sonnet, fallback: terra, roles: { doc: { ...sonnet, fallback: sol } } },
+          pl: { models: [sonnet, terra], fallback: fable },
+        }),
+      ),
+    ).toEqual([]);
+    const bad = (doc: unknown) => validateBindings(doc).length > 0;
+    expect(bad({ ...base, default: { ...fable, fallback: sonnet } })).toBe(true);
+    expect(
+      bad(
+        withGroups({ implementer: { ...sonnet, fallback: { ...terra, fallback: sol } } } as never),
+      ),
+    ).toBe(true);
+    expect(bad(withGroups({ pl: { models: [{ ...sonnet, fallback: terra }] } } as never))).toBe(
+      true,
+    );
+    expect(
+      bad(withGroups({ implementer: { ...sonnet, fallback: 'gpt-6.1-terra' } } as never)),
+    ).toBe(true);
+  });
+
+  it("(b) a fallback goes with the model: the group's for roles on the group model, its own for a role with one", () => {
+    const doc = withGroups({
+      implementer: {
+        ...sonnet,
+        fallback: terra,
+        roles: { doc: { ...sonnet, fallback: sol }, qa: fable },
+      },
+      executor: { ...sonnet },
+      pl: { models: [sonnet, terra], fallback: fable },
+    });
+    expect(pick(doc, 'implementer', 'code').fallback).toEqual(terra); // the group's
+    expect(pick(doc, 'implementer', 'doc').fallback).toEqual(sol); // its own
+    expect(pick(doc, 'implementer', 'qa').fallback).toBeUndefined(); // own model, no fallback: none
+    expect(pick(doc, 'executor', 'researcher').fallback).toBeUndefined();
+    expect(pick(doc, 'pl', 'discussion').fallback).toEqual(fable); // several models, one fallback
+    // single mode: nothing is on, so nothing has one
+    expect(resolveRoles({ ...doc, mode: 'single' }).some((r) => r.fallback)).toBe(false);
+  });
+
+  it('a fallback needs a model beside it in the same file and must be another model', () => {
+    expect(fallbackProblems(withGroups({ implementer: { ...sonnet, fallback: terra } }))).toEqual(
+      [],
+    );
+    expect(fallbackProblems({ groups: { implementer: { fallback: terra } } })[0]).toMatch(
+      /^implementer: a fallback needs the group's model in the same file/,
+    );
+    expect(
+      fallbackProblems(withGroups({ implementer: { ...sonnet, fallback: sonnet } }))[0],
+    ).toMatch(/the fallback is the group's own model/);
+    expect(
+      fallbackProblems(withGroups({ pl: { models: [sonnet, terra], fallback: terra } }))[0],
+    ).toMatch(/the fallback is the group's own model/);
+    expect(
+      fallbackProblems(
+        withGroups({ pl: { ...sonnet, roles: { control: { ...sol, fallback: sol } } } }),
+      )[0],
+    ).toMatch(/^pl\.control: the fallback is the role's own model/);
+    // a personal file that sets only a fallback would switch the group off for that person
+    const merged = mergeLocal(withGroups({ implementer: sonnet }), {
+      groups: { implementer: { fallback: terra } },
+    });
+    expect(pick(merged, 'implementer', 'code').on).toBe(false);
+  });
+
+  it('(c) the table cell names the fallback and how to call it: another vendor, Claude, a writing group', () => {
+    const doc: BindingsV2 = {
+      ...withGroups({
+        pl: { ...sonnet, roles: { 'code-reviewer': { ...sol, fallback: terra } } },
+        implementer: { ...sonnet, fallback: terra },
+        executor: { ...terra, fallback: sonnet },
+      }),
+      tools: { openai: { cli: 'codex' } },
+    };
+    const t = renderDelegation(doc);
+    // a reviewer stays read-only on its fallback too
+    expect(t).toContain(
+      '| pl/code-reviewer | openai gpt-6.1-sol | `codex exec -m gpt-6.1-sol -s read-only -` (task on stdin); fallback: openai gpt-6.1-terra — `codex exec -m gpt-6.1-terra -s read-only -` (task on stdin) |',
+    );
+    // a writing group writes on its fallback too
+    expect(t).toContain(
+      '| implementer/code | claude claude-sonnet-5-5 | subagent `rs-implementer-code`; fallback: openai gpt-6.1-terra — `codex exec -m gpt-6.1-terra -s workspace-write -` (task on stdin) |',
+    );
+    // a Claude fallback has no agent file of its own
+    expect(t).toContain(
+      '; fallback: claude claude-sonnet-5-5 — a general subagent on `claude-sonnet-5-5`, given the `researcher` section of `.agents/harness/roles/executor.md` |',
+    );
+    // a role without one has nothing after its call
+    expect(t).toContain('| pl/control | claude claude-sonnet-5-5 | subagent `rs-pl-control` |');
+    expect(t).toContain(FALLBACK_RULE);
+    expect(FALLBACK_RULE).toContain('cannot be made');
+    expect(FALLBACK_RULE).toContain('say that you did and why');
+    expect(FALLBACK_RULE).toContain('stop and ask');
+    // a person's own table is drawn the same way
+    expect(localDelegation(base, doc)).toContain('; fallback: openai gpt-6.1-terra — ');
+  });
+
+  it('(d, l) without a fallback the section is what 0.3.0 wrote, to the letter', () => {
+    const doc: BindingsV2 = {
+      ...withGroups({ pl: { ...sonnet, roles: { 'code-reviewer': sol } }, auditor: astra }),
+      tools: { openai: { cli: 'codex' } },
+    };
+    const t = renderDelegation(doc);
+    expect(t).not.toContain('fallback');
+    expect(t.split('\n').slice(-3)).toEqual([
+      'Routine review takes one reviewer; `pl/discussion` and `advisor/committee` (every listed model, without seeing each other) are for large decisions, audit remedies, incidents and unresolved disagreements.',
+      '',
+      'Audit: **required every version**; run it on openai gpt-6-astra in a fresh run that gets only the records, never this conversation.',
+    ]);
+  });
+
+  it("(k) the audit line names the auditor's fallback, in single mode too", () => {
+    for (const mode of ['single', 'multi'] as const) {
+      const doc: BindingsV2 = { ...base, mode, groups: { auditor: { ...astra, fallback: fable } } };
+      expect(auditFallback(doc)).toEqual(fable);
+      expect(renderDelegation(doc)).toContain(
+        'run it on openai gpt-6-astra (fallback: claude claude-fable-5-1, when that model cannot be called — say so in the audit report) in a fresh run',
+      );
+    }
+    expect(auditFallback(withGroups({ auditor: astra }))).toBeUndefined();
+    expect(auditFallback(base)).toBeUndefined();
+  });
+
+  it('(g) a version-1 fallback moves with its model; one that cannot be read, or is the model, is dropped and said', () => {
+    const { doc, notes } = convertV1({
+      schema: 'reins/bindings@1',
+      roles: {
+        pm: { vendor: 'claude', model: 'claude-opus-5-5' },
+        implementer: { ...sonnet, fallback: { vendor: 'openai', model: 'gpt-6.1-terra' } },
+        docs: { ...sonnet, fallback: 'gpt-6.1-sol' },
+        'code-review': { ...sol, fallback: 7 },
+        deploy: { ...sonnet, fallback: 'claude-sonnet-5-5' },
+        planner: { ...fable, fallback: {} },
+      },
+    });
+    expect(validateBindings(doc)).toEqual([]);
+    expect(fallbackProblems(doc)).toEqual([]);
+    expect(doc.groups?.implementer).toMatchObject({ ...sonnet, fallback: terra });
+    expect(doc.groups?.implementer?.roles?.['doc']).toEqual({ ...sonnet, fallback: sol });
+    expect(doc.groups?.pl?.roles?.['code-reviewer']).toEqual(sol);
+    expect(doc.groups?.executor?.roles?.['deployer']).toEqual(sonnet);
+    expect(notes).toContain('role implementer: fallback → implementer (openai gpt-6.1-terra)');
+    expect(notes).toContain('role docs: fallback → implementer.doc (openai gpt-6.1-sol)');
+    expect(notes).toContain('role code-review: fallback dropped (not a model)');
+    expect(notes).toContain('role deploy: fallback dropped (same as the model)');
+    expect(notes).toContain('role planner: fallback dropped (not a model)');
   });
 });

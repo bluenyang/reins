@@ -48,7 +48,7 @@ reins 자체를 개발하려면 `git clone https://github.com/bluenyang/reins.gi
 | `install` | 하네스를 배치하고, 에이전트 도구를 감지하고, 게이트를 확인하고, 검사 스크립트 `.agents/harness/run-gates.sh`(프로젝트 게이트 명령을 돌리고 출력을 감사용으로 남김)를 쓰고 그것을 부르는 훅 한 줄을 제안하고(`--hooks`면 husky에 넣음), 온보딩 표시를 남깁니다. `--mode manual\|auto`, `--dry-run`, `--json` |
 | `migrate` | 이전 하네스나 `.ai/` 작업 공간을 이 배치로 옮기고, 이전 `AGENTS.md`는 PM이 합치도록 따로 둡니다. `--legacy local\|committed`, `--dry-run` |
 | `update` | 패키지의 하네스를 다시 적용합니다. 손으로 고친 생성 파일은 덮어쓰기 전에 묻고(`--force`), 0.1.x·0.2.0 설치를 0.3으로 옮기며 옛 작업 파일을 보여 줍니다(`--yes`면 지움) |
-| `config` | 터미널에서 화면: 모델과 역할, 에이전트 도구, 모드(single·multi), 감사. `config bindings`·`config gates`는 플래그로(`configure`는 별칭) |
+| `config` | 터미널에서 화면: 모델과 역할, 에이전트 도구, 모드(single·multi), 감사. `config bindings`·`config gates`는 플래그로(`configure`는 별칭). 군이나 역할에 대체 모델을 적을 수 있습니다(`config bindings --fallback <군>[.<역할>]=<model>`). 첫 모델을 부를 수 없을 때 쓰도록 대체 실행 줄이 위임 표에 들어갑니다 |
 
 ## 스킬
 

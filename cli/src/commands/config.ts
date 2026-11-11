@@ -20,7 +20,7 @@ export interface ConfigOptions {
 }
 
 export const CONFIG_HINT =
-  'change with: reins config bindings --set <default|group|group.role>=<model> [--local]  (see: reins config bindings --help)';
+  'change with: reins config bindings --set <default|group|group.role>=<model> [--fallback <group|group.role>=<model|none>] [--local]  (see: reins config bindings --help)';
 
 /** The effective settings as text: mode, audit, the PM, each role that is on. */
 export function formatBindings(doc: BindingsV2): string {
@@ -44,7 +44,7 @@ export function formatBindings(doc: BindingsV2): string {
   }
   for (const r of on)
     lines.push(
-      `  ${`${r.group}/${r.role}`.padEnd(26)} ${r.models.map((b) => `${b.vendor} ${b.model}`).join(', ')} (${r.source})`,
+      `  ${`${r.group}/${r.role}`.padEnd(26)} ${r.models.map((b) => `${b.vendor} ${b.model}`).join(', ')} (${r.source})${r.fallback ? ` — fallback: ${r.fallback.vendor} ${r.fallback.model}` : ''}`,
     );
   const tools = Object.entries(doc.tools ?? {})
     .map(([n, t]) => `${n}${t?.use === false ? ' (unused)' : ''}`)

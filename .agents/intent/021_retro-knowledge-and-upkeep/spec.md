@@ -5,6 +5,7 @@ approvals:
   - { role: user, by: BlueNyang, at: 2026-11-11, words: "진행", rev: 6713615, kind: summary }
   - { role: user, by: BlueNyang, at: 2026-11-11, words: "ㅇㅇ", rev: 6713615, kind: change, scope: "S-10 rewritten commits: no rebase -x; the PM fills missing logs before the audit (on the proposal shown in chat)" }
   - { role: user, by: BlueNyang, at: 2026-11-11, words: "그렇게 해라", rev: 6713615, kind: change, scope: "W-10 e2e test fix, committed first (on the proposal shown in chat)" }
+  - { role: user, by: BlueNyang, at: 2026-11-11, words: "CLI 이름 fix 제안: 넣어.", rev: dacf3b3, kind: change, scope: "W-11 default CLI name in call lines (on the proposal shown in chat)" }
 summary_for_user: |
   작업 단위 아홉: W-1 retro 스킬이 반복된 결정·실패를 knowledge 후보로 제안 · W-2 `.claude/settings.json`은 reins가 만든 deny 규칙만 고치고 나머지는 보존(`--force`로도) · W-3 감사자 읽기 전용, 감사자가 돌려준 기록 전문을 PM이 고치지 않고 씀 · W-4 `.agents/harness/run-gates.sh`가 검사를 돌리고 `.loctx/reports/gates/<트리 해시>.log`에 남김, 훅 줄은 어느 도구든 한 줄 · W-5 모델 목록 · W-6 `AGENTS.previous.md` 머리 경고(update의 0.2.0 이하 이전만) · W-7 대체 모델(군·상세 역할에 하나, 위임 표 칸에 대체 실행 줄, `config bindings --fallback`과 화면) · W-9 `config gates --refresh [--apply]`와 화면의 gates 항목 · W-8 이 저장소 훅 전환(stable 뒤).
   intent와 다르게 옮긴 곳: 검사 스크립트는 실행 중에 gates.yaml을 읽지 않고 reins가 쓸 때 명령을 넣어 둔다(S-9). 대체가 없는 설정의 위임 표는 0.3.0과 글자까지 같다(S-17).
@@ -61,6 +62,9 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 ### e2e 테스트 수정 (W-10, 준비 중 발견한 안정화)
 - S-27 `test/e2e/harness-only.test.ts`의 "reins가 PATH에 없어도 설치된 훅으로 커밋된다" 테스트는 좁힌 PATH에 node가 있는 폴더를 통째로 넣는다. 그 폴더에 전역 설치한 reins가 있으면(nvm 등, AGENTS.md가 안내하는 설치 방법) "reins가 없다"는 전제가 깨져 실패한다. 빈 임시 폴더에 node와 npm만 연결해 PATH에 넣는다. 제품 코드는 바뀌지 않는다. 2026-11-11 승인 기록을 커밋하다 훅에서 발견했고, 훅을 건너뛰지 않으려면 이 수정이 먼저 커밋되어야 해서 이 spec 변경의 커밋보다 앞선다(사용자 "그렇게 해라"). ← 사용자 2026-11-11
 
+### 실행 줄의 기본 명령 이름 (W-11, 리뷰에서 나온 안정화)
+- S-28 위임 표(팀·개인)의 다른 벤더 실행 줄은 그 벤더의 CLI를 `tools.<vendor>.cli`에서 읽고, 없으면 벤더 이름을 그대로 명령으로 써 왔다(`openai exec …` — 실제 명령은 `codex`). 0.3.0부터 그랬고 W-7 리뷰(지적 3)에서 드러났다. 적혀 있지 않으면 reins가 아는 기본 명령(`KNOWN_TOOLS`: openai → `codex`, google → `agy`, cursor → `cursor-agent` …)을 쓰고, 그것도 없는 벤더만 이름을 그대로 쓴다. 대체 줄(S-17)도 같다. `tools`에 CLI가 적힌 설정(install·`--detect`가 적는다)의 표는 바뀌지 않는다. S-17의 "대체가 없는 설정의 위임 절은 0.3.0과 글자까지 같다"는 CLI가 적힌 설정에 대한 말로 좁힌다. ← 사용자 2026-11-11 "CLI 이름 fix 제안: 넣어."
+
 ### 문서
 - S-21 설계서 양판은 각 단위의 커밋에 함께 넣는다. `harness/CHANGELOG.md`의 0.3.1 절에 단위마다 한 줄. README 양판은 해당 문장이 있으면 그 단위에서 고친다. ← "설계서 양판, README 양판, `harness/CHANGELOG.md`가 바뀐 동작과 맞는다"
 
@@ -83,6 +87,7 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - [x] W-6 (c39ee6e) previous 머리 경고(S-15): `cli/src/commands/update.ts`, 설계서 양판 §5 재구성 표시 문장, 테스트.
 - [x] W-7 (3a0a453; 리뷰 수정 d8804f7) 대체 모델(S-16~S-20): `bindings.ts`, `bindings.schema.json`, `agents-md.ts`, `configure.ts`, `config-models.ts`, `harness/templates/agents-md-blocks.md`(해당되면), 설계서 양판 §5·§9, README 양판, 테스트.
 - [x] W-9 (c9ae5af; 리뷰 수정 27b15c2) 검사 다시 찾기(S-22~S-26): `configure.ts`(gates), `config.ts`(화면), `reins.ts`, 설계서 양판 §9, README 양판, 테스트. W-4 다음에 한다(스크립트를 다시 만드는 함수를 쓴다); 구현 순서는 W-1~W-7, W-9이고 W-8은 릴리스 뒤다.
+- [ ] W-11 실행 줄의 기본 명령 이름(S-28): `cli/src/lib/agents-md.ts`, 테스트, 설계서 양판 §6(실행 줄 문장), `harness/CHANGELOG.md`. W-9 뒤에 한다.
 - [x] W-10 (c3c1b97) e2e 테스트 수정(S-27): `test/e2e/harness-only.test.ts`.
 - [ ] W-8 이 저장소의 훅(S-13): 0.3.1 stable 뒤, 자기 업데이트(`reins update`, 별도 커밋) 다음에 `.husky/pre-commit`·`pre-push`를 바꾼다. 릴리스 뒤 단위라 0.3.1 감사 범위 밖이고, 0.3.1 회고에서 V-11로 확인한다(사용자 2026-11-11 "그렇게 해").
 
@@ -100,6 +105,7 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - V-8 전체: `pnpm check > .loctx/reports/0.3.1/check.log 2>&1` 종료 0, `pnpm build` 종료 0. 설계서 양판의 고친 절이 같은 내용이다(doc-reviewer 또는 PM 대조, 대조 표를 같은 폴더에). 생성물 불변식(reins 호출 없음) e2e 통과.
 - V-11 (W-8, stable 뒤) 자기 업데이트 뒤 이 저장소에서 커밋 하나 → `.loctx/reports/gates/<그 커밋의 트리>.log`에 `worktree: clean`, `exit: 0`; `git commit -a`로 한 번 더. 0.3.1 회고 기록에 경로를 적는다.
 - V-12 (W-10) node 폴더에 전역 reins가 있는 이 기계에서 `pnpm check` 종료 0(`.loctx/reports/0.3.1/w10-check.log`; 고치기 전 실패는 `e2e-harness-only-rerun.log`). CI(전역 reins 없음)에서도 그 테스트가 통과한다.
+- V-13 (W-11) 테스트: `tools`가 없는 설정에서 openai·google·cursor 역할의 실행 줄과 대체 줄이 `codex`·`agy`·`cursor-agent`로 시작한다; `tools.<vendor>.cli`가 적혀 있으면 그 값을 쓴다; 모르는 벤더는 이름 그대로. `pnpm check` 종료 0.
 - V-9 rc 뒤(릴리스 단계): `.loctx/context/scripts/smoke-published.sh`를 npm의 0.3.1-rc.N으로 돌려 0 실패, 그리고 0.3.0 설치 → 0.3.1 `update` 한 번으로 V-2(b), V-4(i)가 실제로 성립함을 임시 저장소에서 확인.
 
 ## 우려

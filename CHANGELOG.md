@@ -11,7 +11,7 @@ has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md).
 
 ## [0.3.1] — unreleased
 
-rc.1: 2026-11-11 (intent 021). Follow-ups from the 0.3 retro and from the reviews and the audit of this version.
+rc.1: 2026-11-11 (intent 021). Follow-ups from the 0.3 retro and from the reviews and the audit of this version. rc.2 (2026-11-11): `update` prints what a hooks block held when it rewrites it, the hook line to add where it adds none, and a generated file it left alone — the report of rc.1 did not show them (found while checking the published rc.1).
 
 ### Added
 - `.agents/harness/run-gates.sh`: one script, written from `gates.yaml`, that runs the project's required

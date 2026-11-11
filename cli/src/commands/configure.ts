@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { isScalar, isSeq, parse, parseDocument } from 'yaml';
+import { isScalar, isSeq, parse, parseDocument, type Document } from 'yaml';
 import {
   discoverGates,
   subdirProposals,
@@ -345,6 +345,19 @@ export function fileGates(text: string): FileGate[] {
     }));
 }
 
+/**
+ * Put a gate that was just added to `gates` at the end of `order`. A file without `order` runs its gates
+ * in the order they are written, so the list starts from those — never from the new gate alone.
+ */
+function appendOrder(doc: Document, name: string): void {
+  if (isSeq(doc.get('order'))) {
+    doc.addIn(['order'], name);
+    return;
+  }
+  const gates = (doc.toJS() as { gates?: Record<string, unknown> } | null)?.gates ?? {};
+  doc.set('order', doc.createNode([...Object.keys(gates).filter((n) => n !== name), name]));
+}
+
 /** How gates.yaml differs from what the discovery of installation finds now (design §9). */
 export function gateDiff(root: string): GateDiff[] | null {
   const path = join(root, GATES);
@@ -375,8 +388,10 @@ export function configureGates(o: ConfigureGatesOptions = {}): ConfigureGatesRes
   if (o.refresh || o.apply) {
     const diff = gateDiff(root) ?? [];
     const can = applicable(diff);
-    const names = o.apply?.includes('all') ? can.map((d) => d.name) : [...new Set(o.apply ?? [])];
-    const unknown = names.filter((n) => !can.some((d) => d.name === n));
+    // every name is checked, `all` beside others too: one unknown name refuses the whole call
+    const asked = [...new Set(o.apply ?? [])];
+    const unknown = asked.filter((n) => n !== 'all' && !can.some((d) => d.name === n));
+    const names = asked.includes('all') ? can.map((d) => d.name) : asked;
     if (unknown.length)
       return {
         refused: `nothing to apply under: ${unknown.join(', ')} — names: ${can.map((d) => d.name).join(', ') || 'none'}`,
@@ -390,11 +405,13 @@ export function configureGates(o: ConfigureGatesOptions = {}): ConfigureGatesRes
       const d = can.find((x) => x.name === n)!;
       if (d.kind === 'gone') {
         doc.deleteIn(['gates', d.name]);
+        // every occurrence: a name left in `order` without its gate would dangle
         const order = doc.get('order');
-        if (isSeq(order)) {
-          const i = order.items.findIndex((x) => (isScalar(x) ? x.value : x) === d.name);
-          if (i >= 0) order.delete(i);
-        }
+        if (isSeq(order))
+          for (let i = order.items.length - 1; i >= 0; i--) {
+            const x = order.items[i];
+            if ((isScalar(x) ? x.value : x) === d.name) order.delete(i);
+          }
       } else if (d.kind === 'changed') {
         doc.setIn(['gates', d.name, 'cmd'], d.cmd);
         doc.setIn(['gates', d.name, 'from'], d.from);
@@ -403,8 +420,7 @@ export function configureGates(o: ConfigureGatesOptions = {}): ConfigureGatesRes
           ['gates', d.name],
           doc.createNode({ cmd: d.cmd, from: d.from, ...(d.optional ? { optional: true } : {}) }),
         );
-        if (doc.has('order')) doc.addIn(['order'], d.name);
-        else doc.set('order', doc.createNode([d.name]));
+        appendOrder(doc, d.name);
       }
     }
     if (names.length) {
@@ -431,8 +447,7 @@ export function configureGates(o: ConfigureGatesOptions = {}): ConfigureGatesRes
   for (const n of new Set(names)) {
     const g = available.find((x) => x.name === n)!;
     doc.setIn(['gates', g.name], doc.createNode({ cmd: g.cmd, from: g.from }));
-    if (doc.has('order')) doc.addIn(['order'], g.name);
-    else doc.set('order', doc.createNode([g.name]));
+    appendOrder(doc, g.name);
     added.push(g.name);
   }
   if (added.length) {

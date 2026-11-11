@@ -209,6 +209,41 @@ describe('reins config gates --refresh (021 S-22..S-24)', () => {
     }
   });
 
+  it('(review) an unknown name beside `all` refuses the call too', async () => {
+    const d = await drifted();
+    const before = [read(d, GATES), read(d, SCRIPT)];
+    const r = configureGates({ cwd: d, refresh: true, apply: ['all', 'nope'] });
+    expect(r.code).toBe(1);
+    expect(r.refused).toMatch(/^nothing to apply under: nope/);
+    expect([read(d, GATES), read(d, SCRIPT)]).toEqual(before);
+  });
+
+  it('(review) a file without `order` gets one that starts from the gates it has', async () => {
+    for (const how of ['refresh', 'add'] as const) {
+      const d = await project();
+      pkg(d, { check: 'node -e 3' }, 'web');
+      writeFileSync(join(d, GATES), read(d, GATES).replace(/order:\n( {2}- .*\n)+/, ''));
+      expect(gates(d).order).toBeUndefined();
+      if (how === 'refresh') configureGates({ cwd: d, apply: ['web-check'] });
+      else configureGates({ cwd: d, add: ['web-check'] });
+      expect(gates(d).order).toEqual(['check', 'build', 'web-check']);
+      expect(read(d, SCRIPT).match(/^run '.*'$/gm)).toHaveLength(3);
+    }
+  });
+
+  it('(review) a gone gate leaves `order` wherever it was listed, flow style included', async () => {
+    const d = await project();
+    writeFileSync(
+      join(d, GATES),
+      read(d, GATES).replace(/order:\n( {2}- .*\n)+/, 'order: [build, check, build] # mine\n'),
+    );
+    pkg(d, { check: 'node -e 0' });
+    expect(configureGates({ cwd: d, apply: ['build'] }).applied).toEqual(['build']);
+    expect(gates(d).order).toEqual(['check']);
+    expect(gates(d).gates['build']).toBeUndefined();
+    expect(read(d, GATES)).toContain('# mine');
+  });
+
   it('removing the last required gate removes the script', async () => {
     const d = await project();
     rmSync(join(d, 'package.json'));

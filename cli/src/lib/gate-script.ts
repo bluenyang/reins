@@ -44,15 +44,18 @@ root=$(git rev-parse --show-toplevel 2>/dev/null) || {
 }
 cd "$root" || exit 2
 # pre-commit checks what is about to be committed (the index git prepared for this commit); every other
-# stage checks HEAD. The checks run in the work tree, so a work tree that differs from that tree is "dirty"
-# and the run is no evidence for it.
+# stage checks HEAD. The checks run in the work tree, so a work tree that differs from that tree — a
+# changed file left out of it, or a file git does not track and does not ignore — is "dirty", and the run
+# is no evidence for it.
+worktree=dirty
 if [ "$stage" = pre-commit ]; then
   tree=$(git write-tree 2>/dev/null)
-  if git diff --quiet 2>/dev/null; then worktree=clean; else worktree=dirty; fi
+  if git diff --quiet 2>/dev/null; then worktree=clean; fi
 else
   tree=$(git rev-parse --verify --quiet 'HEAD^{tree}')
-  if git diff --quiet HEAD 2>/dev/null; then worktree=clean; else worktree=dirty; fi
+  if git diff --quiet HEAD 2>/dev/null; then worktree=clean; fi
 fi
+if [ -n "$(git ls-files --others --exclude-standard 2>/dev/null)" ]; then worktree=dirty; fi
 [ -n "$tree" ] || {
   echo "run-gates: cannot tell which tree is being checked" >&2
   exit 2
@@ -72,6 +75,8 @@ run() {
   } | tee -a "$log"
   code=$(cat "$status" 2>/dev/null || echo 1)
   rm -f "$status"
+  # output that did not end its last line must not run into the next record
+  if [ -n "$(tail -c 1 "$log")" ]; then echo >>"$log"; fi
 }
 ${cmds.map((c) => `run ${quote(c)}`).join('\n')}
 printf 'exit: %s\\n' "$code" >>"$log"

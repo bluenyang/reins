@@ -7,7 +7,8 @@ origin: user
 approvals:
   - { role: user, by: BlueNyang, at: 2026-11-10, words: "승인", rev: 5dc135a }
   - { role: user, by: BlueNyang, at: 2026-11-11, words: "승인", rev: 6713615 }
-waivers: []
+waivers:
+  - { step: "local roadmap, public roadmap and spec before the commit of W-10 (the e2e test fix was committed first, because the commit hook failed on that test)", words: "그렇게 해라", at: 2026-11-11, scope: once, recorded: "2026-11-11, after the 0.3.1 audit (finding 1) — the user: \"그래. 그렇게 기록해라.\"; it does not cover the review of W-10, which was made after the merge" }
 supersedes: null
 ---
 ## 문제
@@ -81,6 +82,7 @@ supersedes: null
 - "ㅇㅇ"(사용자 2026-11-11): 위 되물음에 PM이 낸 새 안 — 평소엔 훅 로그만 남기고, 로그가 없는 커밋은 감사 전에 PM이 그 커밋에서 검사를 돌려 채운다. `git rebase -x` 안은 버림.
 - "그렇게 해라"(사용자 2026-11-11): e2e 테스트 수정을 작업 단위 W-10으로 spec에 더하고 먼저 커밋. node 폴더에 전역 설치된 reins 때문에 `harness-only` 테스트가 실패해 커밋 훅이 막힌 것을 PM이 보고한 데 대한 답.
 - "CLI 이름 fix 제안: 넣어."(사용자 2026-11-11): W-7 리뷰에서 미룬 지적 — 설정에 벤더의 CLI가 없으면 위임 표가 벤더 이름을 명령으로 쓰던 것을 그 벤더의 기본 명령으로. spec W-11로 PR #34에 더함.
+- 감사 뒤(2026-11-11): "1. 그렇게 해."(안정화 W-12·W-13을 0.3.1에), "그래. 그렇게 기록해라."(W-10 선행 커밋의 waiver 사후 기록), "ㅇㅇ. 진행."(W-11 요약 확인), "수용해."(감사 비판 3·6), "해결책이 문제 없는 것 같으면 패스. 애매하면 받아."(위원회 의견), "claude-fable-5-2는 어제 공개된 모델이라 확인이 안된 것일 수도 있어. 나는 지금 잘 되는 것 같은데?"(모델 목록 유지). 처리 표는 `.agents/audit/0.3.1.md`의 사용자 처리 절.
 
 ### 에이전트가 정한 것
 | # | 정한 것 | 대안 | 이유 |

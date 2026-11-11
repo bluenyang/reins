@@ -1,7 +1,15 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parse, parseDocument } from 'yaml';
-import { subdirProposals, vendorOf, vendors, type SubdirGate, type Vendor } from '../lib/detect.js';
+import { isScalar, isSeq, parse, parseDocument } from 'yaml';
+import {
+  discoverGates,
+  subdirProposals,
+  vendorOf,
+  vendors,
+  type SubdirGate,
+  type Vendor,
+} from '../lib/detect.js';
+import { applicable, diffGates, type FileGate, type GateDiff } from '../lib/gate-refresh.js';
 import {
   GROUP_ROLES,
   GROUPS,
@@ -298,6 +306,10 @@ export interface ConfigureGatesOptions {
   cwd?: string;
   /** names of proposals to append to gates.yaml */
   add?: string[];
+  /** run the discovery of installation again and report how gates.yaml differs from it */
+  refresh?: boolean;
+  /** with `refresh`: the differences to apply, by the name the report shows, or `all` */
+  apply?: string[];
 }
 
 export interface ConfigureGatesResult {
@@ -307,12 +319,52 @@ export interface ConfigureGatesResult {
   /** proposals not yet in gates.yaml */
   available: SubdirGate[];
   added: string[];
+  /** `refresh`: every difference found (before applying) */
+  diff?: GateDiff[];
+  /** `refresh`: the names applied */
+  applied?: string[];
 }
 
-/** `reins configure gates [--add <name>…]` (spec S-7): subdirectory proposals, appended after the existing gates. */
+const GATES = '.agents/harness/gates.yaml';
+
+/** The gates of a `gates.yaml` document, in its order (gates missing from `order` follow). */
+export function fileGates(text: string): FileGate[] {
+  const g = parse(text) as {
+    gates?: Record<string, { cmd?: string; from?: string; optional?: boolean } | null>;
+    order?: string[];
+  } | null;
+  const gates = g?.gates ?? {};
+  const names = [...new Set([...(g?.order ?? []), ...Object.keys(gates)])];
+  return names
+    .filter((n) => gates[n]?.cmd)
+    .map((n) => ({
+      name: n,
+      cmd: gates[n]!.cmd!,
+      ...(gates[n]!.from ? { from: gates[n]!.from } : {}),
+      ...(gates[n]!.optional ? { optional: true } : {}),
+    }));
+}
+
+/** How gates.yaml differs from what the discovery of installation finds now (design §9). */
+export function gateDiff(root: string): GateDiff[] | null {
+  const path = join(root, GATES);
+  if (!existsSync(path)) return null;
+  const found = discoverGates(root);
+  return diffGates(root, fileGates(readFileSync(path, 'utf8')), [
+    ...found.gates,
+    ...found.proposals,
+  ]);
+}
+
+/**
+ * `reins config gates` (design §9). `--add <name>…` appends subdirectory proposals. `--refresh` runs the
+ * discovery again and reports the differences; `--apply <name…|all>` applies the chosen ones: a new gate is
+ * appended, a changed one gets its command and source, a gone one is removed. Comments and other keys stay,
+ * a gate written by hand is never touched, and the gate script is rewritten when the file changes.
+ */
 export function configureGates(o: ConfigureGatesOptions = {}): ConfigureGatesResult {
   const root = repoRoot(o.cwd ?? process.cwd());
-  const path = join(root, '.agents/harness/gates.yaml');
+  const path = join(root, GATES);
   if (!existsSync(path))
     return { refused: 'no gates.yaml — run reins install', code: 2, available: [], added: [] };
   const doc = parseDocument(readFileSync(path, 'utf8'));
@@ -320,6 +372,52 @@ export function configureGates(o: ConfigureGatesOptions = {}): ConfigureGatesRes
     Object.keys((doc.toJS() as { gates?: Record<string, unknown> } | null)?.gates ?? {}),
   );
   const available = subdirProposals(root).filter((g) => !have.has(g.name));
+  if (o.refresh || o.apply) {
+    const diff = gateDiff(root) ?? [];
+    const can = applicable(diff);
+    const names = o.apply?.includes('all') ? can.map((d) => d.name) : [...new Set(o.apply ?? [])];
+    const unknown = names.filter((n) => !can.some((d) => d.name === n));
+    if (unknown.length)
+      return {
+        refused: `nothing to apply under: ${unknown.join(', ')} — names: ${can.map((d) => d.name).join(', ') || 'none'}`,
+        code: 1,
+        available,
+        added: [],
+        diff,
+        applied: [],
+      };
+    for (const n of names) {
+      const d = can.find((x) => x.name === n)!;
+      if (d.kind === 'gone') {
+        doc.deleteIn(['gates', d.name]);
+        const order = doc.get('order');
+        if (isSeq(order)) {
+          const i = order.items.findIndex((x) => (isScalar(x) ? x.value : x) === d.name);
+          if (i >= 0) order.delete(i);
+        }
+      } else if (d.kind === 'changed') {
+        doc.setIn(['gates', d.name, 'cmd'], d.cmd);
+        doc.setIn(['gates', d.name, 'from'], d.from);
+      } else {
+        doc.setIn(
+          ['gates', d.name],
+          doc.createNode({ cmd: d.cmd, from: d.from, ...(d.optional ? { optional: true } : {}) }),
+        );
+        if (doc.has('order')) doc.addIn(['order'], d.name);
+        else doc.set('order', doc.createNode([d.name]));
+      }
+    }
+    if (names.length) {
+      writeFileSync(path, doc.toString());
+      writeGenerated(root, generateVendorFiles(root), false);
+    }
+    return {
+      available: available.filter((g) => !names.includes(g.name)),
+      added: [],
+      diff,
+      applied: names,
+    };
+  }
   const names = o.add ?? [];
   const unknown = names.filter((n) => !available.some((g) => g.name === n));
   if (unknown.length)

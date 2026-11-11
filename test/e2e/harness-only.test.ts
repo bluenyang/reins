@@ -121,6 +121,41 @@ describe('what reins installs never runs reins (019 V-1)', () => {
     });
 });
 
+describe('reins config gates --refresh from the command line (021 V-10)', () => {
+  it('reports, applies what is named, and refuses an unknown name with exit 1', () => {
+    const d = repo();
+    reins(d, 'install', '--mode', 'auto');
+    expect(reins(d, 'config', 'gates', '--refresh')).toContain('up to date');
+    writeFileSync(join(d, 'package.json'), JSON.stringify({ scripts: { verify: 'node -e 0' } }));
+    const gates = () => readFileSync(join(d, '.agents/harness/gates.yaml'), 'utf8');
+    const before = gates();
+    const report = reins(d, 'config', 'gates', '--refresh');
+    expect(report).toContain('changed check  npm run check → npm run verify');
+    expect(report).toContain('nothing written — apply with: reins config gates --refresh --apply');
+    expect(gates()).toBe(before);
+    const bad = spawnSync(
+      process.execPath,
+      [CLI, 'config', 'gates', '--refresh', '--apply', 'nope'],
+      {
+        cwd: d,
+        encoding: 'utf8',
+      },
+    );
+    expect(bad.status).toBe(1);
+    expect(bad.stderr).toContain('nothing to apply under: nope');
+    expect(gates()).toBe(before);
+    expect(reins(d, 'config', 'gates', '--refresh', '--apply', 'all')).toContain('applied: check');
+    expect(gates()).toContain('npm run verify');
+    expect(readFileSync(join(d, '.agents/harness/run-gates.sh'), 'utf8')).toContain(
+      "run 'npm run verify'",
+    );
+    const json = JSON.parse(reins(d, 'config', 'gates', '--refresh', '--json')) as {
+      diff: unknown[];
+    };
+    expect(json.diff).toEqual([]);
+  });
+});
+
 describe('the installed harness works without reins and without a network (019 V-2)', () => {
   // a POSIX shell with a narrowed PATH; Windows runners are covered by V-1
   it.skipIf(process.platform === 'win32')(

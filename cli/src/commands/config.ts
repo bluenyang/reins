@@ -1,3 +1,4 @@
+import { gatesScreen } from './config-gates.js';
 import { effectiveBindings, resolveRoles, type BindingsV2, type Group } from '../lib/bindings.js';
 import { newModelCache, vendors, type ModelCache, type Vendor } from '../lib/detect.js';
 import { repoRoot } from '../lib/git.js';
@@ -73,7 +74,7 @@ export async function runConfig(o: ConfigOptions = {}): Promise<number> {
   const detect = o.detectVendors ?? vendors;
   for (;;) {
     const doc = effectiveBindings(root);
-    const v = await prompter.select<'models' | 'tools' | 'mode' | 'audit' | 'exit'>({
+    const v = await prompter.select<'models' | 'tools' | 'mode' | 'audit' | 'gates' | 'exit'>({
       message: 'Configuration',
       options: [
         { value: 'models', label: 'models and roles configuration' },
@@ -83,6 +84,7 @@ export async function runConfig(o: ConfigOptions = {}): Promise<number> {
           value: 'audit',
           label: `audit: ${doc?.audit?.required === false ? 'off' : 'required'}`,
         },
+        { value: 'gates', label: 'gates', hint: 'the project checks: see them, find them again' },
         { value: 'exit', label: 'exit' },
       ],
     });
@@ -90,6 +92,10 @@ export async function runConfig(o: ConfigOptions = {}): Promise<number> {
     if (v === 'models') {
       const r = await modelsScreen({ root, prompter, detectVendors: detect, modelCache });
       if (r === 'exit') return 0;
+      continue;
+    }
+    if (v === 'gates') {
+      if ((await gatesScreen(root, prompter)) === 'exit') return 0;
       continue;
     }
     if (v === 'tools') {

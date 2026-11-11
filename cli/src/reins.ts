@@ -5,7 +5,9 @@ import { runInstall } from './commands/install.js';
 import { runMigrate } from './commands/migrate.js';
 import { formatUpdate, runUpdate } from './commands/update.js';
 import { configureBindings, configureGates } from './commands/configure.js';
-import { NotARepository } from './lib/git.js';
+import { refreshGates } from './commands/config-gates.js';
+import { applicable, formatGateDiff } from './lib/gate-refresh.js';
+import { NotARepository, repoRoot } from './lib/git.js';
 import { LOCAL_DELEGATION_NOTE } from './lib/local-delegation.js';
 import { formatBindings, runConfig } from './commands/config.js';
 import { defaultsAsker, stdinAsker } from './lib/ask.js';
@@ -257,11 +259,21 @@ config
 
 config
   .command('gates')
-  .description('subdirectory gate proposals not in gates.yaml; --add <name>… appends them')
+  .description(
+    'the project gates: --add <name>… appends subdirectory proposals; --refresh finds the gates again and shows what differs from gates.yaml',
+  )
   .option('--add <names...>', 'proposal names to append after the existing gates')
+  .option('--refresh', 'run the discovery of installation again and show the differences')
+  .option('--apply <names...>', 'with --refresh: the differences to apply, by name, or `all`')
   .option('--json')
-  .action((o: { add?: string[]; json?: boolean }) => {
-    const r = configureGates({ add: o.add });
+  .action(async (o: { add?: string[]; refresh?: boolean; apply?: string[]; json?: boolean }) => {
+    const refresh = !!o.refresh || !!o.apply;
+    // on a terminal, --refresh alone lets the user pick; with --apply or --json it never asks
+    if (refresh && !o.apply && !o.json && isInteractive()) {
+      await refreshGates(repoRoot(process.cwd()), await clackPrompter());
+      return;
+    }
+    const r = configureGates(refresh ? { refresh: true, apply: o.apply } : { add: o.add });
     if (o.json) {
       process.stdout.write(`${JSON.stringify(r, null, 2)}\n`);
       process.exit(r.code ?? 0);
@@ -269,6 +281,20 @@ config
     if (r.refused) {
       process.stderr.write(`reins config gates: ${r.refused}\n`);
       process.exit(r.code ?? 2);
+    }
+    if (refresh) {
+      const diff = r.diff ?? [];
+      for (const d of diff) process.stdout.write(`${formatGateDiff(d)}\n`);
+      if (applicable(diff).length === 0) process.stdout.write('up to date\n');
+      else if (r.applied?.length)
+        process.stdout.write(
+          `applied: ${r.applied.join(', ')} — gates.yaml and the gate script were written\n`,
+        );
+      else
+        process.stdout.write(
+          'nothing written — apply with: reins config gates --refresh --apply <name…|all>\n',
+        );
+      return;
     }
     for (const n of r.added) process.stdout.write(`added: ${n}\n`);
     if (!r.available.length) process.stdout.write('no more proposals\n');

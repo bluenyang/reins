@@ -59,6 +59,7 @@ reins 자체를 개발하려면 `git clone https://github.com/bluenyang/reins.gi
 - [proposal.ko.md](proposal.ko.md): 문제, 목표, 요구사항
 - [design.ko.md](design.ko.md): 배치, 역할, 흐름, 감사, 파일 형식, CLI
 - [ROADMAP.ko.md](ROADMAP.ko.md): 버전
+- [conversation/](conversation/): 메인테이너의 설계 대화. 무엇을 두고 고민했고 왜 그렇게 정했는지를 적은 것이며 규칙은 아닙니다
 - 영어판: [proposal.md](proposal.md), [design.md](design.md), [ROADMAP.md](ROADMAP.md). 둘이 어긋나면 한글판이 기준입니다.
 
 ## 라이선스

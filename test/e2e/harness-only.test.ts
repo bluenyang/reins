@@ -114,7 +114,10 @@ describe('what reins installs never runs reins (019 V-1)', () => {
       expect(offenders()).toEqual([]);
       expect(existsSync(join(d, '.loctx/delegation.local.md'))).toBe(true);
       const hook = readFileSync(join(d, '.husky/pre-commit'), 'utf8');
-      expect(hook).toContain('npm run check');
+      expect(hook).toContain('sh .agents/harness/run-gates.sh pre-commit');
+      expect(readFileSync(join(d, '.agents/harness/run-gates.sh'), 'utf8')).toContain(
+        "run 'npm run check'",
+      );
     });
 });
 

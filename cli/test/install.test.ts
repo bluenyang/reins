@@ -159,13 +159,67 @@ describe('hooks: the project gates in the project hook tool (019 S-3)', () => {
     const opts = { mode: 'auto' as const, asker: defaultsAsker, cwd: d, detectVendors: onlyClaude };
     const r = await runInstall(opts);
     expect(
-      r.notes.some((n) => n.startsWith('hook proposal (husky)') && n.includes('pnpm check')),
+      r.notes.some(
+        (n) =>
+          n.startsWith('hook proposal (husky)') &&
+          n.includes('`sh .agents/harness/run-gates.sh pre-commit`') &&
+          n.includes('`sh .agents/harness/run-gates.sh pre-push`'),
+      ),
     ).toBe(true);
+    expect(readFileSync(join(d, '.husky/pre-commit'), 'utf8')).toBe('echo mine\n');
     await runInstall({ ...opts, hooks: true });
-    const hook = readFileSync(join(d, '.husky/pre-commit'), 'utf8');
-    expect(hook).toContain('echo mine');
-    expect(hook).toContain('pnpm check');
-    expect(hook.replace(/# reins:(begin|end) hooks/g, '')).not.toContain('reins');
+    // one line per stage, whatever the gates are (021 S-11)
+    expect(readFileSync(join(d, '.husky/pre-commit'), 'utf8')).toBe(
+      'echo mine\n# reins:begin hooks\nsh .agents/harness/run-gates.sh pre-commit\n# reins:end hooks\n',
+    );
+    expect(readFileSync(join(d, '.husky/pre-push'), 'utf8')).toBe(
+      '# reins:begin hooks\nsh .agents/harness/run-gates.sh pre-push\n# reins:end hooks\n',
+    );
+    // the script holds the gate commands and never runs reins
+    const script = readFileSync(join(d, '.agents/harness/run-gates.sh'), 'utf8');
+    expect(script).toContain("run 'pnpm check'");
+    const runs = script.split('\n').filter((l) => !l.startsWith('#'));
+    expect(runs.join('\n')).not.toMatch(/npx|@bluenyang|\breins\b/);
+  });
+
+  it.each([
+    ['lefthook', 'lefthook.yml', 'run: sh .agents/harness/run-gates.sh pre-commit'],
+    [
+      'pre-commit',
+      '.pre-commit-config.yaml',
+      'entry: sh .agents/harness/run-gates.sh pre-commit, language: system, pass_filenames: false',
+    ],
+  ])('%s: proposes the line in its form and leaves its config alone', async (tool, file, line) => {
+    const d = repo();
+    writeFileSync(join(d, file), '# mine\n');
+    const r = await runInstall({
+      mode: 'auto',
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: onlyClaude,
+      hooks: true,
+    });
+    const note = r.notes.find((n) => n.startsWith(`hook proposal (${tool})`));
+    expect(note).toContain(line);
+    expect(note).toContain('sh .agents/harness/run-gates.sh pre-push');
+    expect(readFileSync(join(d, file), 'utf8')).toBe('# mine\n');
+    expect(existsSync(join(d, '.agents/harness/run-gates.sh'))).toBe(true);
+  });
+
+  it('with no required gate there is no script and no hook line', async () => {
+    const d = mkdtempSync(join(tmpdir(), 'reins-nogate-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    mkdirSync(join(d, '.husky'), { recursive: true });
+    const r = await runInstall({
+      mode: 'auto',
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: onlyClaude,
+      hooks: true,
+    });
+    expect(existsSync(join(d, '.agents/harness/run-gates.sh'))).toBe(false);
+    expect(existsSync(join(d, '.husky/pre-commit'))).toBe(false);
+    expect(r.notes.some((n) => n.includes('run-gates.sh'))).toBe(false);
   });
 
   it('on a terminal it asks before adding the hooks', async () => {
@@ -180,13 +234,28 @@ describe('hooks: the project gates in the project hook tool (019 S-3)', () => {
       confirmHooks: p,
     });
     expect(p.asked.map((q) => q.kind)).toEqual(['confirm']);
-    expect(readFileSync(join(d, '.husky/pre-commit'), 'utf8')).toContain('pnpm check');
+    expect(p.asked[0]!.message).toContain('sh .agents/harness/run-gates.sh <stage>');
+    expect(readFileSync(join(d, '.husky/pre-commit'), 'utf8')).toContain(
+      'sh .agents/harness/run-gates.sh pre-commit',
+    );
   });
 
   it('without a hook tool, onboarding asks for one', async () => {
     const d = repo();
-    await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: d, detectVendors: onlyClaude });
+    const r = await runInstall({
+      mode: 'auto',
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: onlyClaude,
+    });
     expect(readFileSync(join(d, 'AGENTS.md'), 'utf8')).toContain('which hook tool runs the gates');
+    // the script is there all the same, so the tool chosen later needs one line (021 S-11)
+    expect(existsSync(join(d, '.agents/harness/run-gates.sh'))).toBe(true);
+    expect(
+      r.notes.some(
+        (n) => n.startsWith('no hook tool found') && n.includes('run-gates.sh pre-commit'),
+      ),
+    ).toBe(true);
   });
 });
 

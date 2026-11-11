@@ -145,10 +145,70 @@ describe('reins update', () => {
       hooks: true,
     });
     const before = readFileSync(join(d, '.husky/pre-commit'), 'utf8');
-    expect(before).toContain('npm run check');
+    expect(before).toContain('sh .agents/harness/run-gates.sh pre-commit');
     const r = await runUpdate({ cwd: d, detectVendors: claude, yes: true });
     expect(r.removed).toEqual([]);
     expect(readFileSync(join(d, '.husky/pre-commit'), 'utf8')).toBe(before);
+  });
+
+  describe('hook blocks and the gate script (021 S-9, S-11)', () => {
+    const LINE = 'sh .agents/harness/run-gates.sh pre-commit';
+    async function installed(hook?: string): Promise<string> {
+      const d = mkdtempSync(join(tmpdir(), 'reins-up-'));
+      execFileSync('git', ['init', '-q'], { cwd: d });
+      writeFileSync(join(d, 'package.json'), JSON.stringify({ scripts: { check: 'node -e 0' } }));
+      mkdirSync(join(d, '.husky'));
+      await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: d, detectVendors: claude });
+      if (hook !== undefined) writeFileSync(join(d, '.husky/pre-commit'), hook);
+      return d;
+    }
+    const hook = (d: string) => readFileSync(join(d, '.husky/pre-commit'), 'utf8');
+
+    it('the block 0.3.0 wrote (the gate commands themselves) becomes the one line; what it held is shown', async () => {
+      const d = await installed(
+        'echo mine\n# reins:begin hooks\nnpm run check\necho added-by-user\n# reins:end hooks\necho after\n',
+      );
+      const r = await runUpdate({ cwd: d, detectVendors: claude, yes: true });
+      expect(hook(d)).toBe(
+        `echo mine\n# reins:begin hooks\n${LINE}\n# reins:end hooks\necho after\n`,
+      );
+      const note = r.install?.notes.find((n) => n.startsWith('.husky/pre-commit:'));
+      expect(note).toContain('it held: npm run check && echo added-by-user');
+      // the second run changes nothing
+      const again = await runUpdate({ cwd: d, detectVendors: claude, yes: true });
+      expect(again.install?.notes.some((n) => n.startsWith('.husky/pre-commit:'))).toBe(false);
+    });
+
+    it('a husky file without a block is not touched; the line is proposed', async () => {
+      const d = await installed('echo mine\n');
+      const r = await runUpdate({ cwd: d, detectVendors: claude, yes: true });
+      expect(hook(d)).toBe('echo mine\n');
+      expect(r.install?.notes.some((n) => n.startsWith('hook proposal (husky)'))).toBe(true);
+    });
+
+    it('update writes the script from the gates.yaml that is there, without touching gates.yaml', async () => {
+      const d = await installed();
+      const gates = join(d, '.agents/harness/gates.yaml');
+      const script = join(d, '.agents/harness/run-gates.sh');
+      rmSync(script);
+      rmSync(join(d, '.agents/harness/generated.yaml'));
+      const text = readFileSync(gates, 'utf8').replace('npm run check', "npm run check -- --it's");
+      writeFileSync(gates, text);
+      await runUpdate({ cwd: d, detectVendors: claude, yes: true });
+      expect(readFileSync(gates, 'utf8')).toBe(text);
+      expect(readFileSync(script, 'utf8')).toContain("run 'npm run check -- --it'\\''s'");
+    });
+
+    it('a script edited by hand is not overwritten without --force', async () => {
+      const d = await installed();
+      const script = join(d, '.agents/harness/run-gates.sh');
+      writeFileSync(script, `${readFileSync(script, 'utf8')}echo mine\n`);
+      const r = await runUpdate({ cwd: d, detectVendors: claude, yes: true });
+      expect(r.handEdited).toEqual(['.agents/harness/run-gates.sh']);
+      expect(readFileSync(script, 'utf8')).toContain('echo mine');
+      await runUpdate({ cwd: d, detectVendors: claude, yes: true, force: true });
+      expect(readFileSync(script, 'utf8')).not.toContain('echo mine');
+    });
   });
 
   it("update merges .claude/settings.json and keeps the user's entries without --force (021 S-5)", async () => {

@@ -284,6 +284,10 @@ export function configureGates(o: ConfigureGatesOptions = {}): ConfigureGatesRes
     else doc.set('order', doc.createNode([g.name]));
     added.push(g.name);
   }
-  if (added.length) writeFileSync(path, doc.toString());
+  if (added.length) {
+    writeFileSync(path, doc.toString());
+    // the gate script holds the commands of gates.yaml (design §6): it follows the file
+    writeGenerated(root, generateVendorFiles(root), false);
+  }
   return { available: available.filter((g) => !added.includes(g.name)), added };
 }

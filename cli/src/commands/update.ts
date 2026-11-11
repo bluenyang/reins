@@ -17,7 +17,7 @@ import type { Vendor } from '../lib/detect.js';
 import { repoRoot } from '../lib/git.js';
 import { BACK, EXIT, type Prompter } from '../lib/prompter.js';
 import { harnessVersion, packageHarness, packageVersion } from '../lib/upstream.js';
-import { runInstall, type InstallResult } from './install.js';
+import { RUNS_REINS, runInstall, type InstallResult } from './install.js';
 
 export interface UpdateOptions {
   cwd?: string;
@@ -99,9 +99,6 @@ const LEGACY_LOCTX = [
   'release',
   'test',
 ];
-
-/** A command that runs reins: what 0.x put into hooks and settings. */
-const RUNS_REINS = /@bluenyang\/reins|reins\.js\b|(^|[\s;&|])reins\s+(check|hook|gate|status)\b/;
 
 /** Hook files 0.x may have written a `reins:begin hooks` block into. */
 const HOOK_FILES = [

@@ -6,11 +6,12 @@ import { workTreeReader, type Reader } from './reader.js';
 import { resolveRoles, type BindingsV2 } from './bindings.js';
 import { agentName, claudeAgents } from './agents-md.js';
 import { splitFrontmatter } from './skills.js';
+import { GATE_SCRIPT, renderGateScript, requiredGates } from './gate-script.js';
 
 /**
  * Files generated from `.agents/harness/` (design §6): `.claude/agents/rs-<group>-<role>.md` for roles
- * switched on in multi mode on a Claude model, the `.claude/skills/` copy, and `.claude/settings.json` deny
- * rules. Generated from the committed team file only, so no personal override makes drift.
+ * switched on in multi mode on a Claude model, the `.claude/skills/` copy, `.claude/settings.json` deny
+ * rules, and the gate script `.agents/harness/run-gates.sh` from `gates.yaml`. Generated from the committed team file only, so no personal override makes drift.
  */
 export const MANIFEST = '.agents/harness/generated.yaml';
 
@@ -175,6 +176,14 @@ export function generateVendorFiles(root: string, rd: Reader = workTreeReader(ro
         why: `skill ${name}`,
       });
   }
+  // the gate script follows gates.yaml; with no required gate there is nothing to run and no script
+  const gateCmds = requiredGates(rd.read(`${harness}/gates.yaml`));
+  if (gateCmds.length)
+    out.writes.push({
+      path: GATE_SCRIPT,
+      content: renderGateScript(gateCmds),
+      why: 'the project gates, with their output kept',
+    });
   const redText = rd.read(`${harness}/policy/common-red-lines.yaml`);
   if (redText !== undefined) {
     const deny = denyRules((parse(redText) as { rules: RedLine[] }).rules);

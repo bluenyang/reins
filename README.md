@@ -64,7 +64,7 @@ To work on reins itself: `git clone https://github.com/bluenyang/reins.git`, the
 
 | Command | Does |
 |---|---|
-| `install` | places the harness, detects agent tools, confirms gates, proposes hooks that run the project's gate commands (`--hooks` adds them to husky), adds the onboarding note; `--mode manual\|auto`, `--dry-run`, `--json` |
+| `install` | places the harness, detects agent tools, confirms gates, writes the gate script `.agents/harness/run-gates.sh` (it runs the project's gate commands and keeps their output for the audit) and proposes the one hook line that calls it (`--hooks` adds it to husky), adds the onboarding note; `--mode manual\|auto`, `--dry-run`, `--json` |
 | `migrate` | moves an older harness or an `.ai/` workspace onto this layout and keeps the previous `AGENTS.md` aside for the PM to reconcile; `--legacy local\|committed`, `--dry-run` |
 | `update` | re-applies the packaged harness; asks before overwriting a generated file edited by hand (`--force`); moves a 0.1.x or 0.2.0 install to 0.3 and lists its old working files (`--yes` deletes them) |
 | `config` | a screen on a terminal: models and roles, agent tools, mode (single or multi), audit; `config bindings` and `config gates` take flags (`configure` is an alias) |

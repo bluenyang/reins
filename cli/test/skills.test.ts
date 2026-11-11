@@ -154,6 +154,29 @@ describe('stage skills (019 S-9, design §3-1)', () => {
       '감사 실행은 읽기 전용이다: 감사자는 기록 전문을 답으로 돌려주고',
     );
   });
+  it('the gate script is named where it is set up, read and cleaned (021 S-11, S-12)', () => {
+    const line = '`sh .agents/harness/run-gates.sh pre-commit`';
+    expect(read('onboard')).toContain(line);
+    expect(read('onboard')).toContain('`sh .agents/harness/run-gates.sh pre-push`');
+    const audit = read('audit');
+    expect(audit).toContain('`.loctx/reports/gates/<tree>.log`');
+    expect(audit).toContain('`git rev-parse <commit>^{tree}`');
+    expect(audit).toContain('`sh .agents/harness/run-gates.sh audit`');
+    expect(audit).toContain('`worktree: clean` and `exit: 0`');
+    expect(audit).toContain('filled in before the audit (`stage: audit`)');
+    expect(read('retro')).toContain(
+      "the gate logs in `.loctx/reports/gates/` last written before the version's stable tag was made",
+    );
+    const role = readFileSync(join(process.cwd(), 'harness/roles/auditor.md'), 'utf8');
+    expect(role).toContain('`.loctx/reports/gates/<tree>.log`');
+    expect(role).toContain('`git rev-parse <commit>^{tree}`');
+    const design = (f: string) => readFileSync(join(process.cwd(), 'docs', f), 'utf8');
+    for (const f of ['design.md', 'design.ko.md']) {
+      expect(design(f)).toContain('`sh .agents/harness/run-gates.sh audit`');
+      expect(design(f)).toContain('`.loctx/reports/gates/<tree>.log`');
+      expect(design(f)).toContain('worktree: clean|dirty');
+    }
+  });
   it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
     const t = read(n);
     expect(t.slice(t.indexOf('## 3. Delegation')).split('\n')[1]).toMatch(

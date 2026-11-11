@@ -151,12 +151,33 @@ describe('reins update', () => {
     expect(readFileSync(join(d, '.husky/pre-commit'), 'utf8')).toBe(before);
   });
 
-  it('on a terminal, a hand-edited generated file is shown and overwritten only on yes', async () => {
+  it("update merges .claude/settings.json and keeps the user's entries without --force (021 S-5)", async () => {
     const d = mkdtempSync(join(tmpdir(), 'reins-up-'));
     execFileSync('git', ['init', '-q'], { cwd: d });
     writeFileSync(join(d, 'package.json'), '{}');
     await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: d, detectVendors: claude });
     const p = join(d, '.claude/settings.json');
+    const s = JSON.parse(readFileSync(p, 'utf8')) as {
+      permissions: { deny: string[]; allow?: string[] };
+    };
+    // one permission of the user's, and a reins rule that an older version wrote and this one does not
+    s.permissions.allow = ['Bash(gh *)'];
+    writeFileSync(p, `${JSON.stringify(s, null, 2)}\n`);
+    for (const force of [false, true]) {
+      const r = await runUpdate({ cwd: d, detectVendors: claude, yes: true, force });
+      expect(r.handEdited).toEqual([]);
+      const now = JSON.parse(readFileSync(p, 'utf8')) as typeof s;
+      expect(now.permissions.allow).toEqual(['Bash(gh *)']);
+      expect(now.permissions.deny).toEqual(s.permissions.deny);
+    }
+  });
+
+  it('on a terminal, a hand-edited generated file is shown and overwritten only on yes', async () => {
+    const d = mkdtempSync(join(tmpdir(), 'reins-up-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    writeFileSync(join(d, 'package.json'), '{}');
+    await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: d, detectVendors: claude });
+    const p = join(d, '.claude/skills/intent/SKILL.md');
     const mine = `${readFileSync(p, 'utf8').trimEnd()} \n`;
     writeFileSync(p, mine);
     const keep = await runUpdate({
@@ -164,7 +185,7 @@ describe('reins update', () => {
       detectVendors: claude,
       prompter: scriptedPrompter([true, false]),
     });
-    expect(keep.handEdited).toEqual(['.claude/settings.json']);
+    expect(keep.handEdited).toEqual(['.claude/skills/intent/SKILL.md']);
     expect(readFileSync(p, 'utf8')).toBe(mine);
     await runUpdate({ cwd: d, detectVendors: claude, prompter: scriptedPrompter([true, true]) });
     expect(readFileSync(p, 'utf8')).not.toBe(mine);

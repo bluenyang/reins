@@ -177,6 +177,21 @@ describe('stage skills (019 S-9, design §3-1)', () => {
       expect(design(f)).toContain('worktree: clean|dirty');
     }
   });
+  it('the English design says what the Korean one says in the two places the audit found (021 S-30)', () => {
+    const design = (f: string) => readFileSync(join(process.cwd(), 'docs', f), 'utf8');
+    const en = design('design.md');
+    expect(en).toContain(
+      'Settings without any fallback get a delegation section that does not mention fallbacks.',
+    );
+    expect(en).not.toContain('A file without any fallback');
+    expect(design('design.ko.md')).toContain(
+      '대체가 하나도 없는 설정의 위임 절은 대체를 말하지 않는다.',
+    );
+    expect(en).toContain('small pieces of work that may be reverted together may share one commit');
+    expect(design('design.ko.md')).toContain(
+      '함께 되돌아가도 되는 작은 작업은 한 커밋에 합칠 수 있다',
+    );
+  });
   it('the design describes fallback models in both editions (021 S-20)', () => {
     const design = (f: string) => readFileSync(join(process.cwd(), 'docs', f), 'utf8');
     for (const f of ['design.md', 'design.ko.md']) {

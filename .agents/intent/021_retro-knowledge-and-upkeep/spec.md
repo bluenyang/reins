@@ -77,18 +77,20 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - W-1·W-5·W-6은 문서·목록·문자열 한 곳씩이다.
 
 ## 작업 단위
+아래 커밋은 master의 SHA다(PR #34 rebase 머지 `637e3ae`, 2026-11-11; 브랜치의 SHA는 `.loctx/reports/0.3.1/pr34-head-commits.txt`).
+
 각 단위는 따로 되돌릴 수 있고, 커밋은 `pnpm check`를 통과한다. 구현 순서는 W-10 → W-1 → W-2 → W-3 → W-4 → W-5 → W-6 → W-7 → W-9이고 W-8은 릴리스 뒤다. 기대는 관계는 둘뿐이다: W-9는 W-4의 스크립트 생성 함수를 쓰고, W-7의 감사 줄 기대값은 W-3(읽기 전용) 뒤의 모양이다. W-2·W-3·W-4는 `skills/audit/SKILL.md`, `harness/roles/auditor.md`, 설계 §3-3·§6을 함께 고치지만 서로 다른 문장(드리프트 예외 / 기록을 누가 쓰나 / 읽는 것)이라 하나를 되돌려도 나머지는 남는다. 순서를 바꾸게 되면 먼저 여기에 적고 진행/수정을 받는다.
 
-- [x] W-1 (86fa45d) retro의 knowledge 후보(S-1, S-2): `skills/retro/SKILL.md`, `harness/roles/pl.md`, 설계서 양판 §3-4·§8, 스킬 테스트.
-- [x] W-2 (d186d32; 리뷰 수정 b6928ed) settings.json 합치기(S-3~S-6): `cli/src/lib/generate.ts`, `vendor-write.ts`, `skills/audit/SKILL.md` ④와 `harness/roles/auditor.md`의 드리프트 문장, 설계서 양판 §6, 테스트.
-- [x] W-3 (bda3960) 감사자 읽기 전용(S-7, S-8): `harness/roles/auditor.md`, `cli/src/lib/agents-md.ts`, `skills/audit/SKILL.md` ②, 설계서 양판 §3-3, 테스트.
-- [x] W-4 (3970abe; 리뷰 수정 8ca5579) 검사 스크립트와 훅 줄(S-9~S-12, S-13의 테스트 설정 부분): 스크립트 생성 함수, `generate.ts`·`install.ts`(`.loctx/README` 포함)·`update.ts`·`configure.ts`(gates), `skills/onboard`·`audit`·`retro`, auditor 역할 "Reads", 설계서 양판 §0·§1·§3-3·§4-2·§6, README 양판(훅 설명이 있으면), 테스트.
-- [x] W-5 (613017b) 모델 목록(S-14): `harness/models.yaml`, `cli/src/lib/detect.ts`, 설계서·README 예시, 테스트.
-- [x] W-6 (c39ee6e) previous 머리 경고(S-15): `cli/src/commands/update.ts`, 설계서 양판 §5 재구성 표시 문장, 테스트.
-- [x] W-7 (3a0a453; 리뷰 수정 d8804f7) 대체 모델(S-16~S-20): `bindings.ts`, `bindings.schema.json`, `agents-md.ts`, `configure.ts`, `config-models.ts`, `harness/templates/agents-md-blocks.md`(해당되면), 설계서 양판 §5·§9, README 양판, 테스트.
-- [x] W-9 (c9ae5af; 리뷰 수정 27b15c2) 검사 다시 찾기(S-22~S-26): `configure.ts`(gates), `config.ts`(화면), `reins.ts`, 설계서 양판 §9, README 양판, 테스트. W-4 다음에 한다(스크립트를 다시 만드는 함수를 쓴다); 구현 순서는 W-1~W-7, W-9이고 W-8은 릴리스 뒤다.
-- [x] W-11 (04e9555) 실행 줄의 기본 명령 이름(S-28): `cli/src/lib/agents-md.ts`, 테스트, 설계서 양판 §6(실행 줄 문장), `harness/CHANGELOG.md`. W-9 뒤에 한다.
-- [x] W-10 (c3c1b97) e2e 테스트 수정(S-27): `test/e2e/harness-only.test.ts`.
+- [x] W-1 (6c3dec7) retro의 knowledge 후보(S-1, S-2): `skills/retro/SKILL.md`, `harness/roles/pl.md`, 설계서 양판 §3-4·§8, 스킬 테스트.
+- [x] W-2 (f758a22; 리뷰 수정 185be69) settings.json 합치기(S-3~S-6): `cli/src/lib/generate.ts`, `vendor-write.ts`, `skills/audit/SKILL.md` ④와 `harness/roles/auditor.md`의 드리프트 문장, 설계서 양판 §6, 테스트.
+- [x] W-3 (13bd988) 감사자 읽기 전용(S-7, S-8): `harness/roles/auditor.md`, `cli/src/lib/agents-md.ts`, `skills/audit/SKILL.md` ②, 설계서 양판 §3-3, 테스트.
+- [x] W-4 (6b8cfe1; 리뷰 수정 06c1c63) 검사 스크립트와 훅 줄(S-9~S-12, S-13의 테스트 설정 부분): 스크립트 생성 함수, `generate.ts`·`install.ts`(`.loctx/README` 포함)·`update.ts`·`configure.ts`(gates), `skills/onboard`·`audit`·`retro`, auditor 역할 "Reads", 설계서 양판 §0·§1·§3-3·§4-2·§6, README 양판(훅 설명이 있으면), 테스트.
+- [x] W-5 (f8e21d9) 모델 목록(S-14): `harness/models.yaml`, `cli/src/lib/detect.ts`, 설계서·README 예시, 테스트.
+- [x] W-6 (899f65e) previous 머리 경고(S-15): `cli/src/commands/update.ts`, 설계서 양판 §5 재구성 표시 문장, 테스트.
+- [x] W-7 (277ef3b; 리뷰 수정 b3189b6) 대체 모델(S-16~S-20): `bindings.ts`, `bindings.schema.json`, `agents-md.ts`, `configure.ts`, `config-models.ts`, `harness/templates/agents-md-blocks.md`(해당되면), 설계서 양판 §5·§9, README 양판, 테스트.
+- [x] W-9 (31fbd61; 리뷰 수정 340bf3d) 검사 다시 찾기(S-22~S-26): `configure.ts`(gates), `config.ts`(화면), `reins.ts`, 설계서 양판 §9, README 양판, 테스트. W-4 다음에 한다(스크립트를 다시 만드는 함수를 쓴다); 구현 순서는 W-1~W-7, W-9이고 W-8은 릴리스 뒤다.
+- [x] W-11 (1a00aa5) 실행 줄의 기본 명령 이름(S-28): `cli/src/lib/agents-md.ts`, 테스트, 설계서 양판 §6(실행 줄 문장), `harness/CHANGELOG.md`. W-9 뒤에 한다.
+- [x] W-10 (0cc62bd) e2e 테스트 수정(S-27): `test/e2e/harness-only.test.ts`.
 - [ ] W-8 이 저장소의 훅(S-13): 0.3.1 stable 뒤, 자기 업데이트(`reins update`, 별도 커밋) 다음에 `.husky/pre-commit`·`pre-push`를 바꾼다. 릴리스 뒤 단위라 0.3.1 감사 범위 밖이고, 0.3.1 회고에서 V-11로 확인한다(사용자 2026-11-11 "그렇게 해").
 
 ## 검증 기준

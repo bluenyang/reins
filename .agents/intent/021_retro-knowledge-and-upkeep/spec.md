@@ -79,8 +79,8 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - [x] W-2 (d186d32; 리뷰 수정 b6928ed) settings.json 합치기(S-3~S-6): `cli/src/lib/generate.ts`, `vendor-write.ts`, `skills/audit/SKILL.md` ④와 `harness/roles/auditor.md`의 드리프트 문장, 설계서 양판 §6, 테스트.
 - [x] W-3 (bda3960) 감사자 읽기 전용(S-7, S-8): `harness/roles/auditor.md`, `cli/src/lib/agents-md.ts`, `skills/audit/SKILL.md` ②, 설계서 양판 §3-3, 테스트.
 - [x] W-4 (3970abe; 리뷰 수정 8ca5579) 검사 스크립트와 훅 줄(S-9~S-12, S-13의 테스트 설정 부분): 스크립트 생성 함수, `generate.ts`·`install.ts`(`.loctx/README` 포함)·`update.ts`·`configure.ts`(gates), `skills/onboard`·`audit`·`retro`, auditor 역할 "Reads", 설계서 양판 §0·§1·§3-3·§4-2·§6, README 양판(훅 설명이 있으면), 테스트.
-- [ ] W-5 모델 목록(S-14): `harness/models.yaml`, `cli/src/lib/detect.ts`, 설계서·README 예시, 테스트.
-- [ ] W-6 previous 머리 경고(S-15): `cli/src/commands/update.ts`, 설계서 양판 §5 재구성 표시 문장, 테스트.
+- [x] W-5 (613017b) 모델 목록(S-14): `harness/models.yaml`, `cli/src/lib/detect.ts`, 설계서·README 예시, 테스트.
+- [x] W-6 (c39ee6e) previous 머리 경고(S-15): `cli/src/commands/update.ts`, 설계서 양판 §5 재구성 표시 문장, 테스트.
 - [ ] W-7 대체 모델(S-16~S-20): `bindings.ts`, `bindings.schema.json`, `agents-md.ts`, `configure.ts`, `config-models.ts`, `harness/templates/agents-md-blocks.md`(해당되면), 설계서 양판 §5·§9, README 양판, 테스트.
 - [ ] W-9 검사 다시 찾기(S-22~S-26): `configure.ts`(gates), `config.ts`(화면), `reins.ts`, 설계서 양판 §9, README 양판, 테스트. W-4 다음에 한다(스크립트를 다시 만드는 함수를 쓴다); 구현 순서는 W-1~W-7, W-9이고 W-8은 릴리스 뒤다.
 - [x] W-10 (c3c1b97) e2e 테스트 수정(S-27): `test/e2e/harness-only.test.ts`.

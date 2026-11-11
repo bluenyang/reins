@@ -65,7 +65,7 @@ Follow-ups from the 0.3 retro (maintainer, 2026-11-10).
 - **Two sentences of the English design.** The comparison of the two editions made after the audit found them saying something else than the Korean edition; they are brought in line.
 - **Checks found again.** `config gates --refresh` runs the discovery of installation again, shows how it differs from `gates.yaml` (checks newly found, checks whose command changed, checks whose source is gone) and applies only what the user picks. The `config` screen shows the check settings and offers the same refresh.
 - **Fallback models.** A role may name a fallback model. `config` writes the fallback's call line next to the role in the delegation table, and the PM follows it when the first call cannot be made. reins resolves nothing while the project works.
-- **Known models refreshed.** The model list `config` offers follows the current models.
+- **Known models refreshed.** The model list `config` offers follows the current models. `claude-fable-5-2` can be chosen, but is not on the list of models seen working in this environment (decided after the audit).
 - **A warning at the head of `AGENTS.previous.md`.** The copy made when `update` moves an install of 0.2.0 or earlier starts by saying that it is a copy of instructions from 0.2.0 or earlier and that the reins commands it names do not exist in 0.3 and must not be run.
 
 ## 0.4 — rollout

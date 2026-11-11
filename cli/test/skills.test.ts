@@ -112,6 +112,22 @@ describe('stage skills (019 S-9, design §3-1)', () => {
     expect(role).toContain('fetch from the network');
     expect(role).toContain('the PR and CI records the PM collected');
   });
+  it('the retro proposes knowledge candidates from what repeated (021 S-1, S-2)', () => {
+    const retro = read('retro');
+    expect(retro).toContain('Propose knowledge candidates');
+    expect(retro).toContain('repeated (twice or more) in history and the audit');
+    expect(retro).toContain("`grep -l 'decisions:.*<keyword>' .agents/knowledge/*`");
+    expect(retro).toContain('"knowledge candidates: none"');
+    // the candidates come before applying what the user accepts
+    expect(retro.indexOf('Propose knowledge candidates')).toBeLessThan(
+      retro.indexOf('Apply only what the user accepts'),
+    );
+    const role = readFileSync(join(process.cwd(), 'harness/roles/pl.md'), 'utf8');
+    expect(role).toContain('propose knowledge candidates');
+    const design = (f: string) => readFileSync(join(process.cwd(), 'docs', f), 'utf8');
+    expect(design('design.md')).toContain('are proposed as knowledge candidates');
+    expect(design('design.ko.md')).toContain('knowledge 후보로 제안한다');
+  });
   it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
     const t = read(n);
     expect(t.slice(t.indexOf('## 3. Delegation')).split('\n')[1]).toMatch(

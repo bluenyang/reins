@@ -2,6 +2,9 @@
 
 Read by `reins update`: it lists the entries newer than a project's pinned version.
 
+## 0.3.1
+- The `retro` skill and the retrospector propose knowledge candidates from decisions and failures repeated in history and the audit.
+
 ## 0.3.0
 - Stable 2026-11-10 (same harness as rc.4).
 - rc.3: every skill's delegation section and the delegation block point to `.loctx/delegation.local.md` first; the flow block, `implement`, `spec`, `audit` and the implementer, planner and auditor roles commit at meaningful units (revertible without taking other work along) instead of one commit per unit; the audit reads PR and CI records the PM collects and stays offline.

@@ -31,7 +31,7 @@ roles:
       - "edit the document"
     tools: { write: false, shell: true, push: false }
   retrospector:
-    does: "After a version, read the audit and the release and propose changes to AGENTS.md, skills and the harness, including whether the groups switched on paid for themselves."
+    does: "After a version, read the audit and the release and propose changes to AGENTS.md, skills and the harness, including whether the groups switched on paid for themselves, and propose knowledge candidates from the decisions and failures repeated in history and the audit."
     must_not:
       - "apply a proposal; the user accepts and the PM or `config`/`update` applies"
     tools: { write: false, shell: true, push: false }

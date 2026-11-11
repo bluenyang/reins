@@ -97,7 +97,7 @@ PM 말고는 모두 선택이다. 켜지 않은 군의 일은 PM이 한다.
 
 ### 3-4. 승인과 회고
 - **승인**: PM이 사용자 말을 인용해 intent·spec 프론트매터 `approvals:`에 `{ role: user, by, at, words, rev }`를 적고 커밋한다. `rev`는 승인 대상 개정이다. 사용자가 원하면 직접 한다. spec 요약은 매번 진행/수정을 기다린다(자동 수락 없음).
-- **회고**: stable 뒤(stable을 내지 않는 버전은 사용자가 종료를 선언하면). 감사 결과와 릴리스 과정을 보고 retrospector(꺼져 있으면 PM)가 AGENTS.md·스킬·하네스 개선안을 낸다. "켠 역할군이 값을 했는가"도 본다. 사용자가 받아들인 것만 반영한다: 프로젝트 절과 knowledge는 PM이, 하네스 원본은 사용자가 `config`·`update`로. 회고가 끝나면 정리(§4-2)를 한다.
+- **회고**: stable 뒤(stable을 내지 않는 버전은 사용자가 종료를 선언하면). 감사 결과와 릴리스 과정을 보고 retrospector(꺼져 있으면 PM)가 AGENTS.md·스킬·하네스 개선안을 낸다. "켠 역할군이 값을 했는가"도 본다. history와 감사에서 두 번 이상 나온 결정·실패는 knowledge 후보로 제안한다(§8; 없으면 "없음"이라고 적는다). 사용자가 받아들인 것만 반영한다: 프로젝트 절과 knowledge는 PM이, 하네스 원본은 사용자가 `config`·`update`로. 회고가 끝나면 정리(§4-2)를 한다.
 
 ## 4. 파일
 ### 4-1. 형식
@@ -162,7 +162,7 @@ groups:                 # 적지 않은 군 = 꺼짐(PM이 함)
 **0.1.x·0.2.0 → 0.3**(`update`가 감지, 멱등): 스킬 `reins-*` 삭제·새 스킬 설치 · 훅 파일의 `reins:begin hooks` 블록 제거(사용자 줄 보존)와 §6 훅 제안 · `.claude/settings.json`의 reins 훅 항목 제거(사용자 항목 보존) · `.claude/agents/reins-*.md` 삭제 · bindings 1판 → 2판(역할 → 군: pm→pm, planner·pl→pl/planner, implementer→implementer, code-review→pl.code-reviewer, verify-tool·qa-run·deploy·lookup→executor, qa-design→planner.qa-designer, docs→implementer.doc, advisor→advisor; 사용자가 확인) · `install.yaml`의 `tier` 삭제 · AGENTS.md는 재구성 · `.loctx`의 bus·ticket·dispatch·hook-state·journal·reports·metrics 목록을 보여 주고 확인 뒤 삭제(history·context·ROADMAP.local은 보존). 중간에 멈춰도 다시 실행하면 이어진다.
 
 ## 8. knowledge
-`.agents/knowledge/<date>_<slug>.md` 형식(결정 · 이유 · 적용 · 바뀌면)은 v1.0과 같다. 승격은 회고에서: retrospector나 PM이 history·감사에서 반복된 결정·실패를 찾아 제안하고, 사용자가 받아들이면 PM이 쓴다(`approved: {by, at, words}`). 찾기는 `grep -l 'decisions:.*<keyword>' .loctx/history/* .agents/knowledge/*`. 세는 CLI는 없다.
+`.agents/knowledge/<date>_<slug>.md` 형식(결정 · 이유 · 적용 · 바뀌면)은 v1.0과 같다. 승격은 회고에서(`retro` 스킬): retrospector나 PM이 history·감사에서 반복된(두 번 이상) 결정·실패를 찾아 제안하고 — 이미 같은 항목이 있으면 그 항목의 갱신을 제안한다 — 사용자가 받아들이면 PM이 쓴다(`approved: {by, at, words}`). 찾기는 `grep -l 'decisions:.*<keyword>' .loctx/history/* .agents/knowledge/*`. 세는 CLI는 없다.
 
 ## 9. CLI와 플러그인
 `npx @bluenyang/reins` — 네 명령. `install`·`migrate`·`update`는 `--dry-run`, 넷 모두 `--json`. TS, Node ≥ 22, 배포물에 Python 불필요(R65). CLI는 모델을 부르지 않는다.

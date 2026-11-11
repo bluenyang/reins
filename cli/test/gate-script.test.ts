@@ -45,13 +45,14 @@ function repo(cmds: string[]): string {
   writeFileSync(join(d, 'b.txt'), 'b\n');
   mkdirSync(join(d, '.agents/harness'), { recursive: true });
   writeFileSync(join(d, GATE_SCRIPT), renderGateScript(cmds));
-  git(d, 'add', '-A');
-  git(d, 'commit', '-q', '-m', 'first');
+  // the hooks are committed too: an untracked file would make every run "dirty"
   mkdirSync(join(d, '.githooks'));
   for (const stage of ['pre-commit', 'pre-push']) {
     writeFileSync(join(d, '.githooks', stage), `#!/bin/sh\nsh ${GATE_SCRIPT} ${stage}\n`);
     chmodSync(join(d, '.githooks', stage), 0o755);
   }
+  git(d, 'add', '-A');
+  git(d, 'commit', '-q', '-m', 'first');
   git(d, 'config', 'core.hooksPath', '.githooks');
   return d;
 }
@@ -133,6 +134,34 @@ describe('the gate script keeps the output of the project gates (021 S-9, S-10)'
     writeFileSync(join(d, 'a.txt'), 'changed\n');
     run(d, 'audit');
     expect(headers(log(d, tree(d))).at(-1)).toContain('worktree: dirty');
+  });
+
+  it('a file git neither tracks nor ignores makes the run dirty, in every stage (review)', () => {
+    const d = repo([PASS]);
+    writeFileSync(join(d, 'untracked.txt'), 'could change what the gates see\n');
+    run(d, 'audit');
+    expect(headers(log(d, tree(d))).at(-1)).toContain('stage: audit worktree: dirty');
+    // committing something else leaves it out of the tree that is logged
+    writeFileSync(join(d, 'a.txt'), 'a2\n');
+    git(d, 'add', 'a.txt');
+    expect(commit(d, '-m', 'a only').status).toBe(0);
+    expect(headers(log(d, tree(d)))[0]).toContain('stage: pre-commit worktree: dirty');
+    // an ignored file does not count (the logs themselves are ignored)
+    execFileSync('git', ['clean', '-fdq'], { cwd: d });
+    run(d, 'audit');
+    expect(headers(log(d, tree(d))).at(-1)).toContain('stage: audit worktree: clean');
+  });
+
+  it('output without a final newline does not run into the next record (review)', () => {
+    const d = repo([`node -e "process.stdout.write('no newline')"`, SECOND]);
+    expect(run(d, 'manual').status).toBe(0);
+    const lines = log(d, tree(d)).trimEnd().split('\n');
+    expect(lines).toContain('no newline');
+    expect(lines).toContain(`$ ${SECOND}`);
+    expect(lines.at(-1)).toBe('exit: 0');
+    const one = repo([`node -e "process.stdout.write('last')"`]);
+    run(one, 'manual');
+    expect(log(one, tree(one)).trimEnd().split('\n').slice(-2)).toEqual(['last', 'exit: 0']);
   });
 
   it('(f4) makes the log folder itself, and works from a subdirectory', () => {

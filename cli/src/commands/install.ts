@@ -17,6 +17,7 @@ import { apply, listFiles, type Applied, type Write } from '../lib/fsx.js';
 import { repoRoot } from '../lib/git.js';
 import { harnessVersion, packageHarness, packageSkills, packageVersion } from '../lib/upstream.js';
 import { generateVendorFiles } from '../lib/generate.js';
+import { hookLine, requiredGates } from '../lib/gate-script.js';
 import { defaultBindings, readTeam, type BindingsV2 } from '../lib/bindings.js';
 import { overlayReader, workTreeReader } from '../lib/reader.js';
 import { LOCAL_DELEGATION, onboardingNote, placeNote, renderBlocks } from '../lib/agents-md.js';
@@ -137,6 +138,7 @@ const LOCTX_README = `# .loctx — 이 머신·이 개발자만 (gitignore)
 | ROADMAP.local.md | 날 것의 아이디어. 사용자와 정리되면 docs/ROADMAP.md | 사용자 |
 | history/<version>.md | 버전마다 한 장: 결정, 판정, 건너뛴 단계, 감사·회고 요약 | 지우지 않음 |
 | reports/<version>/ | 게이트·테스트 원본 로그, 하위 보고 | 회고 뒤 (history·감사에 요약한 다음) |
+| reports/gates/<tree>.log | 훅이 돌린 검사의 출력 (.agents/harness/run-gates.sh; 커밋의 트리 해시가 파일 이름) | 회고 뒤 (그 버전의 stable 전에 쓰인 것) |
 | context/ | 개인 컨텍스트 — 대화·메모 | 사용자 |
 | bindings.local.yaml | 나만 쓰는 모델 할당 (있으면 팀 설정보다 우선) | 사용자 |
 `;
@@ -145,19 +147,15 @@ type Tool = Vendor['name'];
 const TOOL_NAMES: Tool[] = ['claude', 'openai', 'google', 'gemini', 'copilot', 'cursor'];
 
 /** The gate commands, in order, as hook lines (design §6). */
-function gateLines(root: string): string[] {
-  const p = join(root, '.agents/harness/gates.yaml');
-  if (!existsSync(p)) return [];
-  const g = parse(readFileSync(p, 'utf8')) as {
-    gates?: Record<string, { cmd?: string; optional?: boolean }>;
-    order?: string[];
-  } | null;
-  const gates = g?.gates ?? {};
-  return (g?.order ?? Object.keys(gates))
-    .map((n) => gates[n])
-    .filter((x): x is { cmd: string } => !!x?.cmd && !(x as { optional?: boolean }).optional)
-    .map((x) => x.cmd);
-}
+/** The git hooks reins proposes the gates for. */
+const HOOK_STAGES = ['pre-commit', 'pre-push'] as const;
+
+/** A `reins:begin hooks` block in a hook file, with its body. */
+const HOOK_BLOCK = /# reins:begin hooks\n([\s\S]*?)# reins:end hooks/g;
+
+/** A command that runs reins: what 0.x put into hooks and settings. */
+export const RUNS_REINS =
+  /@bluenyang\/reins|reins\.js\b|(^|[\s;&|])reins\s+(check|hook|gate|status)\b/;
 
 /** `reins install` (design §9): place the harness, ask, propose hooks, mark onboarding. Never writes history. */
 export async function runInstall(o: InstallOptions): Promise<InstallResult> {
@@ -373,52 +371,71 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   // 4c. a release: draft from dispatchable workflows — proposal only, never written
   notes.push(...releaseDraftNotes(draftRelease(root)));
 
-  // 5. hooks: the project's own gate commands in its own hook tool (design §6)
+  // 5. hooks: one line per stage that calls the project's gate script (design §6)
   const tool = hookTool(root);
-  const cmds = gateLines(root);
-  const pending = writes.find((w) => w.path === '.agents/harness/gates.yaml');
-  const lines = pending
-    ? (() => {
-        const g = parse(pending.content) as {
-          gates?: Record<string, { cmd: string; optional?: boolean }>;
-          order?: string[];
-        };
-        return (g.order ?? [])
-          .map((n) => g.gates?.[n])
-          .filter((x) => x && !x.optional)
-          .map((x) => x!.cmd);
-      })()
-    : cmds;
-  let addHooks = !!o.hooks;
-  if (lines.length && tool === 'husky' && !addHooks && o.confirmHooks && !o.dryRun) {
-    const yes = await o.confirmHooks.confirm({
-      message: `Add the project gates to husky pre-commit and pre-push? (${lines.join(' && ')})`,
-      initial: true,
+  const gatesPath = join(root, '.agents/harness/gates.yaml');
+  const gated =
+    requiredGates(
+      writes.find((w) => w.path === '.agents/harness/gates.yaml')?.content ??
+        (existsSync(gatesPath) ? readFileSync(gatesPath, 'utf8') : undefined),
+    ).length > 0;
+  if (gated && tool === 'husky') {
+    const files = HOOK_STAGES.map((stage) => {
+      const p = join(root, '.husky', stage);
+      return { stage, cur: existsSync(p) ? readFileSync(p, 'utf8') : '' };
     });
-    if (yes === EXIT) return cancelled();
-    addHooks = yes === true;
-  }
-  if (lines.length) {
-    if (tool === 'husky' && addHooks) {
-      for (const stage of ['pre-commit', 'pre-push']) {
-        const p = join(root, '.husky', stage);
-        const cur = existsSync(p) ? readFileSync(p, 'utf8') : '';
-        if (cur.includes('# reins:begin hooks')) continue;
+    const missing = files.filter((f) => !f.cur.includes('# reins:begin hooks'));
+    let addHooks = !!o.hooks;
+    if (missing.length && !addHooks && o.confirmHooks && !o.dryRun) {
+      const yes = await o.confirmHooks.confirm({
+        message: `Add the project gates to husky pre-commit and pre-push? (${hookLine('<stage>')})`,
+        initial: true,
+      });
+      if (yes === EXIT) return cancelled();
+      addHooks = yes === true;
+    }
+    for (const { stage, cur } of files) {
+      const line = hookLine(stage);
+      if (cur.includes('# reins:begin hooks')) {
+        // a block an earlier reins wrote: its body becomes the one line. A block that runs reins is 0.x
+        // and `update` removes it as a whole; one that already is the line stays.
+        const held: string[] = [];
+        const next = cur.replace(HOOK_BLOCK, (block, body: string) => {
+          if (RUNS_REINS.test(body) || body.trim() === line) return block;
+          held.push(...body.split('\n').filter((l) => l.trim()));
+          return `# reins:begin hooks\n${line}\n# reins:end hooks`;
+        });
+        if (next === cur) continue;
+        add(`.husky/${stage}`, next, 'hook: the gate script');
+        notes.push(
+          `.husky/${stage}: the reins hooks block now calls the gate script — it held: ${held.join(' && ')} (move a line of your own outside the block)`,
+        );
+      } else if (addHooks)
         add(
           `.husky/${stage}`,
-          `${cur.replace(/\s*$/, '')}\n# reins:begin hooks\n${lines.join('\n')}\n# reins:end hooks\n`.replace(
+          `${cur.replace(/\s*$/, '')}\n# reins:begin hooks\n${line}\n# reins:end hooks\n`.replace(
             /^\n/,
             '',
           ),
-          'hook: the project gates',
+          'hook: the gate script',
         );
-      }
-    } else if (tool)
+    }
+    if (missing.length && !addHooks)
       notes.push(
-        `hook proposal (${tool}): run the project gates in pre-commit and pre-push — ${lines.join(' && ')}${tool === 'husky' ? '; re-run with --hooks to add them' : ` (reins proposes ${tool} lines only; add them to its config yourself)`}`,
+        `hook proposal (husky): add \`${hookLine('pre-commit')}\` to .husky/pre-commit and \`${hookLine('pre-push')}\` to .husky/pre-push; re-run with --hooks to add them`,
       );
-    else notes.push('no hook tool found — the PM asks which one to use during onboarding');
-  }
+  } else if (gated && tool === 'lefthook')
+    notes.push(
+      `hook proposal (lefthook): under \`pre-commit: commands:\` add \`gates: { run: ${hookLine('pre-commit')} }\`, and the same under \`pre-push:\` with \`${hookLine('pre-push')}\` (reins proposes lefthook lines only; add them to its config yourself)`,
+    );
+  else if (gated && tool === 'pre-commit')
+    notes.push(
+      `hook proposal (pre-commit): under \`repos:\` add \`- repo: local\` with a hook \`{ id: gates, name: project gates, entry: ${hookLine('pre-commit')}, language: system, pass_filenames: false }\`, and one with \`stages: [pre-push]\` and \`${hookLine('pre-push')}\` (reins proposes pre-commit lines only; add them to its config yourself)`,
+    );
+  else if (gated)
+    notes.push(
+      `no hook tool found — the PM asks which one to use during onboarding; whichever it is runs \`${hookLine('pre-commit')}\` and \`${hookLine('pre-push')}\``,
+    );
 
   // 6. AGENTS.md: managed blocks, the onboarding note; CLAUDE.md pointer
   const agentsPath = join(root, 'AGENTS.md');

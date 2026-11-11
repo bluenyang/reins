@@ -8,5 +8,7 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 30_000,
     globalSetup: ['test/tmp.ts', 'test/e2e/build.ts'],
+    // run from a git hook, the tests would hand git's index of that commit to their own repositories
+    setupFiles: ['test/setup.ts'],
   },
 });

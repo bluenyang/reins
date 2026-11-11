@@ -5,7 +5,7 @@
 
 ## 0. 원칙
 1. **reins는 하네스를 관리할 뿐이다.** 명령은 `install`·`migrate`·`update`·`config` 넷이다. 설치가 끝난 뒤 프로젝트가 일하는 동안 어떤 훅·스킬·에이전트도 reins를 실행하지 않는다. 설치된 하네스는 reins와 네트워크 없이 동작한다. (R5·R7·R20·R30)
-2. **검사는 프로젝트가 소유한다.** 단계 검사는 프로젝트의 훅 도구(lefthook·husky 등)나 프로젝트 안의 스크립트가 돌린다. reins는 그것을 제안하거나 설정할 뿐이다. (R7·R23)
+2. **검사는 프로젝트가 소유한다.** 단계 검사는 프로젝트의 훅 도구(lefthook·husky 등)가 프로젝트 안의 스크립트(`.agents/harness/run-gates.sh`, §6)를 불러 돌린다. 스크립트는 프로젝트의 검사 명령만 부른다. reins는 그것을 제안하거나 설정할 뿐이다. (R7·R23)
 3. **지켰는지는 감사로 확인한다.** 실행 중 차단 대신, 버전마다 감사가 단계 준수를 판정한다. 감사는 필수이고 끄는 것은 사용자만 한다. (R5·R9)
 4. **단일이 기본이다.** 에이전트 하나(PM)가 단계를 수행한다. 멀티는 역할군에 모델을 할당해 켜고, 할당하지 않은 역할군의 일은 PM이 한다. (R12·R14) 근거: Anthropic, "Building agents: When to fold subagents into your main agent loop"(2026-10-22), "Building multi-agent systems: When and how to use them"(2026-01-23).
 5. **파일은 만들 때 수명을 정한다.** 누가·언제 지우는지 없는 파일은 만들지 않는다. (R15·R35)
@@ -20,11 +20,11 @@
 │   ├── intent/<NNN>_<slug>/{intent,spec}.md
 │   ├── audit/<version>.md    버전 감사 기록
 │   ├── knowledge/            명시지
-│   ├── harness/              bindings.yaml(설정) · gates.yaml · install.yaml · generated.yaml · roles/ · templates/
+│   ├── harness/              bindings.yaml(설정) · gates.yaml · run-gates.sh(검사 스크립트) · install.yaml · generated.yaml · roles/ · templates/
 │   └── skills/<name>/SKILL.md   단계 스킬 11개
 ├── .claude/agents/rs-*.md    커밋 · 생성물(멀티에서 켠 역할만)
 ├── docs/                     ROADMAP.md 등
-└── .loctx/                   gitignore · ROADMAP.local.md · history/<version>.md · reports/<version>/ · context/ · bindings.local.yaml · delegation.local.md
+└── .loctx/                   gitignore · ROADMAP.local.md · history/<version>.md · reports/<version>/ · reports/gates/ · context/ · bindings.local.yaml · delegation.local.md
 ```
 `AGENTS.previous.md`는 재구성 대기 중에만 `.agents/`에 있다(§5).
 
@@ -87,8 +87,8 @@ PM 말고는 모두 선택이다. 켜지 않은 군의 일은 PM이 한다.
 
 ### 3-3. 감사
 - **시기**: 머지 뒤, rc 전(머지 과정까지 감사). 릴리스 과정은 회고에서 본다.
-- **읽는 것**: 그 시점의 AGENTS.md와 하네스 설정, intent, spec, `ROADMAP.md`·`ROADMAP.local.md`, git 이력, history, 게이트·테스트 로그, 그리고 PR·CI 기록. PR·CI 기록은 감사를 맡기기 전에 PM이 버전에 머지된 PR마다 번호, 머지한 사람과 시각, 머지 커밋과 head SHA, CI 검사와 결과, PR 본문의 게이트 출력을 저장소 호스트 CLI의 출력 원본 그대로(예: `gh pr view <n> --json …`, `gh pr checks <n>`) `.loctx/reports/<version>/`에 모아 넘긴다. 감사자는 네트워크 없이 실행하고, 없는 기록은 "확인 불가"로 두고 PM에게 요청한다. 최소 컨텍스트로 받고 작업 대화는 받지 않는다.
-- **판정**: §3-1 흐름을 지켰는가. 각 행위 당시의 규칙과 승인된 예외가 기준이다. 커밋도 본다: 커밋마다 의미 있는 작업 단위인가 — 그 시점으로 되돌릴(revert·reset) 수 있고, 되돌려도 다른 멀쩡한 작업·기능은 되돌아가지 않는가. 한 작업에 커밋이 여럿(구현, 리뷰 수정)인 것은 정상이고, 함께 되돌아가도 되는 작은 작업은 한 커밋에 합칠 수 있다. 무관한 작업을 한 커밋에 섞었거나, spec의 작업 단위 자체를 승인 없이 바꿨으면 위반이다(차단 장치는 두지 않는다). 버전 동안 생성 파일·하네스 파일이 `update`·`config` 커밋이 아닌 커밋에서 바뀌었으면 위반이다(드리프트). 증거 경로가 없으면 통과가 아니라 "확인 불가"다.
+- **읽는 것**: 그 시점의 AGENTS.md와 하네스 설정, intent, spec, `ROADMAP.md`·`ROADMAP.local.md`, git 이력, history, 게이트·테스트 로그, 커밋별 검사 로그(`.loctx/reports/gates/<tree>.log`), 그리고 PR·CI 기록. PR·CI 기록은 감사를 맡기기 전에 PM이 버전에 머지된 PR마다 번호, 머지한 사람과 시각, 머지 커밋과 head SHA, CI 검사와 결과, PR 본문의 게이트 출력을 저장소 호스트 CLI의 출력 원본 그대로(예: `gh pr view <n> --json …`, `gh pr checks <n>`) `.loctx/reports/<version>/`에 모아 넘긴다. PM은 같은 때에 커밋별 검사 로그의 빈 곳도 채운다: 버전의 커밋(기본 브랜치에 들어간 것)마다 그 트리의 로그에 `worktree: clean`·`exit: 0`인 실행이 있는지 보고, 없는 커밋(rebase로 다시 만든 것, 다른 기계에서 한 것, 훅을 거치지 않은 것)만 깨끗한 작업 트리에서 체크아웃해 `sh .agents/harness/run-gates.sh audit`을 돌린다. 커밋의 내용은 바뀌지 않으므로 나중에 돌려도 답은 같다. 실패한 실행은 고치지 않고 그대로 넘긴다. 감사자는 네트워크 없이 실행하고, 없는 기록은 "확인 불가"로 두고 PM에게 요청한다. 최소 컨텍스트로 받고 작업 대화는 받지 않는다.
+- **판정**: §3-1 흐름을 지켰는가. 각 행위 당시의 규칙과 승인된 예외가 기준이다. 커밋도 본다: 커밋마다 의미 있는 작업 단위인가 — 그 시점으로 되돌릴(revert·reset) 수 있고, 되돌려도 다른 멀쩡한 작업·기능은 되돌아가지 않는가. 한 작업에 커밋이 여럿(구현, 리뷰 수정)인 것은 정상이고, 함께 되돌아가도 되는 작은 작업은 한 커밋에 합칠 수 있다. 무관한 작업을 한 커밋에 섞었거나, spec의 작업 단위 자체를 승인 없이 바꿨으면 위반이다(차단 장치는 두지 않는다). 버전 동안 생성 파일·하네스 파일이 `update`·`config` 커밋이 아닌 커밋에서 바뀌었으면 위반이다(드리프트). 검사도 본다: 커밋마다 그 트리의 로그에 `worktree: clean`·`exit: 0`인 실행이 있는가 — 커밋 때 남긴 것인지 감사 전에 채운 것(`stage: audit`)인지 함께 적는다. 그런 실행이 없으면 "확인 불가", 깨끗한 실행이 0이 아닌 `exit:`로 끝났으면 위반이다. 증거 경로가 없으면 통과가 아니라 "확인 불가"다.
 - **건너뛴 단계**: 사용자 지시로 건너뛴 단계·승인은 intent의 `waivers:`에 그 자리에서 기록되어 있으면 넘긴다. 일회성이다.
 - **위반**: 보완하거나 사용자가 받아들인다. 어느 쪽이든 감사와 회고에서 정확히 비판하고, 경중에 따라 PL이나 Advisor 의견을 받아 해결 방법을 낸다.
 - **기록**: `.agents/audit/<version>.md`(커밋). 감사 실행은 읽기 전용이다: 감사자는 기록 전문을 답으로 돌려주고, PM이 그 답을 온 그대로 `.loctx/reports/<version>/`에 남긴 뒤 고치지 않고 기록 파일에 쓴다(판정을 바꾸거나 줄이지 않는다). 사용자 처리(보완·수용)는 구분된 절로 덧붙인다. 버전 종료 보고에 감사 상태를 넣는다.
@@ -118,6 +118,7 @@ plan.md, ticket 파일, bus 파일은 없다. 커밋 메시지에 spec 항목(`S
 | intent·spec·audit·knowledge | PM·Planner(audit는 감사자의 답을 PM이 그대로 씀) | 지우지 않음(커밋) |
 | `.loctx/history/<version>.md` | PM | 지우지 않음(로컬 노하우) |
 | `.loctx/reports/<version>/`(게이트·테스트 원본 로그, 하위 보고) | 그 단계를 한 역할 | 회고 뒤 PM이 정리. 지우기 전 history·감사 기록에 요약 |
+| `.loctx/reports/gates/<tree>.log`(커밋별 검사 출력) | 훅이 부르는 `run-gates.sh`, 감사 전의 PM | 회고에서 PM. 그 버전의 stable 태그 전에 쓰인 것만(뒤 작업의 로그는 남김) |
 | `.agents/AGENTS.previous.md` | install·migrate·config | 재구성이 끝나면 PM |
 | `.loctx/delegation.local.md`(개인 위임 표) | config(두 범위)·install·update | 같은 명령이, 개인 설정이 없어지거나 팀과 같은 위임이 될 때 |
 | `.loctx/context/`, `ROADMAP.local.md` | 사용자·PM | 사용자 |
@@ -154,7 +155,9 @@ groups:                 # 적지 않은 군 = 꺼짐(PM이 함)
 
 **`.claude/settings.json`은 합친다.** 이 파일은 사용자와 함께 쓰는 파일이라 위 규칙의 예외다. reins의 것은 금지선에서 만든 `permissions.deny` 규칙뿐이고(`$schema`는 없을 때만 넣음), 그 밖의 키와 항목(`allow`, 사용자가 `deny`에 더한 줄, `hooks`, `env` …)은 순서까지 그대로 둔다. reins가 마지막으로 쓴 규칙 목록을 `generated.yaml`의 `owned:`에 적어 두고, 다시 만들 때 지금 만드는 규칙은 `deny` 끝에 넣고(이미 있으면 그대로) 목록에 있었는데 이제 만들지 않는 규칙만 뺀다. 목록이 없는 설치(0.3.0 이하)는 파일이 reins가 쓴 그대로면 전부 reins 것으로 보고, 손댄 파일이면 더하기만 한다. 사용자 항목이 있어도, reins가 만든 적 없는 기존 파일이어도 합쳐 쓰며 `--force`는 이 파일에 차이가 없다. JSON이 아니거나 `permissions`·`deny`의 모양이 다르면 쓰지 않고 알린다(나머지 생성물은 계속).
 
-**훅.** install은 프로젝트의 훅 도구(lefthook 설정, `.husky/`, pre-commit 설정)를 감지해 `gates.yaml` 명령을 그대로 부르는 줄을 제안한다. husky면 터미널에서 묻고 확인하면 넣는다(auto 모드도 묻는다; 비대화형은 `--hooks`일 때만). lefthook과 pre-commit은 줄을 제안만 하고 사용자가 그 설정에 넣는다. 넣는 줄은 프로젝트 명령만 부른다. 훅 도구가 없으면 온보딩 할 일로 남긴다.
+**검사 스크립트.** `.agents/harness/run-gates.sh`(POSIX sh)는 `gates.yaml`의 필수 검사 명령을 순서대로 돌리고 그 출력을 화면과 `.loctx/reports/gates/<tree>.log`에 남긴다. 첫 실패에서 멈추고 그 종료 코드를 돌려준다. 명령은 reins가 쓸 때 스크립트에 넣어 둔다(실행 중에 YAML을 읽지 않는다): `install`과 `update`는 돌 때마다 지금의 `gates.yaml`로, `config gates`는 `gates.yaml`을 고칠 때 다시 만든다. 다른 생성물처럼 `generated.yaml`의 해시로 손 수정을 가린다. 필수 검사가 없으면 스크립트도 훅 줄도 없다. reins·npx를 부르지 않고 환경 변수를 바꾸지 않는다. `<tree>`는 검사한 내용의 트리 해시다 — pre-commit 단계는 `git write-tree`(그 커밋을 위해 git이 준비한 인덱스라 `commit -a`·`commit <경로>`에서도 그 커밋의 트리), 그 밖의 단계는 `HEAD^{tree}`. 커밋의 로그는 `git rev-parse <commit>^{tree}`로 찾는다. 실행마다 머리줄 `== <시각> stage: <단계> worktree: clean|dirty`, 명령과 출력, 마지막 줄 `exit: <코드>`를 덧붙인다. 검사는 작업 트리에서 돌기 때문에 작업 트리가 그 트리와 다르면(일부만 스테이징) `dirty`이고, 그 실행은 그 트리의 증거가 아니다.
+
+**훅.** install은 프로젝트의 훅 도구(lefthook 설정, `.husky/`, pre-commit 설정)를 감지해 단계마다 한 줄 — `sh .agents/harness/run-gates.sh pre-commit`, `… pre-push` — 을 제안한다. husky면 터미널에서 묻고 확인하면 `# reins:begin hooks` 블록에 넣는다(auto 모드도 묻는다; 비대화형은 `--hooks`일 때만). 이미 있는 블록의 본문이 이 한 줄이 아니면(0.3.0이 검사 명령을 직접 적어 둔 블록) `install`·`update`가 이 한 줄로 바꾸고 바꾸기 전 본문을 출력에 보여 준다. 블록이 없는 husky 파일은 확인 없이 건드리지 않는다. lefthook과 pre-commit은 그 도구 형식의 줄을 제안만 하고 사용자가 그 설정에 넣는다. 훅 도구가 없으면 온보딩 할 일로 남기되 스크립트는 만들어 두므로, 도구를 나중에 정해도 넣을 것은 같은 한 줄이다. Windows에서는 `sh`(Git for Windows에 들어 있음)가 훅 도구의 PATH에 있어야 한다.
 
 **드리프트.** 생성 파일과 원본이 어긋난 것(손 수정, 다시 만들지 않음)이다. ① 감사가 버전 동안 생성 파일·하네스 파일을 바꾼 커밋이 `update`·`config` 커밋인지 git 이력으로 가린다. ② `update`는 `generated.yaml` 해시와 현재 파일을 비교해 손으로 고친 파일을 보여 주고 확인받는다(비대화형은 덮어쓰지 않고 목록과 exit 1, `--force`로 덮어씀). 훅과 CI에서는 검사하지 않는다. `.claude/settings.json`에서는 사용자 항목을 바꾼 것은 드리프트가 아니고, reins가 만든 deny 규칙을 손으로 빼거나 고친 것만 드리프트다(다음 `update`·`config`가 다시 넣는다).
 

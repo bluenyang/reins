@@ -54,7 +54,8 @@ export function groupLine(group: Group, spec: GroupSpec | undefined, mode?: stri
       ? show({ vendor: spec.vendor, model: spec.model })
       : '—';
   const n = Object.keys(spec.roles ?? {}).length;
-  return `${group.padEnd(12)} ${models}${n ? `  +${n} role${n > 1 ? 's' : ''}` : ''}${tag}`;
+  const fb = spec.fallback ? `  (fallback: ${show(spec.fallback)})` : '';
+  return `${group.padEnd(12)} ${models}${fb}${n ? `  +${n} role${n > 1 ? 's' : ''}` : ''}${tag}`;
 }
 
 /** The packaged list of known models per vendor (`harness/models.yaml`, spec ST-2). */
@@ -180,11 +181,17 @@ async function groupScreen(
       { value: 'one', label: many ? 'one model' : 'set the model' },
       ...(many ? [{ value: 'many', label: 'several models', hint: 'first = control (pl)' }] : []),
       ...(roles.length ? [{ value: 'role', label: 'a model for one role' }] : []),
+      {
+        value: 'fallback',
+        label: 'fallback (optional)',
+        hint: 'what to call when the model cannot be called',
+      },
       { value: 'off', label: 'switch off', hint: 'the PM does it' },
     ],
   });
   if (pick === EXIT) return 'exit';
   if (pick === BACK || pick === 'back') return 'back';
+  if (pick === 'fallback') return fallbackScreen(o, group, spec, write);
   if (pick === 'off') {
     await write({ off: [group] }, `${group} off`);
     return 'back';
@@ -232,6 +239,73 @@ async function groupScreen(
     await write(
       { set: [`${group}.${role}=${b.vendor}:${b.model}`] },
       `${group}.${role} → ${show(b)}`,
+    );
+  return 'back';
+}
+
+/**
+ * The fallback of a group's model or of a role's own model (design §5): pick a model, or clear it. Only a
+ * place that has a model in the file being written can take one; `configureBindings` says so otherwise.
+ */
+async function fallbackScreen(
+  o: ModelsScreenOptions,
+  group: Group,
+  spec: GroupSpec | undefined,
+  write: (opts: Omit<ConfigureBindingsOptions, 'cwd' | 'local'>, label: string) => Promise<void>,
+): Promise<'back' | 'exit'> {
+  const { prompter } = o;
+  const targets: { value: string; label: string; hint: string; current?: Binding }[] = [];
+  if (spec?.models?.length || (spec?.vendor && spec.model))
+    targets.push({
+      value: group,
+      label: `${group} (the group's model)`,
+      hint: show(spec.fallback).replace('off (PM)', 'none'),
+      current: spec.fallback,
+    });
+  for (const [r, b] of Object.entries(spec?.roles ?? {}))
+    targets.push({
+      value: `${group}.${r}`,
+      label: `${group}.${r} (${show(b)})`,
+      hint: show(b.fallback).replace('off (PM)', 'none'),
+      current: b.fallback,
+    });
+  if (targets.length === 0) {
+    prompter.note(`${group} has no model yet — set one first; a fallback goes with a model`);
+    return 'back';
+  }
+  let target = targets[0]!;
+  if (targets.length > 1) {
+    const t = await prompter.select<string>({
+      message: `${group}: fallback of`,
+      options: [
+        { value: 'back', label: '< back' },
+        ...targets.map(({ value, label, hint }) => ({ value, label, hint })),
+      ],
+    });
+    if (t === EXIT) return 'exit';
+    if (t === BACK || t === 'back') return 'back';
+    target = targets.find((x) => x.value === t)!;
+  }
+  const what = await prompter.select<string>({
+    message: `${target.value}: fallback (now: ${target.hint})`,
+    options: [
+      { value: 'back', label: '< back' },
+      { value: 'pick', label: 'choose a model' },
+      ...(target.current ? [{ value: 'none', label: 'none', hint: 'remove the fallback' }] : []),
+    ],
+  });
+  if (what === EXIT) return 'exit';
+  if (what === BACK || what === 'back') return 'back';
+  if (what === 'none') {
+    await write({ fallback: [`${target.value}=none`] }, `${target.value} fallback removed`);
+    return 'back';
+  }
+  const b = await pickModel(o, `${target.value} fallback`, target.current);
+  if (b === EXIT) return 'exit';
+  if (b)
+    await write(
+      { fallback: [`${target.value}=${b.vendor}:${b.model}`] },
+      `${target.value} fallback → ${show(b)}`,
     );
   return 'back';
 }

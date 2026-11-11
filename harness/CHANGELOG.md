@@ -9,6 +9,7 @@ Read by `reins update`: it lists the entries newer than a project's pinned versi
 - New `.agents/harness/run-gates.sh`: runs the gates of `gates.yaml` and keeps their output in `.loctx/reports/gates/<tree>.log`. Hooks call it with one line (`sh .agents/harness/run-gates.sh pre-commit`); `update` rewrites the hooks block 0.3.0 wrote and shows what it held. The PM fills missing logs before the audit; the retro deletes them.
 - `models.yaml` adds `claude-fable-5-2`, `gpt-6-sol` and `gpt-6-luna`.
 - `update` heads the `.agents/AGENTS.previous.md` it makes from an install of 0.2.0 or earlier with a warning not to run the reins commands named in it.
+- Fallback models: `fallback` on a group or a role in `bindings.yaml` (and the personal file); the delegation table names the fallback and how to call it, and the PM uses it when a role's call cannot be made. A `bindings.yaml` that holds a `fallback` is refused by the `config` of 0.3.0, so everyone on the team moves to 0.3.1. `update` carries a 0.2.0 `fallback` over with its model.
 
 ## 0.3.0
 - Stable 2026-11-10 (same harness as rc.4).

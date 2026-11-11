@@ -11,6 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 import { runConfig } from '../src/commands/config.js';
 import { configureBindings } from '../src/commands/configure.js';
 import { runInstall } from '../src/commands/install.js';
@@ -494,5 +495,200 @@ describe('the personal delegation table (020 V-1)', () => {
     rmSync(join(d, '.loctx/bindings.local.yaml'));
     await runUpdate({ cwd: d, detectVendors: detect });
     expect(existsSync(join(d, LD))).toBe(false);
+  });
+});
+
+describe('fallback models through config (021 S-18, V-7)', () => {
+  const TEAM = '.agents/harness/bindings.yaml';
+  const LOCAL = '.loctx/bindings.local.yaml';
+  const team = (d: string) =>
+    parse(readFileSync(join(d, TEAM), 'utf8')) as {
+      groups?: Record<
+        string,
+        { fallback?: unknown; roles?: Record<string, { fallback?: unknown }> }
+      >;
+    };
+  const terra = { vendor: 'openai', model: 'gpt-6.1-terra' };
+  const multi = (d: string) =>
+    configureBindings({
+      cwd: d,
+      mode: 'multi',
+      set: ['implementer=claude-sonnet-5-5', 'pl.code-reviewer=openai:gpt-6.1-sol'],
+    });
+
+  it('(e) --fallback sets one on a group and on a role, and none clears it; the table follows', async () => {
+    const d = await repo();
+    await multi(d);
+    const r = await configureBindings({
+      cwd: d,
+      fallback: ['implementer=openai:gpt-6.1-terra', 'pl.code-reviewer=gpt-6.1-terra'],
+    });
+    expect(r.refused).toBeUndefined();
+    expect(r.changed).toEqual(['implementer fallback', 'pl.code-reviewer fallback']);
+    expect(team(d).groups?.['implementer']?.fallback).toEqual(terra);
+    expect(team(d).groups?.['pl']?.roles?.['code-reviewer']?.fallback).toEqual(terra);
+    const agents = () => readFileSync(join(d, 'AGENTS.md'), 'utf8');
+    expect(agents()).toContain(
+      '; fallback: openai gpt-6.1-terra — `openai exec -m gpt-6.1-terra -s workspace-write -`',
+    );
+    expect(agents()).toContain("use the role's `fallback` once");
+    // a new model for the role keeps its fallback
+    await configureBindings({ cwd: d, set: ['pl.code-reviewer=openai:gpt-6-astra'] });
+    expect(team(d).groups?.['pl']?.roles?.['code-reviewer']).toEqual({
+      vendor: 'openai',
+      model: 'gpt-6-astra',
+      fallback: terra,
+    });
+    const c = await configureBindings({
+      cwd: d,
+      fallback: ['implementer=none', 'pl.code-reviewer=none'],
+    });
+    expect(c.refused).toBeUndefined();
+    expect(team(d).groups?.['implementer']?.fallback).toBeUndefined();
+    expect(team(d).groups?.['pl']?.roles?.['code-reviewer']?.fallback).toBeUndefined();
+    expect(agents()).not.toContain('fallback');
+  });
+
+  it.each([
+    [
+      'a group without a model',
+      { fallback: ['executor=gpt-6.1-terra'] },
+      /executor has no model in bindings\.yaml/,
+    ],
+    [
+      'a role without a model of its own',
+      { fallback: ['implementer.qa=gpt-6.1-terra'] },
+      /implementer\.qa has no model of its own/,
+    ],
+    [
+      'the model itself',
+      { fallback: ['implementer=claude-sonnet-5-5'] },
+      /the fallback is the group's own model/,
+    ],
+    [
+      "a model the same call makes the group's",
+      { set: ['implementer=openai:gpt-6.1-terra'], fallback: ['implementer=gpt-6.1-terra'] },
+      /the fallback is the group's own model/,
+    ],
+    [
+      'one of several models',
+      { models: ['pl=claude-sonnet-5-5,openai:gpt-6.1-terra'], fallback: ['pl=gpt-6.1-terra'] },
+      /the fallback is the group's own model/,
+    ],
+    ['an unknown role', { fallback: ['implementer.nope=gpt-6.1-terra'] }, /unknown role "nope"/],
+    ['no value', { fallback: ['implementer='] }, /is not target=model\|none/],
+  ])('(e, i, j) refuses %s and writes nothing', async (_n, opts, why) => {
+    const d = await repo();
+    await multi(d);
+    const before = readFileSync(join(d, TEAM), 'utf8');
+    const r = await configureBindings({ cwd: d, ...opts });
+    expect(r.refused).toMatch(why);
+    expect(r.code).toBe(1);
+    expect(readFileSync(join(d, TEAM), 'utf8')).toBe(before);
+  });
+
+  it('(f, i) --local: needs the model in the personal file; then only the personal table changes', async () => {
+    const d = await repo();
+    await multi(d);
+    // the team has the model, the personal file does not: a fallback alone would switch the group off
+    const no = await configureBindings({
+      cwd: d,
+      local: true,
+      fallback: ['implementer=gpt-6.1-terra'],
+    });
+    expect(no.refused).toMatch(/implementer has no model in your personal file/);
+    expect(existsSync(join(d, LOCAL))).toBe(false);
+    const before = Object.fromEntries(
+      Object.entries(snapshot(d)).filter(([k]) => !k.startsWith('.loctx/')),
+    );
+    const r = await configureBindings({
+      cwd: d,
+      local: true,
+      set: ['implementer=claude-sonnet-5-5'],
+      fallback: ['implementer=gpt-6.1-terra'],
+    });
+    expect(r.refused).toBeUndefined();
+    expect(r.localDelegation).toBe('written');
+    expect(readFileSync(join(d, '.loctx/delegation.local.md'), 'utf8')).toContain(
+      '| implementer/code | claude claude-sonnet-5-5 | subagent `rs-implementer-code`; fallback: openai gpt-6.1-terra — ',
+    );
+    expect(
+      Object.fromEntries(Object.entries(snapshot(d)).filter(([k]) => !k.startsWith('.loctx/'))),
+    ).toEqual(before);
+    // the role is still on for this person
+    expect(r.roles.find((x) => x.group === 'implementer' && x.role === 'code')).toMatchObject({
+      on: true,
+      fallback: terra,
+    });
+  });
+
+  it('(h) the screen: choose a fallback after the model, see it, clear it; leaving changes nothing', async () => {
+    const d = await repo();
+    await multi(d);
+    const run = (answers: unknown[]) => {
+      const p = scriptedPrompter(answers as never[]);
+      return runConfig({ cwd: d, interactive: true, prompter: p, detectVendors: detect }).then(
+        () => p,
+      );
+    };
+    // project scope → implementer → fallback → choose a model → openai → typed id
+    const p = await run([
+      'models',
+      'scope',
+      'project',
+      'implementer',
+      'fallback',
+      'pick',
+      'openai',
+      'other',
+      'gpt-6.1-terra',
+      'back',
+      'exit',
+    ]);
+    expect(team(d).groups?.['implementer']?.fallback).toEqual(terra);
+    const labels = p.asked.flatMap((q) => q.labels ?? []).join('\n');
+    expect(labels).toContain('fallback (optional)');
+    // the group line shows it the next time the screen is drawn
+    const again = await run(['models', 'back', 'exit']);
+    expect(again.asked.flatMap((q) => q.labels ?? []).join('\n')).toContain(
+      '(fallback: openai gpt-6.1-terra)',
+    );
+    // leaving the fallback screen writes nothing
+    const before = readFileSync(join(d, TEAM), 'utf8');
+    await run(['models', 'scope', 'project', 'implementer', 'fallback', 'back', 'back', 'exit']);
+    await run([
+      'models',
+      'scope',
+      'project',
+      'implementer',
+      'fallback',
+      'pick',
+      'back',
+      'back',
+      'exit',
+    ]);
+    expect(readFileSync(join(d, TEAM), 'utf8')).toBe(before);
+    // and it can be removed there
+    await run(['models', 'scope', 'project', 'implementer', 'fallback', 'none', 'back', 'exit']);
+    expect(team(d).groups?.['implementer']?.fallback).toBeUndefined();
+    // a group with no model says so instead of asking
+    const none = await run(['models', 'scope', 'project', 'executor', 'fallback', 'back', 'exit']);
+    expect(none.notes.join('\n')).toContain('executor has no model yet');
+  });
+
+  it('the text output names the fallback beside the role', async () => {
+    const d = await repo();
+    await multi(d);
+    await configureBindings({ cwd: d, fallback: ['implementer=gpt-6.1-terra'] });
+    const out: string[] = [];
+    await runConfig({
+      cwd: d,
+      interactive: false,
+      write: (s) => out.push(s),
+      detectVendors: detect,
+    });
+    expect(out.join('')).toMatch(
+      /implementer\/code\s+claude claude-sonnet-5-5 \(group\) — fallback: openai gpt-6\.1-terra/,
+    );
   });
 });

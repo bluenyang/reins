@@ -1,181 +1,179 @@
-# Design conversation — 2026-11-10 to 11: what building 0.3.1 made us think again
+# 설계 대화 — 2026-11-10~11: 0.3.1을 만들며 다시 생각한 것
 
-Korean edition: [2026-11-11_flow-audit-agents-md.ko.md](2026-11-11_flow-audit-agents-md.ko.md). Where the two disagree, the Korean file wins.
+이 폴더에는 메인테이너가 reins를 설계하면서 한 고민을 남깁니다. 메인테이너의 말을 그대로 옮기는 기록이라 한글로만 씁니다(영문판 없음). 코드와 설계서에는 정한 결과만 남기 때문에, 왜 그렇게 정했는지와 무엇을 두고 망설였는지는 따로 적어 둡니다. 따옴표 안은 메인테이너의 말 그대로이고, 나머지는 PM 에이전트가 대화에서 옮겨 정리한 것입니다.
 
-This folder keeps the maintainer's thinking while designing reins. The code and the design document hold only what was decided, so why it was decided, and what was hesitated over, is written down here. Quotations are the maintainer's words, translated from Korean (the Korean edition has them as they were said); the rest is the PM agent's account of the conversation.
+읽기 전에 알아 둘 것이 있습니다. 이 문서는 규칙이 아닙니다. 지금 동작하는 규칙은 [설계서](../design.ko.md)와 설치된 AGENTS.md, 스킬에 있습니다. 아래에서 "정한 것"은 0.3.1에 들어간 것이고, "생각 중인 것"은 아직 어느 버전에도 들어가지 않았습니다.
 
-One thing before reading: this document is not a rule. The rules in force are in the [design document](../design.md) and in the installed AGENTS.md and skills. Below, "decided" means it went into 0.3.1; "being considered" means it is in no version yet.
+## 배경
 
-## Background
+0.3.1은 0.3 회고에서 나온 보완을 모은 버전입니다(intent 021). 구현과 리뷰는 무난히 끝났는데, 머지 뒤 감사를 두 번 받으면서 같은 종류의 지적이 반복됐습니다. 작업 단위를 하나 더할 때 요약을 다시 보여 주지 않았다, 예외를 정해진 자리에 적지 않았다, 커밋 메시지에 본문이 없다 같은 것들입니다. 지적은 하나하나 맞았습니다. 그런데 그것을 고치면 고친 커밋이 다시 감사 대상이 되고, 거기서 또 비슷한 지적이 나왔습니다. 메인테이너는 이 과정을 보고 이렇게 말했습니다.
 
-0.3.1 collects the follow-ups from the 0.3 retro (intent 021). Implementation and review went smoothly, but two audits after the merge kept making the same kind of finding: a work unit was added without showing the summary again, an exception was not written where exceptions belong, a commit message had no body. Each finding was right. But fixing them made new commits, the new commits were audited, and similar findings came back. Watching this, the maintainer said:
+> "나는 지금 조금씩 구멍이 보이는 것 같거든?"
 
-> "I think I am starting to see holes, little by little."
+아래는 그 구멍이 무엇인지에 대한 대화입니다.
 
-What follows is the conversation about what those holes are.
+## 0.3.1에서 정한 것과 그 이유
 
-## Decided in 0.3.1, and why
+### 커밋별 검사 출력: 커밋할 때 묶지 않고, 감사 전에 채운다
 
-### Check output per commit: not tied at commit time, filled in before the audit
+감사가 "이 커밋이 당시 검사를 통과했는가"를 확인하지 못하는 문제가 있었습니다. 처음 안은 훅이 검사 출력을 내용 해시로 이름 붙여 남기고, rebase로 커밋을 다시 만들면 커밋마다 검사를 다시 돌리는 것이었습니다. 메인테이너의 반문은 이랬습니다.
 
-The audit could not confirm that a commit passed its checks at the time. The first proposal had the hooks keep the check output under a content hash, and re-run the checks for every commit that a rebase made again. The maintainer asked back:
+> "커밋 해시를 꼭 이용해야 해? 다르게 할 수 없어? 애초에 감사할 때만 쓰잖아"
 
-> "Does it have to use the commit hash? Can't it be done another way? It is only used at the audit anyway."
+기록은 감사에만 쓰입니다. 그리고 커밋의 내용은 바뀌지 않으므로 통과 여부는 나중에 확인해도 답이 같습니다. 그래서 평소에는 훅이 남기는 로그만 두고, 로그가 없는 커밋은 감사 직전에 PM이 그 커밋에서 검사를 돌려 채우기로 했습니다. 평소 작업에 비용을 더하지 않고, 필요한 순간에만 비용을 냅니다.
 
-The record is used only by the audit, and a commit's content does not change, so whether it passes can be checked later with the same answer. So the hooks' logs are all there is in daily work, and for a commit without a log the PM runs the checks at that commit just before the audit. Daily work pays nothing extra; the cost falls only where it is needed.
+### `.claude/settings.json`: 항상 합친다
 
-### `.claude/settings.json`: always merged
+이 파일은 reins와 사용자가 함께 씁니다. reins의 것은 금지선에서 만든 deny 규칙뿐입니다. reins가 만든 적 없는 기존 파일에도 합쳐 쓸지를 묻자 답은 짧았습니다.
 
-reins and the user share this file. Only the deny rules made from the red lines are reins'. Asked whether to merge into a file that reins never wrote, the answer was short:
+> "응. 항상 머지"
 
-> "Yes. Always merge."
+사용자가 허가 한 줄을 더했다고 금지선 규칙이 갱신되지 않거나, 강제로 덮어써서 사용자 허가가 사라지는 것은 둘 다 틀렸다는 판단입니다.
 
-Both alternatives were judged wrong: red-line rules that stop being updated because the user added one permission, and a forced overwrite that drops the user's permissions.
+### 대체 모델: 넣되, reins는 작업 중에 아무것도 해석하지 않는다
 
-### Fallback models: in, while reins still resolves nothing during work
+0.3은 `fallback` 키를 일부러 뺐습니다. reins가 작업 중에 불리지 않으니 대체 모델을 골라 줄 주체가 없기 때문입니다. 메인테이너는 다시 넣자고 했고("fallback은 0.3.1에 포함해 보자"), 원칙은 그대로 두었습니다. 설정에 대체 모델을 적으면 `config`가 위임 표에 대체 실행 줄을 미리 풀어 적고, 호출이 안 될 때 PM이 그 줄을 따릅니다. 실행 중에 판단하는 것은 사람이 읽을 수 있는 표와 그 표를 읽는 에이전트입니다.
 
-0.3 removed the `fallback` key on purpose: reins is never called while a project works, so nothing could pick the fallback. The maintainer wanted it back ("let's try including fallback in 0.3.1"), and the principle stayed. When the settings name a fallback, `config` writes its call line into the delegation table ahead of time, and the PM follows that line when a call cannot be made. What decides at run time is a table a person can read and the agent that reads it.
+### 검사 다시 찾기
 
-### Finding the checks again
+검사 스크립트가 `gates.yaml`을 따라가게 되자, 메인테이너가 바로 빈 곳을 짚었습니다.
 
-Once the gate script followed `gates.yaml`, the maintainer pointed at the gap straight away:
+> "맞다. config에 gate재감지? 같은 거도 필요할 듯"
 
-> "Right. config probably needs something like re-detecting the gates too."
+프로젝트는 바뀌는데 `gates.yaml`은 설치 때 한 번 정해집니다. 다시 찾되, 차이를 보여 주고 고른 것만 반영합니다. 손으로 넣은 검사는 건드리지 않습니다.
 
-A project changes, and `gates.yaml` is settled once at installation. So the checks are found again — and the differences are shown, and only what is picked is applied. A check written by hand is not touched.
+### 확인하지 못한 것은 확인했다고 적지 않는다
 
-### What was not confirmed is not written down as confirmed
+`claude-fable-5-2`는 공식 문서에 있는 ID이고 실제로 서비스되는 모델입니다. 다만 한 호출에서 어느 모델이 답했는지를 출력으로 확인하지 못했습니다. 메인테이너의 정리입니다.
 
-`claude-fable-5-2` is an ID in the vendor's documentation and a model that is really served. But for one call, the output did not show which model had answered. The maintainer settled it:
+> "실제로 클로드 Fable 5.2는 서빙되고 있는 모델이거든? 그러면 선택은 가능(알려진 모델)한데 확인 목록에서는 빼던지."
 
-> "Claude Fable 5.2 is in fact a model being served. So it can be chosen (a known model), but take it off the confirmed list."
+"알려진 모델"과 "이 환경에서 동작을 본 모델"은 다른 목록입니다. 앞의 것에는 두고 뒤의 것에서는 뺐습니다.
 
-"Known models" and "models seen working in this environment" are two lists. It stays on the first and left the second.
+## 생각 중인 것 1: 흐름
 
-## Being considered 1: the flow
+### spec은 작업하면서 조정할 수 있다
 
-### The spec may be adjusted while working
+지금 규칙은 spec의 작업 단위가 바뀌면 크기와 상관없이 멈추고 승인을 받게 합니다. 메인테이너의 생각은 다릅니다.
 
-Today's rule stops the work and asks for approval whenever the spec's work units change, however small the change. The maintainer thinks otherwise:
-
-> "I prefer Scrum or XP to the waterfall model. When there is a problem, changing it is the right thing."
+> "나는 폭포수 모델 방식보다는 scrum이나 xp를 더 선호하거든. 문제가 있으면 변경하는 게 맞지"
 >
-> "And it is not as if it would go unreported after the work."
+> "그리고 그걸 작업 이후에 보고하지 않는 게 아니잖아."
 
-Two cases:
+기준은 둘입니다.
 
-> "Fairly important → pause the work, change the spec and get it approved."
+> "조금 중요하다 → 작업을 잠시 멈추고 spec을 수정하여 승인 받는다"
 >
-> "There is a similar record already, or it is a small matter → go on and report afterwards."
+> "기존에 비슷한 기록이 있거나 작은 사안이다 → 진행 후 보고한다."
 
-For where the line runs, the PM proposed: adding or dropping a work unit, or changing its scope, stops for approval; a change of method inside a unit, and a small fix that comes out of a review or an audit, goes on and is reported afterwards. The maintainer said this matched what they had in mind.
+경계를 어디에 둘지에 대해 PM이 낸 안은 "작업 단위의 추가·삭제나 범위 변경은 멈추고 승인, 같은 단위 안의 방법 변경과 리뷰·감사에서 나온 작은 보완은 진행 후 보고"였고, 메인테이너는 이 안이 자기 생각과 맞다고 했습니다.
 
-### After the approvals it is one flow
+### 승인 뒤는 하나의 흐름이다
 
-> "What I want is this: once the intent and the spec have each been approved, from then on implementation, review, test, QA, PR and CI are one large continuous flow."
+> "내가 원하는거는 intent와 spec을 각각 승인하면, 승인을 받은 이후부터 구현-리뷰-테스트-QA-PR-CI가 하나의 연속된 큰 흐름이라고 보거든?"
 >
-> "Unless something is wrong along the way, it should just keep going. That is what running the loop means to me."
+> "진행하면서 문제가 있는게 아니면 일단 쭉 가는게 맞는 거 같음. 그게 루프를 돈다는 개념으로 보여."
 
-This came from watching other projects that use reins keep asking for approval after the intent and the spec had been approved. The cause is in the rules: pushing and opening a PR count as "leaving the machine" and are asked about every time. The direction being considered: the approval of the intent and of the spec stay explicit, every time; after that nothing is asked until the PR is open and CI has finished; a merge and a stable release still wait for the maintainer's instruction.
+reins를 적용한 다른 프로젝트에서 intent와 spec을 승인한 뒤에도 승인 요청이 계속 나온다는 관찰에서 나온 말입니다. 원인은 규칙에 있습니다. 푸시와 PR이 "기계를 떠나는 일"로 묶여 매번 묻게 되어 있습니다. 생각 중인 방향은 이렇습니다. intent 승인과 spec 승인은 지금처럼 매번 명시적으로 받습니다. 그 뒤로는 PR을 열고 CI가 끝날 때까지 묻지 않습니다. 머지와 stable 릴리스는 계속 메인테이너의 지시를 받습니다.
 
-## Being considered 2: the audit
+## 생각 중인 것 2: 감사
 
-### The audit catches everything; a person chooses what to accept
+### 감사는 다 잡아내고, 무엇을 수용할지는 사람이 고른다
 
-> "An audit is supposed to be something that does not let things slide."
+> "감사는 원래 유연하게 넘어가지 않는 방식이 맞음"
 >
-> "Naturally it catches everything first, and then you choose what to accept flexibly."
+> "당연히 다 잡아낸 다음, 어떤 것을 유연하게 수용할 것인지 고르는 것"
 
-So a looser flow may show more "wrongs" in the audit. The maintainer does not see that as the problem; what matters is how repeats are handled:
+그래서 흐름을 느슨하게 하면 감사에서 "잘못"이 더 많이 보일 수 있습니다. 메인테이너는 그것을 문제로 보지 않습니다. 대신 반복되는 것을 다루는 방법을 정합니다.
 
-> "If this repeats three or four times or more, let's use knowledge to pass it even when the audit catches it."
+> "이건 서너번 이상 반복되면, knowledge를 이용해서 감사에서 잡히더라도 넘기자."
 
-A finding that has come up three or four times and was accepted each time would be written into knowledge as an accepted finding, and the audit would mark it as a known acceptance instead of a violation.
+서너 번 반복되고 매번 수용된 지적은 knowledge에 "수용된 지적"으로 적어 두고, 감사는 그것을 위반 대신 알려진 수용으로 표시하는 방식을 생각하고 있습니다.
 
-### Fixing something does not call for another audit
+### 고쳤다고 다시 감사하지 않는다
 
-> "Being audited again and again just catches the same things."
+> "계속해서 감사를 받아봐야, 같은것을 잡는다는 말이야."
 >
-> "I am not going to keep being audited just because something was put right."
+> "단순히 이를 바로잡았다고 해서 감사를 계속 받지는 않을 거야"
 >
-> "Of course, if there was a somewhat critical problem and the change is large, an audit is right."
+> "물론, 조금 critical한 문제가 있었고, 변동이 크면 감사를 받는게 맞음"
 >
-> "But for simply completing documents and records there is no real reason to be audited, is there?"
+> "하지만 단순히 문서, 기록 보완같은거는 굳이 감사를 받을 이유까지는 없겠지?"
 
-This is what happened in 0.3.1: when the commits holding the first audit's remedies were audited, new findings came out about the procedure of those remedies. Every audit leaves a commit of its own record, so repeating it never ends.
+0.3.1에서 실제로 그랬습니다. 첫 감사의 보완을 담은 커밋을 다시 감사하자, 그 보완 과정의 절차 지적이 새로 나왔습니다. 감사를 거듭하면 그 감사의 기록 커밋이 다시 남으므로 끝이 없습니다.
 
-### Where the audit sits: the thinking changed once
+### 감사의 위치: 생각이 한 번 바뀌었다
 
-Today's rule is "once, after the merge and before the rc". The maintainer first wanted it moved before the merge:
+지금 규칙은 "머지 뒤, rc 전에 한 번"입니다. 메인테이너는 처음에 이것을 머지 전으로 옮기자고 했습니다.
 
-> "The audit runs once, after the loop. But before a release or a merge — that way a big problem can still block the merge."
+> "감사는 루프를 돌리고 한 번을 진행. 단, 릴리스나 머지 전에. 그래야 큰 문제를 머지를 막기 때문."
 
-When the PM asked to confirm that the audit would then look at the PR branch and the merge itself would fall outside it, the maintainer changed their mind:
+PM이 "그러면 감사가 PR 브랜치를 보게 되고 머지 기록은 감사 대상에서 빠진다"고 확인을 구하자, 메인테이너는 생각을 바꿨습니다.
 
-> "I kept thinking of it as the first option, but on reflection the second would do: CI passes → first audit → merge and release → second audit, something like that."
+> "이거는 계속 내가 1번으로 생각했는데, 생각해보니 2번을 하면 될거 같거든? CI 통과 → 1차 감사 → 머지 및 배포 → 2차감사 느낌"
 >
-> "The first audit is held fairly strictly, because of the risk; the second only needs to review the procedural side, since most of that part is done by tools anyway. Its result can go straight to the retro to be reviewed."
+> "1차 감사는 위험성을 고려해서 조금 빡세게 잡고, 2차 감사는 어차피 툴을 대부분 사용하니까 절차적인 부분에 대해서만 검토하면 될 거 같거든. 그 결과는 그대로 회고로 넘겨서 리뷰하면 될 것 같고"
 
-The two audits do different jobs. The first stands where it can still block the merge, so it looks at risk. The second comes when the merge and the release are over and nothing is left to block, and most of that stretch was done by tools (the PR, CI, the release workflow), so it looks at procedure only. What the second finds is not an order to fix something; it is material for the retro.
+두 감사는 하는 일이 다릅니다. 1차는 머지를 막을 수 있는 자리에 있으므로 위험을 봅니다. 2차는 머지와 배포가 끝난 뒤라 막을 것이 없고, 그 과정은 대부분 도구(PR, CI, 배포 워크플로)가 했으므로 절차만 봅니다. 2차의 결과는 고치라는 명령이 아니라 회고의 재료입니다.
 
-### An audit skims the history and orders corrections
+### 감사는 이력을 훑고 시정조치를 낸다
 
-> "Honestly, real audits do not go this far either. They skim the history and issue corrective orders."
+> "솔직히 실제 감사도 이렇게까진 잘 안하거든. 이력을 훑고, 시정조치 명령을 주는거지"
 
-The audits of 0.3.1 compared every commit with the sentences of the rules. The audit the maintainer has in mind is coarser: it goes through the history, finds the problems and says what to put right. How closely to look is to be settled together with the split into a first and a second audit.
+0.3.1의 감사는 커밋 하나하나를 규칙 문장과 대조했습니다. 메인테이너가 생각하는 감사는 그보다 거칩니다. 이력을 훑어 문제를 찾고, 무엇을 바로잡으라고 말합니다. 얼마나 촘촘하게 볼지는 1차와 2차를 나누면서 함께 정할 일입니다.
 
-## Being considered 3: what AGENTS.md holds
+## 생각 중인 것 3: AGENTS.md는 무엇을 담는가
 
-This came from looking at the AGENTS.md of other projects that use reins:
+reins를 적용한 다른 프로젝트의 AGENTS.md를 보고 나온 이야기입니다.
 
-> "Maybe because of what was written there before, things like the current progress are written into it."
+> "기존에 쓰여진 내용 때문인지, 여기에 막 현재 진행 상황 같은게 적혀져 있음"
 
-The AGENTS.md the maintainer has in mind:
+메인테이너가 생각하는 AGENTS.md는 이렇습니다.
 
-> "The AGENTS I think of is somewhat broad and large-scale — the final goal? It states the goal of the project itself; the goal of the current work should not be written there."
+> "내가 생각하는 AGENTS는 조금 포괄적이고 거시적인, 최종적인 목표? 이 프로젝트 자체의 목표를 제시하는 거지, 현재 작업의 목표를 적으면 안될 거 같거든?"
 >
-> "Because then the agent keeps reading that."
+> "그러면 에이전트가 계속 그걸 읽는 거잖아."
 >
-> "AGENTS gives the common rules, regulations, guides, the large-scale goal, what this project is, how it is structured and so on, and beyond that only the instructions that matter."
+> "AGENTS는 공통된 규칙, 규정, 가이드, 거시적 목표, 이 프로젝트가 뭔지, 구조는 어떤지 등등... 이런 정보를 제공하고, 추가적으로 중요한 지시만 적는게 맞다고 봄"
 
-There are two reasons. An agent reads this file in every session, so "the current work" written there keeps being read after that work is over. And it is a committed file that a team shares.
+이유는 둘입니다. 에이전트는 세션마다 이 파일을 읽으므로, 여기 적힌 "현재 작업"은 그 작업이 끝난 뒤에도 계속 읽힙니다. 그리고 이 파일은 커밋되는 팀 파일입니다.
 
-> "So AGENTS should change little."
+> "그래서 AGENTS의 변화가 적어야 맞을 거 같음"
 >
-> "So that even when someone else takes my source code and uses it, there are few conflicts."
+> "만약 다른 사람이 내 소스 코드를 받아서 쓴다고 하더라도, 충돌이 적도록"
 
-What changes often has places of its own:
+자주 바뀌는 것에는 각자 자리가 있습니다.
 
-> "That is what knowledge, .loctx for the individual, CONTRIBUTING and ROADMAP are for, as I see it."
+> "그걸 위해서 knowledge, 개인을 위한 .loctx, CONTRIBUTING, ROADMAP이 있는 거라고 보거든?"
 
-So the first conversation after an installation or a migration has to change:
+그래서 설치나 이전 뒤의 첫 대화가 달라져야 합니다.
 
-> "After a migration or an install, when the project is first set up, there has to be a stretch where AGENTS.md is written in conversation with the user. And a guide for AGENTS.md is needed too."
+> "migration이나 install을 하고 하서 프로젝트 첫 세팅을 진행하면, 사용자와 대화하면서 AGENTS.md를 쓰는 구간이 필요함. 그리고 AGENTS.md의 가이드도 필요하고."
 >
-> "Even when an existing AGENTS.md or CLAUDE.md holds such content, the init after a migration or install should follow this guide."
+> "기존 AGENTS.md/CLAUDE.md에 해당 내용이 있더라도, migration/install 이후 init에서 이런 가이드를 따라야 한다고 봄."
 >
-> "Where needed, content has to be brought in from other files, or handed over from this file to others (ROADMAP, knowledge and so on) — a sorting-out of traffic. Isn't that what migrating a harness is?"
+> "필요에 따라서는 다른 파일의 내용을 가져오거나, 이 파일의 내용을 다른 파일(ROADMAP, knowledge 등)에 넘겨 교통정리하는 과정이 필요함. 그게 하네스 마이그레이션 아닐까."
 
-Onboarding today means filling in the project sections of AGENTS.md. Taken at these words, onboarding is sorting: what is mixed together in the existing files is separated by kind. The large-scale goal and the rules go to AGENTS.md, progress and plans to the roadmap, decisions and their reasons to knowledge, personal notes to `.loctx`. Migrating a harness, on this view, is not moving files but putting content where it belongs.
+지금의 온보딩은 AGENTS.md의 프로젝트 절을 채우는 일입니다. 이 말대로라면 온보딩은 교통정리입니다. 기존 파일에 섞여 있는 것을 종류별로 가릅니다. 거시적 목표와 규칙은 AGENTS.md에, 진행 상황과 계획은 로드맵에, 결정과 그 이유는 knowledge에, 개인 메모는 `.loctx`에 둡니다. 파일을 옮기는 것이 아니라 내용을 제자리에 놓는 것이 하네스 이전이라는 생각입니다.
 
-## Being considered 4: a working folder that is not a git repository
+## 생각 중인 것 4: git 저장소가 아닌 작업 폴더
 
-One of the maintainer's projects has a working folder that is not a git repository. Under it sit one public repository and one private repository, kept apart, and the agent works from the outer folder. For reasons of their own the two cannot be merged into one repository.
+메인테이너의 한 프로젝트는 작업 폴더가 git 저장소가 아닙니다. 그 폴더 아래에 공개 저장소 하나와 비공개 저장소 하나가 따로 있고, 에이전트는 바깥 폴더에서 일합니다. 사정이 있어 둘을 한 저장소로 합칠 수 없습니다.
 
-> "reins cannot migrate or install where there is no git repository. How should it be applied there?"
+> "reins는 git 레포가 아니면 migration이나 install이 불가능함. 어떻게 적용하도록 할 것인가?"
 
-Looking at where reins leans on git: the code uses git in one place only, to find the root. The larger part is assumptions — that plans and audit records are committed, that the audit reads git history, that hooks, branches and PRs exist per repository. Three options came up. Installing in each inner repository splits the plan in two and exposes the records in the public repository. Allowing a folder without git weakens what approvals and audits rest on. Making the outer folder a private repository and giving reins a notion of "member repositories" needs a new feature. Of the third the maintainer said "it is possible, I suppose." Nothing is decided; it comes back in the version that applies reins to other repositories.
+reins가 git에 기대는 곳을 따져 보면, 코드가 git을 쓰는 곳은 루트 찾기 하나뿐입니다. 더 큰 것은 전제입니다. 계획과 감사 기록이 커밋된다는 전제, 감사가 git 이력을 읽는다는 전제, 훅과 브랜치와 PR이 저장소마다 있다는 전제가 있습니다. 세 가지 안이 나왔습니다. 안쪽 저장소마다 따로 설치하는 안은 계획이 둘로 갈리고 공개 저장소에 기록이 드러납니다. git 없는 폴더를 허용하는 안은 승인과 감사의 근거가 약해집니다. 바깥 폴더를 비공개 저장소로 만들고 reins에 "소속 저장소" 개념을 더하는 안은 새 기능이 필요합니다. 메인테이너는 세 번째 안에 대해 "가능하긴 해."라고 했습니다. 정해진 것은 아니고, 다른 저장소에 적용하는 버전에서 다시 다룹니다.
 
-## Still open
+## 아직 열려 있는 것
 
-- Which version takes what is "being considered" above.
-- What the first and the second audit each read and judge, and how closely they look.
-- The shape of an "accepted finding" in knowledge, and how the audit reads it.
-- The shape of the AGENTS.md guide, and the criteria by which onboarding sends existing content to one file or another.
-- How to support a working folder that is not a git repository.
+- 위 "생각 중인 것"을 어느 버전에 넣을지.
+- 1차 감사와 2차 감사가 각각 무엇을 읽고 무엇을 판정하는지, 얼마나 촘촘하게 보는지.
+- "수용된 지적"을 knowledge에 어떤 모양으로 적고, 감사가 그것을 어떻게 읽는지.
+- AGENTS.md 가이드의 모양과, 온보딩이 기존 내용을 어느 파일로 보낼지 정하는 기준.
+- git 저장소가 아닌 작업 폴더를 어떻게 지원할지.
 
-## See also
+## 참고
 
-- The plan and the verdicts of 0.3.1: [intent 021](../../.agents/intent/021_retro-knowledge-and-upkeep/intent.md), [the audit record](../../.agents/audit/0.3.1.md).
-- The rules in force: the [design document](../design.md) §3 (flow, stops, audit), §5 (AGENTS.md).
-- The plan by version: the [roadmap](../ROADMAP.md).
+- 0.3.1의 계획과 판정: [intent 021](../../.agents/intent/021_retro-knowledge-and-upkeep/intent.md), [감사 기록](../../.agents/audit/0.3.1.md).
+- 지금의 규칙: [설계서](../design.ko.md) §3(흐름, 멈춤, 감사), §5(AGENTS.md).
+- 버전 계획: [로드맵](../ROADMAP.ko.md).

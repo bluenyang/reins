@@ -80,7 +80,7 @@ are deleted, and the next skill.
 - [docs/proposal.md](docs/proposal.md): problems, goal, requirements
 - [docs/design.md](docs/design.md): layout, roles, flow, audit, file formats, CLI
 - [docs/ROADMAP.md](docs/ROADMAP.md): versions
-- [docs/conversation/](docs/conversation/): the maintainer's design conversations — what was weighed and why, not rules
+- [docs/conversation/](docs/conversation/): the maintainer's design conversations — what was weighed and why, not rules (in Korean only)
 - Korean editions: [proposal.ko.md](docs/proposal.ko.md), [design.ko.md](docs/design.ko.md), [ROADMAP.ko.md](docs/ROADMAP.ko.md). Where an English and a Korean edition disagree, the Korean file wins.
 
 ## License

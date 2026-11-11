@@ -6,10 +6,8 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
-  realpathSync,
   rmSync,
   statSync,
-  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -121,6 +119,10 @@ describe('what reins installs never runs reins (019 V-1)', () => {
     });
 });
 
+/** Where a tool is on this machine's own PATH. */
+const where = (tool: string) =>
+  execFileSync('sh', ['-c', `command -v ${tool}`], { encoding: 'utf8' }).trim();
+
 describe('reins config gates --refresh from the command line (021 V-10)', () => {
   it('reports, applies what is named, and refuses an unknown name with exit 1', () => {
     const d = repo();
@@ -163,25 +165,30 @@ describe('the installed harness works without reins and without a network (019 V
     () => {
       const d = repo();
       reins(d, 'install', '--mode', 'auto', '--hooks');
-      // a PATH with git and node only, and a registry that cannot be reached; node and npm are linked
-      // into an empty directory, because node's own directory also holds every global install (reins too)
+      // The only directory on PATH is an empty one holding just what the test, the installed hook and the gate
+      // script run — never node's own directory or a system one, where a global reins may sit (021 S-29).
       const bin = mkdtempSync(join(tmpdir(), 'reins-bin-'));
       dirs.push(bin);
-      for (const tool of ['node', 'npm']) {
-        const real = join(process.execPath, '..', tool);
-        if (existsSync(real)) symlinkSync(realpathSync(real), join(bin, tool));
+      const tools: Record<string, string> = {
+        node: process.execPath,
+        npm: join(process.execPath, '..', 'npm'),
+      };
+      for (const tool of ['git', 'sh', 'tee', 'date', 'mkdir', 'cat', 'rm', 'tail'])
+        tools[tool] = where(tool);
+      for (const [tool, real] of Object.entries(tools)) {
+        expect(existsSync(real), `${tool} at ${real}`).toBe(true);
+        // a wrapper, not a link: multi-call binaries and shims keep working under their own path
+        writeFileSync(join(bin, tool), `#!/bin/sh\nexec '${real.replaceAll("'", "'\\''")}' "$@"\n`);
+        chmodSync(join(bin, tool), 0o755);
       }
       const env = {
-        PATH: [
-          bin,
-          ...(process.env['PATH'] ?? '')
-            .split(delimiter)
-            .filter((p) => /git/i.test(p) || p === '/usr/bin' || p === '/bin'),
-        ].join(delimiter),
+        PATH: bin,
         HOME: bin,
         npm_config_registry: 'http://127.0.0.1:9',
         npm_config_offline: 'true',
       };
+      expect(env.PATH.split(delimiter)).toEqual([bin]);
+      expect(readdirSync(bin).toSorted()).toEqual(Object.keys(tools).toSorted());
       // reins is really not reachable from this environment
       expect(spawnSync('sh', ['-c', 'command -v reins'], { cwd: d, env }).status).not.toBe(0);
       expect(

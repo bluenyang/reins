@@ -152,9 +152,11 @@ groups:                 # 적지 않은 군 = 꺼짐(PM이 함)
 ## 6. 생성과 드리프트
 원본 → 생성물: `harness/roles/` + bindings → `.claude/agents/rs-<group>-<role>.md`(멀티에서 켜진 Claude 역할만; 모델·`tools`가 박힘) · `skills/` → `.agents/skills/`(Claude는 `.claude/skills/`에 복사) · 템플릿 → AGENTS.md 관리 블록. 생성물 머리에 "generated — do not edit". 다른 벤더 모델이 할당된 역할은 에이전트 파일 대신 위임 표의 실행 줄로 다룬다. 한 역할에 Claude 모델이 여럿이면(discussion, committee) 모델마다 번호를 붙인 파일(`rs-advisor-committee-1` …)을 만든다. 단일 모드면 에이전트 파일이 없다. install은 `generated.yaml`에 없는 같은 이름 파일을 덮어쓰지 않는다. 그 파일만 건너뛰고 알리며, 나머지 설치는 계속한다.
 
+**`.claude/settings.json`은 합친다.** 이 파일은 사용자와 함께 쓰는 파일이라 위 규칙의 예외다. reins의 것은 금지선에서 만든 `permissions.deny` 규칙뿐이고(`$schema`는 없을 때만 넣음), 그 밖의 키와 항목(`allow`, 사용자가 `deny`에 더한 줄, `hooks`, `env` …)은 순서까지 그대로 둔다. reins가 마지막으로 쓴 규칙 목록을 `generated.yaml`의 `owned:`에 적어 두고, 다시 만들 때 지금 만드는 규칙은 `deny` 끝에 넣고(이미 있으면 그대로) 목록에 있었는데 이제 만들지 않는 규칙만 뺀다. 목록이 없는 설치(0.3.0 이하)는 파일이 reins가 쓴 그대로면 전부 reins 것으로 보고, 손댄 파일이면 더하기만 한다. 사용자 항목이 있어도, reins가 만든 적 없는 기존 파일이어도 합쳐 쓰며 `--force`는 이 파일에 차이가 없다. JSON이 아니거나 `permissions`·`deny`의 모양이 다르면 쓰지 않고 알린다(나머지 생성물은 계속).
+
 **훅.** install은 프로젝트의 훅 도구(lefthook 설정, `.husky/`, pre-commit 설정)를 감지해 `gates.yaml` 명령을 그대로 부르는 줄을 제안한다. husky면 터미널에서 묻고 확인하면 넣는다(auto 모드도 묻는다; 비대화형은 `--hooks`일 때만). lefthook과 pre-commit은 줄을 제안만 하고 사용자가 그 설정에 넣는다. 넣는 줄은 프로젝트 명령만 부른다. 훅 도구가 없으면 온보딩 할 일로 남긴다.
 
-**드리프트.** 생성 파일과 원본이 어긋난 것(손 수정, 다시 만들지 않음)이다. ① 감사가 버전 동안 생성 파일·하네스 파일을 바꾼 커밋이 `update`·`config` 커밋인지 git 이력으로 가린다. ② `update`는 `generated.yaml` 해시와 현재 파일을 비교해 손으로 고친 파일을 보여 주고 확인받는다(비대화형은 덮어쓰지 않고 목록과 exit 1, `--force`로 덮어씀). 훅과 CI에서는 검사하지 않는다.
+**드리프트.** 생성 파일과 원본이 어긋난 것(손 수정, 다시 만들지 않음)이다. ① 감사가 버전 동안 생성 파일·하네스 파일을 바꾼 커밋이 `update`·`config` 커밋인지 git 이력으로 가린다. ② `update`는 `generated.yaml` 해시와 현재 파일을 비교해 손으로 고친 파일을 보여 주고 확인받는다(비대화형은 덮어쓰지 않고 목록과 exit 1, `--force`로 덮어씀). 훅과 CI에서는 검사하지 않는다. `.claude/settings.json`에서는 사용자 항목을 바꾼 것은 드리프트가 아니고, reins가 만든 deny 규칙을 손으로 빼거나 고친 것만 드리프트다(다음 `update`·`config`가 다시 넣는다).
 
 ## 7. 세대 판별, migrate, 0.x 이전
 세대 신호와 `.ai/` 매핑은 v1.0과 같되, 열린 work는 ticket 대신 intent 000의 계획 목록으로 옮긴다. AGENTS.md 충돌은 §5 재구성으로 처리한다.

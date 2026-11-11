@@ -14,6 +14,8 @@ import { splitFrontmatter } from './skills.js';
  */
 export const MANIFEST = '.agents/harness/generated.yaml';
 
+export const SETTINGS_SCHEMA = 'https://json.schemastore.org/claude-code-settings.json';
+
 export const sha = (s: string) => createHash('sha256').update(s).digest('hex').slice(0, 16);
 
 interface RoleSpec {
@@ -117,8 +119,16 @@ export function denyRules(lines: RedLine[]): string[] {
   return rules;
 }
 
+/**
+ * A generated file. `deny` marks `.claude/settings.json`, which reins shares with the user (design §6):
+ * only these deny rules are reins', and the writer merges them into whatever the file already holds.
+ */
+export interface GenWrite extends Write {
+  deny?: string[];
+}
+
 export interface Generated {
-  writes: Write[];
+  writes: GenWrite[];
 }
 
 /** Everything the generator owns, computed from the installed harness. Pure. */
@@ -166,11 +176,14 @@ export function generateVendorFiles(root: string, rd: Reader = workTreeReader(ro
       });
   }
   const redText = rd.read(`${harness}/policy/common-red-lines.yaml`);
-  if (redText !== undefined)
+  if (redText !== undefined) {
+    const deny = denyRules((parse(redText) as { rules: RedLine[] }).rules);
     out.writes.push({
       path: '.claude/settings.json',
-      content: `${JSON.stringify({ $schema: 'https://json.schemastore.org/claude-code-settings.json', permissions: { deny: denyRules((parse(redText) as { rules: RedLine[] }).rules) } }, null, 2)}\n`,
+      content: `${JSON.stringify({ $schema: SETTINGS_SCHEMA, permissions: { deny } }, null, 2)}\n`,
       why: 'secrets, force push, hook bypass',
+      deny,
     });
+  }
   return out;
 }

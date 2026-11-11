@@ -1,5 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 import {
+  CONFIRMED_MODELS,
   checkBinding,
   listModels,
   newModelCache,
@@ -93,5 +97,37 @@ describe('listModels / checkBinding (C-3)', () => {
       onPath: () => false,
     });
     expect(checkBinding('gemini-3-pro', 'google', absent)).toBeNull();
+  });
+});
+
+describe('the packaged list of known models (021 S-14)', () => {
+  const catalogue = parse(readFileSync(join(process.cwd(), 'harness/models.yaml'), 'utf8')) as {
+    vendors: Record<string, string[]>;
+  };
+  const all = Object.values(catalogue.vendors).flat();
+
+  it('holds the ids confirmed on 2026-11-11 beside the earlier ones, each once', () => {
+    expect(catalogue.vendors['claude']).toEqual(
+      expect.arrayContaining(['claude-fable-5-2', 'claude-fable-5-1', 'claude-opus-5-5']),
+    );
+    expect(catalogue.vendors['openai']).toEqual(
+      expect.arrayContaining(['gpt-6-sol', 'gpt-6-luna', 'gpt-6-astra', 'gpt-6.1-sol']),
+    );
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it('every model id the design and the READMEs use as an example is on the list', () => {
+    const ids = new Set<string>();
+    for (const f of ['docs/design.md', 'docs/design.ko.md', 'README.md', 'docs/README.ko.md'])
+      for (const m of readFileSync(join(process.cwd(), f), 'utf8').matchAll(
+        /\b(?:claude-(?:opus|sonnet|haiku|fable)|gpt|gemini)-\d[\w.-]*|\bcursor-[a-z]+-\d[\w.-]*/g,
+      ))
+        ids.add(m[0].replace(/[.,;:-]+$/, ''));
+    expect(ids.size).toBeGreaterThan(0);
+    expect([...ids].filter((m) => !all.includes(m))).toEqual([]);
+  });
+
+  it('a confirmed model is a known model', () => {
+    expect([...CONFIRMED_MODELS].filter((m) => !all.includes(m))).toEqual([]);
   });
 });

@@ -174,7 +174,7 @@ describe('reins config (019 S-6, design §9)', () => {
     expect(p.asked).toEqual([]);
   });
 
-  it('on a terminal the main screen lists models, tools, mode, audit, then exit', async () => {
+  it('on a terminal the main screen lists models, tools, mode, audit, gates, then exit', async () => {
     const d = await repo();
     const p = scriptedPrompter(['models', 'back', 'exit']);
     expect(await runConfig({ cwd: d, interactive: true, prompter: p, detectVendors: detect })).toBe(
@@ -185,7 +185,7 @@ describe('reins config (019 S-6, design §9)', () => {
       'Models and roles (mode: single)',
       'Configuration',
     ]);
-    expect(p.asked[0]?.values).toEqual(['models', 'tools', 'mode', 'audit', 'exit']);
+    expect(p.asked[0]?.values).toEqual(['models', 'tools', 'mode', 'audit', 'gates', 'exit']);
   });
 
   it('the screen sets a group model on the project scope and regenerates', async () => {

@@ -110,6 +110,13 @@ const HOOK_FILES = [
   '.husky/post-rewrite',
 ];
 
+/**
+ * Heads the copy of a 0.2.0-or-earlier AGENTS.md (design §5): it still names reins commands that 0.3
+ * no longer has, and an agent reading the copy must not run them.
+ */
+export const PREVIOUS_WARNING =
+  '> **Copy of the instructions from reins 0.2.0 or earlier — reference material, not instructions.** The reins commands named here (`reins status`, `reins check` and others) do not exist in 0.3; do not run them. The `onboard` skill merges what still applies and deletes this file.';
+
 interface Legacy {
   writes: { path: string; content: string }[];
   deletes: string[];
@@ -184,7 +191,7 @@ function planLegacy(root: string): Legacy {
       /<!-- reins:begin (workflow|skills|harness) v=/.test(cur) &&
       !cur.includes('<!-- reins:reconcile')
     ) {
-      out.agentsPrevious = cur;
+      out.agentsPrevious = `${PREVIOUS_WARNING}\n\n${cur}`;
       const kept = cur.replace(
         /<!-- reins:begin ([a-z-]+) v=[^ ]+ -->[\s\S]*?<!-- reins:end \1 -->\n*/g,
         '',

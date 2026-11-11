@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { retiredFiles, runInstall } from '../src/commands/install.js';
-import { changesBetween, newer, runUpdate } from '../src/commands/update.js';
+import { changesBetween, newer, PREVIOUS_WARNING, runUpdate } from '../src/commands/update.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { scriptedPrompter } from '../src/lib/prompter.js';
 import { packageHarness } from '../src/lib/upstream.js';
@@ -303,6 +303,7 @@ describe('reins update', () => {
 
     it("converts bindings, takes the 0.x pieces out, keeps the user's, and reconciles AGENTS.md", async () => {
       const d = await old();
+      const before = readFileSync(join(d, 'AGENTS.md'), 'utf8');
       const r = await runUpdate({ cwd: d, detectVendors: claude, yes: true });
       expect(r.refused).toBeUndefined();
       const b = parse(readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8')) as Record<
@@ -336,7 +337,16 @@ describe('reins update', () => {
       expect(agents).not.toContain('<!-- reins:onboarding pending -->'); // one note: onboard handles both
       expect(agents).toContain('My rules.');
       expect(agents).not.toContain('reins status');
-      expect(readFileSync(join(d, '.agents/AGENTS.previous.md'), 'utf8')).toContain('reins status');
+      // the copy starts with the warning, and under it is the old text as it was (021 S-15)
+      const previous = readFileSync(join(d, '.agents/AGENTS.previous.md'), 'utf8');
+      expect(previous.startsWith(`${PREVIOUS_WARNING}\n\n`)).toBe(true);
+      expect(PREVIOUS_WARNING).toContain('reins 0.2.0 or earlier');
+      expect(PREVIOUS_WARNING).toContain('do not exist in 0.3; do not run them');
+      expect(previous.slice(PREVIOUS_WARNING.length + 2)).toBe(before);
+      expect(previous).toContain('reins status');
+      // a second update leaves the copy alone
+      await runUpdate({ cwd: d, detectVendors: claude, yes: true });
+      expect(readFileSync(join(d, '.agents/AGENTS.previous.md'), 'utf8')).toBe(previous);
     });
 
     it('the dry-run plan of generated files matches what the real run does (review #3)', async () => {

@@ -3,6 +3,7 @@
 Read by `reins update`: it lists the entries newer than a project's pinned version.
 
 ## 0.3.1
+- Stable 2026-11-11 (same harness as rc.2).
 - The `retro` skill and the retrospector propose knowledge candidates from decisions and failures repeated in history and the audit.
 - `.claude/settings.json` is merged: reins changes only the deny rules it wrote (listed under `owned:` in `generated.yaml`) and keeps the user's entries, also with `--force` and in a file it never wrote. The audit counts only those rules as drift.
 - The auditor is read-only: its call line no longer asks for write access, it returns the audit record as its answer and the PM writes it unchanged.

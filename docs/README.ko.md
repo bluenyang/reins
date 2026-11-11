@@ -8,7 +8,7 @@ BlueNyang과 Team Croffle의 저장소 열두 곳이 같은 하네스 계통을 
 
 ## 상태
 
-**0.3.1-rc.2가 릴리스 후보입니다**(intent 021): `npx @bluenyang/reins@0.3.1-rc.2`. **0.3.0이 최신 릴리스입니다**(intent 019, 020): `npx @bluenyang/reins install`. 0.2.0까지는 스킬과 훅이 작업 중에 `npx @bluenyang/reins`를 불렀습니다. 0.3은 그것을 없애고, `reins update`가 0.1.x·0.2.0 설치를 옮깁니다. 버전마다 바뀐 것은 [CHANGELOG.md](../CHANGELOG.md)에, 앞으로의 계획은 [로드맵](ROADMAP.ko.md)에 있습니다.
+**0.3.1이 최신 릴리스입니다**(intent 019, 020, 021): `npx @bluenyang/reins install`. 0.2.0까지는 스킬과 훅이 작업 중에 `npx @bluenyang/reins`를 불렀습니다. 0.3은 그것을 없애고, `reins update`가 0.1.x·0.2.0 설치를 옮깁니다. 버전마다 바뀐 것은 [CHANGELOG.md](../CHANGELOG.md)에, 앞으로의 계획은 [로드맵](ROADMAP.ko.md)에 있습니다.
 
 ## 동작 방식
 

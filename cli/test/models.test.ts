@@ -127,6 +127,15 @@ describe('the packaged list of known models (021 S-14)', () => {
     expect([...ids].filter((m) => !all.includes(m))).toEqual([]);
   });
 
+  it('claude-fable-5-2 can be chosen but is not counted as seen working here (021 S-31)', () => {
+    expect(catalogue.vendors['claude']).toContain('claude-fable-5-2');
+    expect(CONFIRMED_MODELS.has('claude-fable-5-2')).toBe(false);
+    for (const m of ['gpt-6-sol', 'gpt-6-luna']) {
+      expect(catalogue.vendors['openai']).toContain(m);
+      expect(CONFIRMED_MODELS.has(m)).toBe(true);
+    }
+  });
+
   it('a confirmed model is a known model', () => {
     expect([...CONFIRMED_MODELS].filter((m) => !all.includes(m))).toEqual([]);
   });

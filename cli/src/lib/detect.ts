@@ -268,7 +268,6 @@ export function vendorOf(model: string): Vendor['name'] {
 export const CONFIRMED_MODELS = new Set([
   'claude-opus-5-5',
   'claude-fable-5-1',
-  'claude-fable-5-2',
   'gpt-6-sol',
   'gpt-6-luna',
 ]);

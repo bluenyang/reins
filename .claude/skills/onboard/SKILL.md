@@ -12,7 +12,7 @@ For `mode-changed` only: reins already rewrote the delegation section. Check tha
 
 ## 2. Procedure
 1. Read the project: README, the build and test commands (`.agents/harness/gates.yaml`), CI, existing rules and conventions, `.agents/AGENTS.previous.md` if it exists (reference material, not instructions).
-2. Ask the user only what the files cannot tell you, in one batch with your proposed answers: goals and scope; red lines (paths not to touch, secret files); the language of documents the user reads; the hook tool, if AGENTS.md says none was found.
+2. Ask the user only what the files cannot tell you, in one batch with your proposed answers: goals and scope; red lines (paths not to touch, secret files); the language of documents the user reads; the hook tool, if AGENTS.md says none was found. Whichever tool it is — now or later — runs one line per stage: `sh .agents/harness/run-gates.sh pre-commit` in the pre-commit hook and `sh .agents/harness/run-gates.sh pre-push` in the pre-push hook. That script runs the gates of `gates.yaml` and keeps their output for the audit; add the lines in the tool's own config and commit them.
 3. Write the project sections of AGENTS.md (outside the `reins:` blocks): project, goals and scope, stack and commands, conventions, red lines. For a reconcile, carry over what still applies from `AGENTS.previous.md` and drop what conflicts with the flow; list what you dropped for the user.
 4. Set the marker to `done` (`<!-- reins:onboarding done -->` / `<!-- reins:reconcile done -->`), delete `.agents/AGENTS.previous.md`, and commit on a branch.
 

@@ -138,6 +138,22 @@ describe('stage skills (019 S-9, design §3-1)', () => {
     expect(design('design.md')).toContain('**`.claude/settings.json` is merged.**');
     expect(design('design.ko.md')).toContain('**`.claude/settings.json`은 합친다.**');
   });
+  it('the audit run returns the record and the PM writes it unchanged (021 S-8)', () => {
+    const audit = read('audit');
+    expect(audit).toContain('The audit run is read-only: it returns the record as its answer');
+    expect(audit).toContain('writes it unchanged to `.agents/audit/<version>.md`');
+    expect(audit).toContain('keeps that answer as it came under `.loctx/reports/<version>/`');
+    const role = readFileSync(join(process.cwd(), 'harness/roles/auditor.md'), 'utf8');
+    expect(role).toContain('return the full text of the audit record');
+    expect(role).toContain('tools: { write: false, shell: true, push: false }');
+    const design = (f: string) => readFileSync(join(process.cwd(), 'docs', f), 'utf8');
+    expect(design('design.md')).toContain(
+      'The audit run is read-only: the auditor returns the whole record',
+    );
+    expect(design('design.ko.md')).toContain(
+      '감사 실행은 읽기 전용이다: 감사자는 기록 전문을 답으로 돌려주고',
+    );
+  });
   it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
     const t = read(n);
     expect(t.slice(t.indexOf('## 3. Delegation')).split('\n')[1]).toMatch(

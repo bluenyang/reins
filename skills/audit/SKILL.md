@@ -13,15 +13,15 @@ After the merge, before the rc. While `audit.required` in `.agents/harness/bindi
 2. Run in a fresh context that gets only the records, never the working conversation (auditor if switched on; in single mode, a new run — another vendor, or the same vendor's top model — chosen by the user).
 3. Read: AGENTS.md and the harness settings as they were, the intent, spec, `docs/ROADMAP.md`, `.loctx/ROADMAP.local.md`, git history, history, gate and test logs, the PR and CI records the PM collected (`.loctx/reports/<version>/`). The audit runs without a network; a record it lacks is "cannot confirm" and is asked of the PM.
 4. Judge each step: local roadmap → roadmap → intent → approval → spec → approval → implementation and commits → review → test → merge. Kept, violated, cannot confirm (no evidence path), or skipped on the user's instruction (recorded in `waivers:`). Judge against the rules in force at the time. Commits: each commit is a meaningful unit — a point you can revert or reset to without taking other working work or features with it; several commits for one work unit (implementation, review fixes) are fine, and small units that may be reverted together may share one. A commit that mixes unrelated work, so one part cannot be reverted alone, is a violation. Changing the spec's work units themselves (adding, dropping, scope, order) without approval is a violation. A generated or harness file changed by a commit that is not an `update`/`config` commit is a violation. In `.claude/settings.json` only reins' deny rules count (listed under `owned:` in `.agents/harness/generated.yaml`); the user's own entries there are not drift.
-5. Write `.agents/audit/<version>.md` from `.agents/harness/templates/audit.md`: criticise each violation precisely and give a remedy (pl or advisor opinions by severity).
-6. The PM reports to the user: fix it, or the user accepts it. Commit the record with the user's decision.
+5. The audit run is read-only: it returns the record as its answer, in the form of `.agents/harness/templates/audit.md`, criticising each violation precisely and giving a remedy (pl or advisor opinions by severity). The PM keeps that answer as it came under `.loctx/reports/<version>/` and writes it unchanged to `.agents/audit/<version>.md` — never rewording, shortening or dropping a verdict.
+6. The PM reports to the user: fix it, or the user accepts it. Add the user's decision in its own section of the record and commit.
 
 ## 3. Delegation
 Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. The audit never runs inside the working conversation.
 
 ## 4. Files and lifetime
 - `.agents/audit/<version>.md` — committed, kept.
-- `.loctx/reports/<version>/` PR and CI records — deleted after the retro, once summarised in the audit record.
+- `.loctx/reports/<version>/` PR and CI records, and the audit run's answer as it came — deleted after the retro, once summarised in the audit record.
 
 ## 5. Next
 `release`.

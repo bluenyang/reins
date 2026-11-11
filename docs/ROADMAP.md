@@ -68,6 +68,16 @@ State: **0.3.1 published** (2026-11-11, stable from the rc.2 commit; intent 021)
 - **Known models refreshed.** The model list `config` offers follows the current models. `claude-fable-5-2` can be chosen, but is not on the list of models seen working in this environment (decided after the audit).
 - **A warning at the head of `AGENTS.previous.md`.** The copy made when `update` moves an install of 0.2.0 or earlier starts by saying that it is a copy of instructions from 0.2.0 or earlier and that the reins commands it names do not exist in 0.3 and must not be run.
 
+### 0.3.2 — planned
+
+Fills the gaps in the flow that building 0.3.1 showed (maintainer, 2026-11-11; background in the [design conversation](conversation/2026-11-11_flow-audit-agents-md.md), in Korean).
+
+- **One flow after the approvals.** Once the intent and the spec are approved, implementation, review, test, PR and CI follow without asking. A merge and a stable release still wait for an instruction.
+- **Adjusting the spec while working.** Adding or dropping a work unit, or changing its scope, stops for approval. A change of method inside a unit, and a small fix that comes out of a review or an audit, goes on and is reported afterwards.
+- **Two audits.** When CI passes, a first audit looks at risk before the merge; after the merge and the release a second audit looks at procedure only, and its result goes to the retro. Fixing records or documents does not call for another audit.
+- **Accepted findings.** An audit finding that keeps repeating and is accepted every time is written into knowledge, and the audit marks it as a known acceptance instead of a violation.
+- **A guide for AGENTS.md, and onboarding.** AGENTS.md holds the project's goal, its structure, the common rules and the instructions that matter. In the first conversation after an installation or a migration the existing content is sorted: progress goes to the roadmap, decisions to knowledge, personal notes to `.loctx`.
+
 ## 0.4 — rollout
 
 - Application to Team Croffle repositories, repository by repository with the owner's permission.

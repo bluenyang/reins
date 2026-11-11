@@ -325,6 +325,22 @@ async function updateNow(o: UpdateOptions): Promise<UpdateResult> {
   return res;
 }
 
+/**
+ * What the install step said that someone running `update` has to see (design §6): a hooks block that was
+ * rewritten and what it held, the hook line to add where reins does not add it, and a generated file left
+ * alone for another reason than a hand edit (those have a line of their own). The rest of the install
+ * notes (onboarding, the first conversation) is for `install`.
+ */
+export function updateNotes(r: UpdateResult): string[] {
+  return (r.install?.notes ?? []).filter(
+    (n) =>
+      n.startsWith('.husky/') ||
+      n.startsWith('hook proposal') ||
+      n.startsWith('no hook tool found') ||
+      (n.startsWith('left alone ') && !n.includes(': edited by hand')),
+  );
+}
+
 /** The report `reins update` prints; with `dry` it is the plan shown before the confirmation. */
 export function formatUpdate(r: UpdateResult, dry: boolean): string {
   const out: string[] = [];
@@ -361,5 +377,6 @@ export function formatUpdate(r: UpdateResult, dry: boolean): string {
     );
   for (const p of r.handEdited)
     out.push(`• ${p} was edited by hand — not overwritten; run with --force to overwrite it`);
+  for (const n of updateNotes(r)) out.push(`• ${n}`);
   return `${out.join('\n')}\n`;
 }

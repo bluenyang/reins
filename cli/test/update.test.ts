@@ -5,7 +5,13 @@ import { join } from 'node:path';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { retiredFiles, runInstall } from '../src/commands/install.js';
-import { changesBetween, newer, PREVIOUS_WARNING, runUpdate } from '../src/commands/update.js';
+import {
+  changesBetween,
+  formatUpdate,
+  newer,
+  PREVIOUS_WARNING,
+  runUpdate,
+} from '../src/commands/update.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { scriptedPrompter } from '../src/lib/prompter.js';
 import { packageHarness } from '../src/lib/upstream.js';
@@ -174,6 +180,13 @@ describe('reins update', () => {
       );
       const note = r.install?.notes.find((n) => n.startsWith('.husky/pre-commit:'));
       expect(note).toContain('it held: npm run check && echo added-by-user');
+      // and the person running update sees it: the report prints it (021 S-32)
+      const report = formatUpdate(r, false);
+      expect(report).toContain(
+        '• .husky/pre-commit: the reins hooks block now calls the gate script — it held: npm run check && echo added-by-user',
+      );
+      expect(report).not.toContain('onboarding');
+      expect(report).not.toContain('next: open your agent');
       // the second run changes nothing
       const again = await runUpdate({ cwd: d, detectVendors: claude, yes: true });
       expect(again.install?.notes.some((n) => n.startsWith('.husky/pre-commit:'))).toBe(false);
@@ -184,6 +197,9 @@ describe('reins update', () => {
       const r = await runUpdate({ cwd: d, detectVendors: claude, yes: true });
       expect(hook(d)).toBe('echo mine\n');
       expect(r.install?.notes.some((n) => n.startsWith('hook proposal (husky)'))).toBe(true);
+      expect(formatUpdate(r, false)).toContain(
+        '• hook proposal (husky): add `sh .agents/harness/run-gates.sh pre-commit`',
+      );
     });
 
     it('update writes the script from the gates.yaml that is there, without touching gates.yaml', async () => {
@@ -197,6 +213,23 @@ describe('reins update', () => {
       await runUpdate({ cwd: d, detectVendors: claude, yes: true });
       expect(readFileSync(gates, 'utf8')).toBe(text);
       expect(readFileSync(script, 'utf8')).toContain("run 'npm run check -- --it'\\''s'");
+    });
+
+    it('the report names a settings.json it could not merge, and a hand-edited file once (021 S-32)', async () => {
+      const d = await installed();
+      writeFileSync(join(d, '.claude/settings.json'), '{ broken');
+      const script = join(d, '.agents/harness/run-gates.sh');
+      writeFileSync(script, `${readFileSync(script, 'utf8')}echo mine\n`);
+      const report = formatUpdate(
+        await runUpdate({ cwd: d, detectVendors: claude, yes: true }),
+        false,
+      );
+      expect(report).toContain(
+        '• left alone .claude/settings.json: not a settings object reins can merge into',
+      );
+      // the hand-edited script has its own line and is not repeated as a "left alone" notice
+      expect(report).not.toContain('left alone .agents/harness/run-gates.sh');
+      expect(report).toContain('• .agents/harness/run-gates.sh was edited by hand');
     });
 
     it('a script edited by hand is not overwritten without --force', async () => {

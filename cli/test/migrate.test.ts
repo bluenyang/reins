@@ -70,7 +70,10 @@ describe('reins migrate (S1)', () => {
     expect(agents).toContain('## Project\nmine');
     expect(agents).toContain('reins:begin flow');
     expect(agents).toContain('<!-- reins:reconcile pending -->');
-    expect(readFileSync(join(d, '.agents/AGENTS.previous.md'), 'utf8')).toContain('old loop rules');
+    const previous = readFileSync(join(d, '.agents/AGENTS.previous.md'), 'utf8');
+    expect(previous).toContain('old loop rules');
+    // another harness's text: no 0.2.0 warning on it (021 S-15)
+    expect(previous).not.toContain('reins 0.2.0 or earlier');
     expect(generation(d)).toBe('reins');
     const again = await runMigrate(opts);
     expect(again.moves).toEqual([]);

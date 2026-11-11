@@ -8,6 +8,7 @@ Read by `reins update`: it lists the entries newer than a project's pinned versi
 - The auditor is read-only: its call line no longer asks for write access, it returns the audit record as its answer and the PM writes it unchanged.
 - New `.agents/harness/run-gates.sh`: runs the gates of `gates.yaml` and keeps their output in `.loctx/reports/gates/<tree>.log`. Hooks call it with one line (`sh .agents/harness/run-gates.sh pre-commit`); `update` rewrites the hooks block 0.3.0 wrote and shows what it held. The PM fills missing logs before the audit; the retro deletes them.
 - `models.yaml` adds `claude-fable-5-2`, `gpt-6-sol` and `gpt-6-luna`.
+- `update` heads the `.agents/AGENTS.previous.md` it makes from an install of 0.2.0 or earlier with a warning not to run the reins commands named in it.
 
 ## 0.3.0
 - Stable 2026-11-10 (same harness as rc.4).

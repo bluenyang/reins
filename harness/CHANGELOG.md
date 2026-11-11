@@ -11,6 +11,7 @@ Read by `reins update`: it lists the entries newer than a project's pinned versi
 - `update` heads the `.agents/AGENTS.previous.md` it makes from an install of 0.2.0 or earlier with a warning not to run the reins commands named in it.
 - Fallback models: `fallback` on a group or a role in `bindings.yaml` (and the personal file); the delegation table names the fallback and how to call it, and the PM uses it when a role's call cannot be made. A `bindings.yaml` that holds a `fallback` is refused by the `config` of 0.3.0, so everyone on the team moves to 0.3.1. `update` carries a 0.2.0 `fallback` over with its model.
 - `config gates --refresh [--apply <name…|all>]` and a `gates` item on the config screen: the discovery of installation runs again, the differences from `gates.yaml` are shown, and only what is picked is applied; the gate script follows.
+- A call line in the delegation table uses the vendor's default command (`codex`, `agy`, `cursor-agent`) when the settings record no CLI for it, instead of the vendor's name.
 
 ## 0.3.0
 - Stable 2026-11-10 (same harness as rc.4).

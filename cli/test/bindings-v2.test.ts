@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { localDelegation, renderDelegation, FALLBACK_RULE } from '../src/lib/agents-md.js';
+import { cliOf, localDelegation, renderDelegation, FALLBACK_RULE } from '../src/lib/agents-md.js';
 import {
   auditBinding,
   auditFallback,
@@ -309,5 +309,46 @@ describe('fallback models (021 S-16, S-17, S-19)', () => {
     expect(notes).toContain('role code-review: fallback dropped (not a model)');
     expect(notes).toContain('role deploy: fallback dropped (same as the model)');
     expect(notes).toContain('role planner: fallback dropped (not a model)');
+  });
+});
+
+describe('the command of a call line (021 S-28)', () => {
+  const doc = (tools?: BindingsV2['tools']): BindingsV2 => ({
+    schema: 'reins/bindings@2',
+    mode: 'multi',
+    ...(tools ? { tools } : {}),
+    groups: {
+      pl: { ...terra, fallback: { vendor: 'google', model: 'gemini-4-argon-high' } },
+      executor: { vendor: 'cursor', model: 'cursor-grok-4.5-high-fast' },
+      advisor: {
+        vendor: 'acme',
+        model: 'acme-1',
+        fallback: { vendor: 'openai', model: 'gpt-6-astra' },
+      },
+    },
+  });
+
+  it('without a recorded CLI it is the one reins knows for the vendor, in the call and in the fallback', () => {
+    expect(cliOf(doc(), 'openai')).toBe('codex');
+    const t = renderDelegation(doc());
+    expect(t).toContain(
+      '| pl/control | openai gpt-6.1-terra | `codex exec -m gpt-6.1-terra -s read-only -` (task on stdin); fallback: google gemini-4-argon-high — `agy -p "<task>" --model gemini-4-argon-high --mode plan` |',
+    );
+    expect(t).toContain('`cursor-agent -p --model cursor-grok-4.5-high-fast "<task>"`');
+    expect(t).not.toMatch(/`openai exec|`google -p|`cursor -p/);
+    // a vendor reins does not know keeps its name; its openai fallback is still codex
+    expect(t).toContain(
+      '| advisor/committee | acme acme-1 | `acme` with model `acme-1`; fallback: openai gpt-6-astra — `codex exec -m gpt-6-astra -s read-only -` (task on stdin) |',
+    );
+  });
+
+  it('a recorded CLI wins, so a table written from detected tools does not change', () => {
+    const t = renderDelegation(doc({ openai: { cli: 'my-codex' }, google: { cli: 'gemini' } }));
+    expect(t).toContain('`my-codex exec -m gpt-6.1-terra -s read-only -`');
+    expect(t).toContain('`gemini -p "<task>" --model gemini-4-argon-high --mode plan`');
+    // a tool entry without a cli (only use: false, say) falls back to the default as well
+    expect(renderDelegation(doc({ openai: { use: true } }))).toContain(
+      '`codex exec -m gpt-6.1-terra',
+    );
   });
 });

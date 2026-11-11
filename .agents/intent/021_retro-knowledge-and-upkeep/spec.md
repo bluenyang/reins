@@ -103,7 +103,7 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - [x] W-7 (277ef3b; 리뷰 수정 b3189b6) 대체 모델(S-16~S-20): `bindings.ts`, `bindings.schema.json`, `agents-md.ts`, `configure.ts`, `config-models.ts`, `harness/templates/agents-md-blocks.md`(해당되면), 설계서 양판 §5·§9, README 양판, 테스트.
 - [x] W-9 (31fbd61; 리뷰 수정 340bf3d) 검사 다시 찾기(S-22~S-26): `configure.ts`(gates), `config.ts`(화면), `reins.ts`, 설계서 양판 §9, README 양판, 테스트. W-4 다음에 한다(스크립트를 다시 만드는 함수를 쓴다); 구현 순서는 W-1~W-7, W-9이고 W-8은 릴리스 뒤다.
 - [x] W-11 (1a00aa5) 실행 줄의 기본 명령 이름(S-28): `cli/src/lib/agents-md.ts`, 테스트, 설계서 양판 §6(실행 줄 문장), `harness/CHANGELOG.md`. W-9 뒤에 한다.
-- [x] W-15 (ff0530b — 브랜치 SHA; 머지 뒤 PR 기록으로 master SHA 대응) `update` 보고의 알림(S-32): `cli/src/commands/update.ts`, 테스트.
+- [x] W-15 (624be4d; 브랜치에서는 ff0530b) `update` 보고의 알림(S-32): `cli/src/commands/update.ts`, 테스트.
 - [x] W-14 (899b0df; 브랜치에서는 13e0ed7) `claude-fable-5-2`를 확인 목록에서(S-31): `cli/src/lib/detect.ts`, 테스트.
 - [x] W-12 (9244c15; 브랜치에서는 a2603a2) W-10 테스트의 좁힌 PATH(S-29): `test/e2e/harness-only.test.ts`.
 - [x] W-13 (7dbdde2; 브랜치에서는 b769d6f) 영문 설계서 두 문장(S-30): `docs/design.md`, 스킬 테스트.

@@ -108,7 +108,7 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - [x] W-12 (9244c15; 브랜치에서는 a2603a2) W-10 테스트의 좁힌 PATH(S-29): `test/e2e/harness-only.test.ts`.
 - [x] W-13 (7dbdde2; 브랜치에서는 b769d6f) 영문 설계서 두 문장(S-30): `docs/design.md`, 스킬 테스트.
 - [x] W-10 (0cc62bd) e2e 테스트 수정(S-27): `test/e2e/harness-only.test.ts`.
-- [ ] W-8 이 저장소의 훅(S-13): 0.3.1 stable 뒤, 자기 업데이트(`reins update`, 별도 커밋) 다음에 `.husky/pre-commit`·`pre-push`를 바꾼다. 릴리스 뒤 단위라 0.3.1 감사 범위 밖이고, 0.3.1 회고에서 V-11로 확인한다(사용자 2026-11-11 "그렇게 해").
+- [x] W-8 (e92ea95 — 브랜치 SHA; 자기 업데이트는 c5ce51a) 이 저장소의 훅(S-13): 0.3.1 stable(2026-11-11) 뒤 `reins update`로 0.3.1 하네스를 받고 `.husky/pre-commit`·`pre-push`가 `sh .agents/harness/run-gates.sh <단계>`를 부르게 바꿨다. V-11: 이 커밋과 다음 커밋(`git commit -a`)의 로그가 `.loctx/reports/gates/<트리>.log`에 `worktree: clean`, `exit: 0`으로 남았다.
 
 ## 검증 기준
 모든 실행의 원본 출력은 `.loctx/reports/0.3.1/`에 둔다. 실패는 "기대와 다른 출력, 0이 아닌 종료 코드, 또는 빈 출력"이다.

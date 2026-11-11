@@ -9,6 +9,43 @@ everything planned for it is done, later `rc.N` are stabilisation only (see
 This file is about the package. The harness that `reins update` re-applies to installed projects
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md).
 
+## [0.3.1] — unreleased
+
+rc.1: 2026-11-11 (intent 021). Follow-ups from the 0.3 retro and from the reviews and the audit of this version.
+
+### Added
+- `.agents/harness/run-gates.sh`: one script, written from `gates.yaml`, that runs the project's required
+  checks and keeps their output per tree in `.loctx/reports/gates/<tree>.log` (stage, work tree clean or
+  dirty, exit code). Hooks call it with one line per stage; `update` rewrites the hooks block 0.3.0 wrote
+  and shows what it held. Before an audit the PM fills in the logs missing for a commit.
+- Fallback models: `fallback` on a group or a role in `bindings.yaml` and the personal file,
+  `config bindings --fallback <group>[.<role>]=<model|none>` and a `fallback (optional)` entry on the
+  group screen. `config` writes the fallback's call line into the delegation table; reins resolves nothing
+  while a project works.
+- `config gates --refresh [--apply <name…|all>]` and a `gates` item on the config screen: the discovery of
+  installation runs again, the differences from `gates.yaml` (new, changed, gone) are shown, and only what
+  is picked is applied.
+- The `retro` skill proposes knowledge candidates from decisions and failures repeated in history and the
+  audit.
+- Known models: `claude-fable-5-2`, `gpt-6-sol`, `gpt-6-luna`.
+
+### Changed
+- `.claude/settings.json` is merged, not replaced: reins changes only the deny rules it wrote (listed under
+  `owned:` in `generated.yaml`) and keeps every entry of the user's, also with `--force` and in a file it
+  never wrote.
+- The auditor is read-only: its call line no longer asks for write access; it returns the audit record and
+  the PM writes it unchanged.
+- `update` heads the `.agents/AGENTS.previous.md` it makes from an install of 0.2.0 or earlier with a
+  warning not to run the reins commands named in it.
+- A `bindings.yaml` that holds a `fallback` is refused by the `config` of 0.3.0: everyone on a team moves
+  to 0.3.1 together.
+
+### Fixed
+- A call line in the delegation table uses the vendor's default command (`codex`, `agy`, `cursor-agent`)
+  when the settings record no CLI for it, instead of the vendor's name.
+- `config gates --add` on a `gates.yaml` without `order` no longer writes an order that holds the new gate
+  alone.
+
 ## [0.3.0] — 2026-11-10
 
 Stable: 2026-11-10 (the rc.4 commit, unchanged). rc.1: 2026-11-09. rc.4 (2026-11-10): outside a git repository, without git, or when git cannot read the repository, every command prints one line and exits 2 instead of a stack trace (only the first is told to run git init). rc.3 (2026-11-10): a personal delegation table `.loctx/delegation.local.md` when local settings delegate differently from the team, pointed to by every skill and the delegation block; commits at meaningful units (revertible without taking other work along) in the flow, the skills and the audit; the audit reads PR and CI records the PM collects (intent 020). rc.2 (2026-11-09): single mode shows kept assignments as used in multi only; a known-model list per vendor; the scope global is now project (only project and local); a mode switch adds a light mode-changed note instead of a reconcile. reins manages the harness only (intent 019). 0.2.1–0.2.8 were cancelled. Audit: [.agents/audit/0.3.0.md](.agents/audit/0.3.0.md).

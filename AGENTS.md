@@ -17,11 +17,11 @@ the project can follow them. reins is never called while a project works.
 
 ### Goals and scope
 
-- 0.3.0 is released (2026-11-10; intents 019, 020). This repository now runs the reins 0.3 harness itself
-  (self-updated with `reins update`, 2026-11-10); the by-hand flow of 0.3 development is over.
-- Next: the 0.3 retro, then 0.3.1 (the `retro` skill proposes knowledge candidates; `.loctx/ROADMAP.local.md`),
-  then 0.4 (rolling out to BlueNyang's and Team Croffle's repositories). Ideas and their state: `docs/ROADMAP.md`
-  and `.loctx/ROADMAP.local.md`.
+- The goal: one harness that BlueNyang's and Team Croffle's repositories share, installed and kept current by
+  reins, that works without reins and without a network once installed. This repository runs that harness itself
+  and is its first user.
+- What is released, what is planned and what is only an idea is not written here: `docs/ROADMAP.md` (settled),
+  `.loctx/ROADMAP.local.md` (ideas), `CHANGELOG.md` (released). Why things were decided: `docs/conversation/`.
 - The design document is the reference. If an implementation needs to differ, change `docs/design.ko.md`
   (and the English edition) **in the same commit** before the code.
 
@@ -45,13 +45,16 @@ the project can follow them. reins is never called while a project works.
 - What ships (the CLI, generators and build output) is TypeScript and never needs Python (R65). Development, test,
   verification and editing scripts may use Python; do not block Python itself — target repositories may be Python
   projects.
-- Merging a PR needs the maintainer's instruction naming it ("PR #N 머지해"); Claude Code's auto mode refuses a
-  merge without one.
+- Merging a PR needs the maintainer's instruction to merge. Naming the PR is best; an instruction that names none
+  means the PR when one is open, or every PR the PM proposed to merge together. A general "carry on" is not a merge
+  instruction. Run the merge as a command of its own: Claude Code's auto mode refuses a merge without such an
+  instruction, and one chained with other commands.
 
 ## Conventions (this repository)
 
 - Branches: `type/topic` from a freshly pulled `master`, rebase onto `master`, rebase merge. Never commit on `master`.
-- Commit messages: `type(scope): title`, one-line summary, bullets, `Co-Authored-By` footer only.
+- Commit messages: `type(scope): title`, one-line summary, bullets, `Co-Authored-By` footer only. A commit that only
+  records something done (ticking a work unit, naming a SHA) may be the title and the footer alone.
 - After a rebase merge GitHub gives the commits new SHAs; records (spec, audit) name the master SHAs.
 - PR bodies carry the raw check log's path and the last lines of its output; the audit gets the PR and CI records
   the PM collects into `.loctx/reports/<version>/`.

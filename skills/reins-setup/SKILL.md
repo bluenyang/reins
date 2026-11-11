@@ -15,10 +15,10 @@ If either still starts with `${` (unsubstituted — this copy lives in a project
 1. **Look.** Is there an `.agents/harness/` (reins installed), an `.ai/` workspace, or an older harness
    (`.claude/commands/`, many skills)? Say which.
 2. **Show the user the command** for their terminal, with the version pinned to this skill's release:
-   - nothing installed: `npx @bluenyang/reins@0.3.0 install --mode <mode>`
-   - an older harness or `.ai/`: `npx @bluenyang/reins@0.3.0 migrate --dry-run`, then without `--dry-run`
-   - reins already installed: `npx @bluenyang/reins@0.3.0 update`
-   - to change models, the mode or the audit later: `npx @bluenyang/reins@0.3.0 config` (the user can run `reins config`)
+   - nothing installed: `npx @bluenyang/reins@0.3.1-rc.1 install --mode <mode>`
+   - an older harness or `.ai/`: `npx @bluenyang/reins@0.3.1-rc.1 migrate --dry-run`, then without `--dry-run`
+   - reins already installed: `npx @bluenyang/reins@0.3.1-rc.1 update`
+   - to change models, the mode or the audit later: `npx @bluenyang/reins@0.3.1-rc.1 config` (the user can run `reins config`)
    Run it yourself only when the user asks you to, and only that command.
 3. **Explain what follows.** reins writes AGENTS.md blocks with an onboarding note; the next conversation starts
    with the `onboard` skill, which reads the project, asks the user, and writes AGENTS.md's project sections.

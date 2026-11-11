@@ -1,1 +1,1 @@
-pnpm check
+sh .agents/harness/run-gates.sh pre-push

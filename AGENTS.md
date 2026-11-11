@@ -55,7 +55,7 @@ the project can follow them. reins is never called while a project works.
 - After a rebase merge GitHub gives the commits new SHAs; records (spec, audit) name the master SHAs.
 - PR bodies carry the raw check log's path and the last lines of its output; the audit gets the PR and CI records
   the PM collects into `.loctx/reports/<version>/`.
-- Public documents: English by default with a Korean `.ko.md` twin, cross-linked (R67). Korean documents for the
+- Public documents: English by default with a Korean `.ko.md` twin, cross-linked (R67). Exception: `docs/conversation/` (the maintainer's design conversations) is written in Korean only, with no English twin (maintainer, 2026-11-11). Korean documents for the
   user may be polished with humanize-korean; English ones are not.
 - `CLAUDE.md` contains only `@AGENTS.md`.
 - Spec summaries wait for the maintainer's 진행 or 수정 every time; there is no standing auto-accept (maintainer,

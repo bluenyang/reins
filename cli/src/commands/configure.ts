@@ -71,8 +71,11 @@ export function parseBinding(v: string): Binding | null {
   const s = v.trim();
   if (!s) return null;
   const i = s.indexOf(':');
-  if (i > 0) return { vendor: s.slice(0, i), model: s.slice(i + 1) };
-  return { vendor: vendorOf(s), model: s };
+  if (i < 0) return { vendor: vendorOf(s), model: s };
+  // `vendor:` or `:model` names no model: the personal file is not schema-checked, so refuse it here
+  const vendor = s.slice(0, i).trim();
+  const model = s.slice(i + 1).trim();
+  return vendor && model ? { vendor, model } : null;
 }
 
 /** Rewrite AGENTS.md's managed blocks for these settings (design §5); a mode change adds the light mode-changed note (ST-5). */
@@ -214,6 +217,8 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
               `${group}.${role} has no model of its own in ${where} — set it with --set ${group}.${role}=<model>, or give the group a fallback`,
             )
           : refuse(`${group}.${role} has no fallback to clear in ${where}`);
+      if (!b && !own.fallback)
+        return refuse(`${group}.${role} has no fallback to clear in ${where}`);
       const { fallback: _old, ...rest } = own;
       spec.roles = { ...spec.roles, [role]: b ? { ...rest, fallback: b } : rest };
     } else {
@@ -221,6 +226,9 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
         return refuse(
           `${group} has no model in ${where} — set it with --set ${group}=<model> first (a fallback goes with the model beside it)`,
         );
+      // clearing what is not there must not write an empty group: in the personal file `{}` switches
+      // the team's group off for that person
+      if (!b && !spec.fallback) return refuse(`${group} has no fallback to clear in ${where}`);
       if (b) spec.fallback = b;
       else delete spec.fallback;
     }

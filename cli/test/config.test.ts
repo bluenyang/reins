@@ -577,6 +577,21 @@ describe('fallback models through config (021 S-18, V-7)', () => {
     ],
     ['an unknown role', { fallback: ['implementer.nope=gpt-6.1-terra'] }, /unknown role "nope"/],
     ['no value', { fallback: ['implementer='] }, /is not target=model\|none/],
+    [
+      'a vendor without a model',
+      { fallback: ['implementer=openai:'] },
+      /is not target=model\|none/,
+    ],
+    [
+      'clearing a group fallback that is not there',
+      { fallback: ['implementer=none'] },
+      /implementer has no fallback to clear/,
+    ],
+    [
+      'clearing a role fallback that is not there',
+      { fallback: ['pl.code-reviewer=none'] },
+      /pl\.code-reviewer has no fallback to clear/,
+    ],
   ])('(e, i, j) refuses %s and writes nothing', async (_n, opts, why) => {
     const d = await repo();
     await multi(d);
@@ -598,6 +613,22 @@ describe('fallback models through config (021 S-18, V-7)', () => {
     });
     expect(no.refused).toMatch(/implementer has no model in your personal file/);
     expect(existsSync(join(d, LOCAL))).toBe(false);
+    // review: clearing a fallback the personal file does not have must not write `implementer: {}` there,
+    // which would switch the team's group off for this person; nor may an empty model get in unchecked
+    for (const fallback of [['implementer=none'], ['implementer=openai:']]) {
+      const r = await configureBindings({
+        cwd: d,
+        local: true,
+        ...(fallback[0] === 'implementer=none' ? {} : { set: ['implementer=claude-sonnet-5-5'] }),
+        fallback,
+      });
+      expect(r.refused).toBeDefined();
+      expect(existsSync(join(d, LOCAL))).toBe(false);
+    }
+    const stillOn = await configureBindings({ cwd: d, show: true });
+    expect(stillOn.roles.find((x) => x.group === 'implementer' && x.role === 'code')?.on).toBe(
+      true,
+    );
     const before = Object.fromEntries(
       Object.entries(snapshot(d)).filter(([k]) => !k.startsWith('.loctx/')),
     );

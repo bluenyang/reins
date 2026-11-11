@@ -54,7 +54,7 @@ State: **0.3.0 published** (2026-11-10, stable from the rc.4 commit). rc.3 carri
 
 ### 0.3.1 — rc.1
 
-State: 0.3.1-rc.1 (2026-11-11, intent 021); stable on the maintainer's instruction. Follow-ups from the 0.3 retro (maintainer, 2026-11-10).
+State: 0.3.1-rc.1 (2026-11-11, intent 021); stable on the maintainer's instruction. Stabilisation found while checking the published rc.1: `update` prints what a hooks block held when it rewrites it, and the settings file it could not merge and the hook proposals (planned for rc.2). Follow-ups from the 0.3 retro (maintainer, 2026-11-10).
 
 - **The retro proposes knowledge candidates.** The `retro` skill finds decisions and failures repeated in history and the audit and proposes them as knowledge candidates. Design §8 said so, but the skill did not: 0.2.0 passed without a retro and nothing was promoted during 0.3.
 - **`.claude/settings.json` is merged.** `update` no longer compares the file as a whole; it keeps the user's entries (allow and others) and changes only reins' own. Today one added permission makes `update` skip the file as edited by hand, and `--force` drops the user's permissions.

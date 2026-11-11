@@ -6,8 +6,10 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -123,12 +125,17 @@ describe('the installed harness works without reins and without a network (019 V
     () => {
       const d = repo();
       reins(d, 'install', '--mode', 'auto', '--hooks');
-      // a PATH with git and node only, and a registry that cannot be reached
+      // a PATH with git and node only, and a registry that cannot be reached; node and npm are linked
+      // into an empty directory, because node's own directory also holds every global install (reins too)
       const bin = mkdtempSync(join(tmpdir(), 'reins-bin-'));
       dirs.push(bin);
+      for (const tool of ['node', 'npm']) {
+        const real = join(process.execPath, '..', tool);
+        if (existsSync(real)) symlinkSync(realpathSync(real), join(bin, tool));
+      }
       const env = {
         PATH: [
-          join(process.execPath, '..'),
+          bin,
           ...(process.env['PATH'] ?? '')
             .split(delimiter)
             .filter((p) => /git/i.test(p) || p === '/usr/bin' || p === '/bin'),

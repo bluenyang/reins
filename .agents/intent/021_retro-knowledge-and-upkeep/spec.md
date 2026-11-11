@@ -75,6 +75,9 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - S-31 **`claude-fable-5-2`의 자리(W-14).** 공식 문서에 있는 ID이고 서비스되는 모델이므로 알려진 모델 목록(`harness/models.yaml`)에는 둔다 — `config`에서 고를 수 있다. "이 환경에서 동작을 본 ID"(`CONFIRMED_MODELS`)에서는 뺀다: `claude -p --model`로 한 호출의 응답 모델을 원본으로 확인하지 못했다(추가 감사 A3). `gpt-6-sol`·`gpt-6-luna`는 호출 출력이 있어 그대로 둔다. ← 사용자 2026-11-11 "선택은 가능(알려진 모델)한데 확인 목록에서는 빼던지."
 - S-30 **영문 설계서 두 문장.** 양판 대조(`design-twin-comparison.md`)에서 나온 것: ① §5 대체 모델 단락의 마지막 문장 — 국문 "대체가 하나도 없는 설정"에 맞춰 영문 "A file without any fallback"을 설정 전체를 뜻하는 말로 고친다 ② §3-3 판정 문장 — 국문의 "함께 되돌아가도 되는 작은 작업은 한 커밋에 합칠 수 있다"에 대응하는 영문 문장이 0.3.0 때부터 빠져 있어 넣는다. 국문은 바꾸지 않는다. ← 사용자 2026-11-11 "그렇게 해."
 
+### rc.1 뒤 안정화 (W-15 — V-9에서 나온 것)
+- S-32 **`update`의 보고에 훅과 설정 파일에 대한 알림이 나온다.** S-11은 `update`가 0.3.0의 훅 블록을 한 줄로 바꿀 때 "바꾸기 전 본문을 출력에 보여 준다"고 했고 S-5는 합치지 못한 `.claude/settings.json`을 "알린다"고 했다. 구현은 그 알림을 install 단계의 notes에만 넣었고, `update`의 보고(`formatUpdate`)는 notes를 출력하지 않는다. 그래서 배포본 `update`에서는 보이지 않았다(V-9: `rc1-smoke-0.3.1.log`의 실패 1건; 단위 테스트는 결과 객체의 notes만 확인했다). `update`의 보고에 훅 블록 교체, 훅 제안, 건드리지 않은 생성물에 대한 알림을 출력한다. 온보딩 안내 같은 install 전용 문장은 넣지 않는다. 0.3.1-rc.2로 낸다. 사용자에게 먼저 묻지 않고 진행했다: 같은 단위(W-4, W-2) 안의 작은 보완이고, 사용자가 2026-11-11에 말한 방식("기존에 비슷한 기록이 있거나 작은 사안이다 → 진행 후 보고한다")을 따랐다. 설치된 0.3.0 규칙은 spec 변경마다 승인을 받게 하므로, 이 점을 보고에 밝힌다.
+
 ### 문서
 - S-21 설계서 양판은 각 단위의 커밋에 함께 넣는다. `harness/CHANGELOG.md`의 0.3.1 절에 단위마다 한 줄. README 양판은 해당 문장이 있으면 그 단위에서 고친다. 하네스·CLI 동작을 바꾸지 않는 단위(W-10, W-12, W-13)는 `harness/CHANGELOG.md`에 줄을 더하지 않는다(추가 감사 A5, 사용자 2026-11-11 "A1. 그렇게 해."). ← "설계서 양판, README 양판, `harness/CHANGELOG.md`가 바뀐 동작과 맞는다"
 
@@ -100,7 +103,8 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - [x] W-7 (277ef3b; 리뷰 수정 b3189b6) 대체 모델(S-16~S-20): `bindings.ts`, `bindings.schema.json`, `agents-md.ts`, `configure.ts`, `config-models.ts`, `harness/templates/agents-md-blocks.md`(해당되면), 설계서 양판 §5·§9, README 양판, 테스트.
 - [x] W-9 (31fbd61; 리뷰 수정 340bf3d) 검사 다시 찾기(S-22~S-26): `configure.ts`(gates), `config.ts`(화면), `reins.ts`, 설계서 양판 §9, README 양판, 테스트. W-4 다음에 한다(스크립트를 다시 만드는 함수를 쓴다); 구현 순서는 W-1~W-7, W-9이고 W-8은 릴리스 뒤다.
 - [x] W-11 (1a00aa5) 실행 줄의 기본 명령 이름(S-28): `cli/src/lib/agents-md.ts`, 테스트, 설계서 양판 §6(실행 줄 문장), `harness/CHANGELOG.md`. W-9 뒤에 한다.
-- [x] W-14 (13e0ed7 — 브랜치 SHA; master SHA는 머지 뒤 PR 기록 `pr36-head-commits.txt`·`master-commits-pr36.txt`로 대응) `claude-fable-5-2`를 확인 목록에서(S-31): `cli/src/lib/detect.ts`, 테스트.
+- [ ] W-15 `update` 보고의 알림(S-32): `cli/src/commands/update.ts`, 테스트.
+- [x] W-14 (899b0df; 브랜치에서는 13e0ed7) `claude-fable-5-2`를 확인 목록에서(S-31): `cli/src/lib/detect.ts`, 테스트.
 - [x] W-12 (9244c15; 브랜치에서는 a2603a2) W-10 테스트의 좁힌 PATH(S-29): `test/e2e/harness-only.test.ts`.
 - [x] W-13 (7dbdde2; 브랜치에서는 b769d6f) 영문 설계서 두 문장(S-30): `docs/design.md`, 스킬 테스트.
 - [x] W-10 (0cc62bd) e2e 테스트 수정(S-27): `test/e2e/harness-only.test.ts`.
@@ -124,6 +128,7 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - V-14 (W-12) `pnpm vitest run test/e2e/harness-only.test.ts` 통과; 테스트 안에서 좁힌 PATH가 임시 폴더 하나뿐임을 단언한다; CI의 Linux·macOS에서 통과(Windows는 이 테스트를 건너뜀).
 - V-15 (W-13) 스킬 테스트가 영문 설계서에 두 문장이 있음을 확인; 대조표의 다름 2곳이 닫혔는지 PM이 두 판을 다시 대조해 `design-twin-comparison.md`에 덧붙인다. `pnpm check` 종료 0.
 - V-16 (W-14) `models.test.ts`: `claude-fable-5-2`가 `models.yaml`에 있고 `CONFIRMED_MODELS`에 없다; `gpt-6-sol`·`gpt-6-luna`는 양쪽에 있다. `pnpm check` 종료 0.
+- V-17 (W-15) `update.test.ts`: 0.3.0 훅 블록을 가진 설치를 `update`한 보고 문자열에 "it held: …"가 있다; 합칠 수 없는 settings.json과 lefthook 제안도 보고에 나온다; 온보딩 안내 문장은 나오지 않는다. rc.2 배포본으로 `smoke-published-0.3.1.sh` 0 실패.
 - V-9 rc 뒤(릴리스 단계): `.loctx/context/scripts/smoke-published.sh`를 npm의 0.3.1-rc.N으로 돌려 0 실패, 그리고 0.3.0 설치 → 0.3.1 `update` 한 번으로 V-2(b), V-4(i)가 실제로 성립함을 임시 저장소에서 확인.
 
 ## 우려

@@ -39,9 +39,10 @@ export function mergeSettings(text: string, now: string[], was: string[]): strin
     return null;
   }
   if (!isObj(doc)) return null;
-  const perms = doc['permissions'] ?? {};
+  // only an absent key gets a default: a `null` the user wrote is another shape, not ours to replace
+  const perms = 'permissions' in doc ? doc['permissions'] : {};
   if (!isObj(perms)) return null;
-  const cur = perms['deny'] ?? [];
+  const cur = 'deny' in perms ? perms['deny'] : [];
   if (!Array.isArray(cur)) return null;
   const gone = new Set(was.filter((r) => !now.includes(r)));
   const kept = (cur as unknown[]).filter((r) => !(typeof r === 'string' && gone.has(r)));
@@ -160,11 +161,18 @@ export function writeGenerated(
     const abs = join(root, path);
     if (!existsSync(abs)) continue;
     const mine = ownedBefore[path];
-    if (mine && sha(readFileSync(abs, 'utf8')) !== hash) {
-      // a merged file the user also wrote in: take reins' rules out and leave the rest
+    if (mine) {
+      // a merged file is shared with the user and never deleted: take reins' rules out, leave the rest
       const text = readFileSync(abs, 'utf8');
       const rest = mergeSettings(text, [], mine);
-      if (rest !== null && rest !== text) {
+      if (rest === null) {
+        res.refused.push({
+          path,
+          why: 'no longer generated, but not a settings object reins can take its rules out of — left alone; fix it and run `reins update`',
+        });
+        after[path] = hash;
+        owned[path] = mine;
+      } else if (rest !== text) {
         if (!dryRun) writeFileSync(abs, rest);
         res.written.push(path);
       }

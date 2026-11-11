@@ -202,6 +202,8 @@ describe('.claude/settings.json is merged, not replaced (021 S-3..S-5)', () => {
     ['a top level that is not an object', '[]\n'],
     ['permissions that is not an object', '{ "permissions": [] }\n'],
     ['deny that is not a list', '{ "permissions": { "deny": "x" } }\n'],
+    ['permissions that is null', '{ "permissions": null }\n'],
+    ['deny that is null', '{ "permissions": { "deny": null } }\n'],
   ])('leaves %s alone, says so, and still writes the rest', async (_n, text) => {
     const d = await setup();
     put(d, text);
@@ -221,6 +223,48 @@ describe('.claude/settings.json is merged, not replaced (021 S-3..S-5)', () => {
     expect(r.generated?.refused).toEqual([]);
     expect(settings(d).permissions?.allow).toEqual(['Bash(gh *)']);
     expect(settings(d).permissions?.deny).toEqual(reinsRules(d));
+  });
+
+  describe('when reins no longer generates it', () => {
+    const without = (d: string, force = false) =>
+      writeGenerated(
+        d,
+        { writes: generateVendorFiles(d).writes.filter((w) => w.path !== SP) },
+        false,
+        force,
+      );
+
+    it.each([false, true])(
+      "takes its rules out and keeps the file and the user's entries (force: %s)",
+      async (force) => {
+        const d = await setup();
+        put(d, {
+          ...settings(d),
+          permissions: { allow: ['Bash(gh *)'], deny: ['Mine(*)', ...reinsRules(d)] },
+        });
+        again(d); // the manifest now holds the hash of the merged file: it is "unchanged" for the next run
+        const r = without(d, force);
+        expect(r.removed).not.toContain(SP);
+        expect(settings(d).permissions).toEqual({ allow: ['Bash(gh *)'], deny: ['Mine(*)'] });
+        expect(manifest(d).files[SP]).toBeUndefined();
+        expect(manifest(d).owned?.[SP]).toBeUndefined();
+      },
+    );
+
+    it('keeps its records while the file cannot be read, and finishes once it is repaired', async () => {
+      const d = await setup();
+      const rules = reinsRules(d);
+      const good = readFileSync(join(d, SP), 'utf8');
+      put(d, '{ broken');
+      const r = without(d);
+      expect(r.refused.map((x) => x.path)).toEqual([SP]);
+      expect(manifest(d).owned?.[SP]).toEqual(rules);
+      expect(manifest(d).files[SP]).toBeDefined();
+      put(d, good);
+      without(d);
+      expect(settings(d).permissions?.deny).toEqual([]);
+      expect(manifest(d).owned?.[SP]).toBeUndefined();
+    });
   });
 
   it('mergeSettings leaves entries that are not strings where they are', () => {

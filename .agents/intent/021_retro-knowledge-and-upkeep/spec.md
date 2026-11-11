@@ -8,12 +8,15 @@ approvals:
   - { role: user, by: BlueNyang, at: 2026-11-11, words: "CLI 이름 fix 제안: 넣어.", rev: dacf3b3, kind: change, scope: "W-11 default CLI name in call lines (on the proposal shown in chat)" }
   - { role: user, by: BlueNyang, at: 2026-11-11, words: "ㅇㅇ. 진행.", rev: 637e3ae, kind: change, scope: "W-11 (S-28, V-13): the summary shown again after the merge, as the 0.3.1 audit asked (finding 1); a confirmation after the fact, not the approval at the time" }
   - { role: user, by: BlueNyang, at: 2026-11-11, words: "그렇게 해.", rev: 637e3ae, kind: change, scope: "stabilisation after the 0.3.1 audit: W-12 (S-29) and W-13 (S-30), on the proposal shown in chat" }
+  - { role: user, by: BlueNyang, at: 2026-11-11, words: "A1. 그렇게 해.", rev: 20f6b8f, kind: change, scope: "the summary of W-12 (S-29, V-14) and W-13 (S-30, V-15) and the changelog exception, shown after the merge as the supplementary audit asked (A1, A5); a confirmation after the fact" }
+  - { role: user, by: BlueNyang, at: 2026-11-11, words: "선택은 가능(알려진 모델)한데 확인 목록에서는 빼던지.", rev: 20f6b8f, kind: change, scope: "W-14 (S-31): claude-fable-5-2 stays a known model and leaves CONFIRMED_MODELS" }
 summary_for_user: |
   작업 단위 아홉: W-1 retro 스킬이 반복된 결정·실패를 knowledge 후보로 제안 · W-2 `.claude/settings.json`은 reins가 만든 deny 규칙만 고치고 나머지는 보존(`--force`로도) · W-3 감사자 읽기 전용, 감사자가 돌려준 기록 전문을 PM이 고치지 않고 씀 · W-4 `.agents/harness/run-gates.sh`가 검사를 돌리고 `.loctx/reports/gates/<트리 해시>.log`에 남김, 훅 줄은 어느 도구든 한 줄 · W-5 모델 목록 · W-6 `AGENTS.previous.md` 머리 경고(update의 0.2.0 이하 이전만) · W-7 대체 모델(군·상세 역할에 하나, 위임 표 칸에 대체 실행 줄, `config bindings --fallback`과 화면) · W-9 `config gates --refresh [--apply]`와 화면의 gates 항목 · W-8 이 저장소 훅 전환(stable 뒤).
   intent와 다르게 옮긴 곳: 검사 스크립트는 실행 중에 gates.yaml을 읽지 않고 reins가 쓸 때 명령을 넣어 둔다(S-9). 대체가 없는 설정의 위임 표는 0.3.0과 글자까지 같다(S-17).
   검토(독립 검토 1회, 지적 10건 반영): rebase하면 트리 해시가 바뀜, 일부만 스테이징하면 로그가 그 커밋의 증거가 아님(`worktree: dirty`로 표시), 게이트 차이의 짝짓기 규칙, 모델 없는 군의 대체 거부 등.
   받은 답(2026-11-11): 기존 settings.json에도 합쳐 씀 · 이 저장소 훅 전환은 stable 뒤(0.3.1 감사에는 커밋별 로그 없음) · 로그가 없는 커밋은 감사 전에 PM이 그 커밋에서 검사를 돌려 채움(`rebase -x` 안은 버림) · W-10 e2e 테스트 수정을 더해 가장 먼저 커밋.
-  검증 V-1~V-11: 표 기반 테스트, 임시 git 저장소에서 스크립트 실제 실행(Windows·macOS CI 포함), `pnpm check`, rc 뒤 배포본 smoke.
+  감사 뒤 더한 단위(2026-11-11): W-11 실행 줄의 기본 명령 이름(S-28) · W-12 e2e 테스트의 PATH를 빈 임시 폴더 하나로(S-29, 제품 코드 변경 없음) · W-13 영문 설계서 두 문장을 국문에 맞춤(S-30, 국문 변경 없음) · W-14 `claude-fable-5-2`는 알려진 모델에 두고 동작 확인 목록에서 뺌(S-31). W-12·W-13은 하네스·CLI 동작을 바꾸지 않아 `harness/CHANGELOG.md`에 줄을 더하지 않는다.
+  검증 V-1~V-16: 표 기반 테스트, 임시 git 저장소에서 스크립트 실제 실행(Windows·macOS CI 포함), `pnpm check`, rc 뒤 배포본 smoke.
 ---
 ## 요구 해석
 intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 intent의 근거다.
@@ -69,10 +72,11 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 
 ### 감사 뒤 안정화 (W-12, W-13 — `.agents/audit/0.3.1.md` 비판 2·5의 보완)
 - S-29 **W-10 테스트의 좁힌 PATH.** W-10은 node 폴더 대신 node·npm만 연결한 임시 폴더를 PATH 앞에 두었지만 `/usr/bin`·`/bin`과 이름에 git이 든 경로는 남겼다. node와 전역 reins가 `/usr/bin`에 있는 기계에서는 "reins가 없다"는 전제가 여전히 깨진다(머지 뒤 Sol 리뷰, `review-w10-sol.md`). 좁힌 PATH를 임시 폴더 하나로만 하고, 테스트와 설치된 훅·검사 스크립트가 쓰는 실행 파일(node, npm, git, sh와 `tee`·`date`·`mkdir`·`cat`·`rm`·`tail`)만 그 폴더에 둔다. 제품 코드는 바뀌지 않는다. ← 사용자 2026-11-11 "그렇게 해."
+- S-31 **`claude-fable-5-2`의 자리(W-14).** 공식 문서에 있는 ID이고 서비스되는 모델이므로 알려진 모델 목록(`harness/models.yaml`)에는 둔다 — `config`에서 고를 수 있다. "이 환경에서 동작을 본 ID"(`CONFIRMED_MODELS`)에서는 뺀다: `claude -p --model`로 한 호출의 응답 모델을 원본으로 확인하지 못했다(추가 감사 A3). `gpt-6-sol`·`gpt-6-luna`는 호출 출력이 있어 그대로 둔다. ← 사용자 2026-11-11 "선택은 가능(알려진 모델)한데 확인 목록에서는 빼던지."
 - S-30 **영문 설계서 두 문장.** 양판 대조(`design-twin-comparison.md`)에서 나온 것: ① §5 대체 모델 단락의 마지막 문장 — 국문 "대체가 하나도 없는 설정"에 맞춰 영문 "A file without any fallback"을 설정 전체를 뜻하는 말로 고친다 ② §3-3 판정 문장 — 국문의 "함께 되돌아가도 되는 작은 작업은 한 커밋에 합칠 수 있다"에 대응하는 영문 문장이 0.3.0 때부터 빠져 있어 넣는다. 국문은 바꾸지 않는다. ← 사용자 2026-11-11 "그렇게 해."
 
 ### 문서
-- S-21 설계서 양판은 각 단위의 커밋에 함께 넣는다. `harness/CHANGELOG.md`의 0.3.1 절에 단위마다 한 줄. README 양판은 해당 문장이 있으면 그 단위에서 고친다. ← "설계서 양판, README 양판, `harness/CHANGELOG.md`가 바뀐 동작과 맞는다"
+- S-21 설계서 양판은 각 단위의 커밋에 함께 넣는다. `harness/CHANGELOG.md`의 0.3.1 절에 단위마다 한 줄. README 양판은 해당 문장이 있으면 그 단위에서 고친다. 하네스·CLI 동작을 바꾸지 않는 단위(W-10, W-12, W-13)는 `harness/CHANGELOG.md`에 줄을 더하지 않는다(추가 감사 A5, 사용자 2026-11-11 "A1. 그렇게 해."). ← "설계서 양판, README 양판, `harness/CHANGELOG.md`가 바뀐 동작과 맞는다"
 
 ## 설계
 - **W-2**: `Generated.writes`의 settings 항목에 "합치는 파일" 표시를 두고, `writeGenerated`가 이 항목만 다른 길로 처리한다: 디스크의 JSON을 읽어 S-3·S-4대로 합친 결과를 쓰고, 결과의 해시와 reins가 쓴 deny 목록을 manifest에 적는다. manifest 스키마 이름(`reins/generated@1`)은 그대로 두고 키만 더한다(없어도 읽힘). 더는 만들지 않게 된 경우에는 reins 규칙만 빼고 파일은 남긴다. `update.ts`의 0.x 런타임 훅 제거(지금 있는 것)는 그대로이고 그 뒤에 합치기가 돈다.
@@ -83,7 +87,7 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - W-1·W-5·W-6은 문서·목록·문자열 한 곳씩이다.
 
 ## 작업 단위
-아래 커밋은 master의 SHA다(PR #34 rebase 머지 `637e3ae`, 2026-11-11; 브랜치의 SHA는 `.loctx/reports/0.3.1/pr34-head-commits.txt`).
+아래 커밋은 master의 SHA다(PR #34 rebase 머지 `637e3ae`, PR #35 rebase 머지 `20f6b8f`, 2026-11-11; 브랜치의 SHA는 `.loctx/reports/0.3.1/pr34-head-commits.txt`·`pr35-head-commits.txt`). 승인 기록의 `rev`가 가리키는 브랜치 SHA의 master 대응: `5dc135a`→`7c22115`, `6713615`→`c0445de`, `dacf3b3`→`a2fb612`.
 
 각 단위는 따로 되돌릴 수 있고, 커밋은 `pnpm check`를 통과한다. 구현 순서는 W-10 → W-1 → W-2 → W-3 → W-4 → W-5 → W-6 → W-7 → W-9이고 W-8은 릴리스 뒤다. 기대는 관계는 둘뿐이다: W-9는 W-4의 스크립트 생성 함수를 쓰고, W-7의 감사 줄 기대값은 W-3(읽기 전용) 뒤의 모양이다. W-2·W-3·W-4는 `skills/audit/SKILL.md`, `harness/roles/auditor.md`, 설계 §3-3·§6을 함께 고치지만 서로 다른 문장(드리프트 예외 / 기록을 누가 쓰나 / 읽는 것)이라 하나를 되돌려도 나머지는 남는다. 순서를 바꾸게 되면 먼저 여기에 적고 진행/수정을 받는다.
 
@@ -96,8 +100,9 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - [x] W-7 (277ef3b; 리뷰 수정 b3189b6) 대체 모델(S-16~S-20): `bindings.ts`, `bindings.schema.json`, `agents-md.ts`, `configure.ts`, `config-models.ts`, `harness/templates/agents-md-blocks.md`(해당되면), 설계서 양판 §5·§9, README 양판, 테스트.
 - [x] W-9 (31fbd61; 리뷰 수정 340bf3d) 검사 다시 찾기(S-22~S-26): `configure.ts`(gates), `config.ts`(화면), `reins.ts`, 설계서 양판 §9, README 양판, 테스트. W-4 다음에 한다(스크립트를 다시 만드는 함수를 쓴다); 구현 순서는 W-1~W-7, W-9이고 W-8은 릴리스 뒤다.
 - [x] W-11 (1a00aa5) 실행 줄의 기본 명령 이름(S-28): `cli/src/lib/agents-md.ts`, 테스트, 설계서 양판 §6(실행 줄 문장), `harness/CHANGELOG.md`. W-9 뒤에 한다.
-- [x] W-12 (a2603a2) W-10 테스트의 좁힌 PATH(S-29): `test/e2e/harness-only.test.ts`.
-- [x] W-13 (b769d6f) 영문 설계서 두 문장(S-30): `docs/design.md`, 스킬 테스트.
+- [ ] W-14 `claude-fable-5-2`를 확인 목록에서(S-31): `cli/src/lib/detect.ts`, 테스트.
+- [x] W-12 (9244c15; 브랜치에서는 a2603a2) W-10 테스트의 좁힌 PATH(S-29): `test/e2e/harness-only.test.ts`.
+- [x] W-13 (7dbdde2; 브랜치에서는 b769d6f) 영문 설계서 두 문장(S-30): `docs/design.md`, 스킬 테스트.
 - [x] W-10 (0cc62bd) e2e 테스트 수정(S-27): `test/e2e/harness-only.test.ts`.
 - [ ] W-8 이 저장소의 훅(S-13): 0.3.1 stable 뒤, 자기 업데이트(`reins update`, 별도 커밋) 다음에 `.husky/pre-commit`·`pre-push`를 바꾼다. 릴리스 뒤 단위라 0.3.1 감사 범위 밖이고, 0.3.1 회고에서 V-11로 확인한다(사용자 2026-11-11 "그렇게 해").
 
@@ -118,6 +123,7 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - V-13 (W-11) 테스트: `tools`가 없는 설정에서 openai·google·cursor 역할의 실행 줄과 대체 줄이 `codex`·`agy`·`cursor-agent`로 시작한다; `tools.<vendor>.cli`가 적혀 있으면 그 값을 쓴다; 모르는 벤더는 이름 그대로. `pnpm check` 종료 0.
 - V-14 (W-12) `pnpm vitest run test/e2e/harness-only.test.ts` 통과; 테스트 안에서 좁힌 PATH가 임시 폴더 하나뿐임을 단언한다; CI의 Linux·macOS에서 통과(Windows는 이 테스트를 건너뜀).
 - V-15 (W-13) 스킬 테스트가 영문 설계서에 두 문장이 있음을 확인; 대조표의 다름 2곳이 닫혔는지 PM이 두 판을 다시 대조해 `design-twin-comparison.md`에 덧붙인다. `pnpm check` 종료 0.
+- V-16 (W-14) `models.test.ts`: `claude-fable-5-2`가 `models.yaml`에 있고 `CONFIRMED_MODELS`에 없다; `gpt-6-sol`·`gpt-6-luna`는 양쪽에 있다. `pnpm check` 종료 0.
 - V-9 rc 뒤(릴리스 단계): `.loctx/context/scripts/smoke-published.sh`를 npm의 0.3.1-rc.N으로 돌려 0 실패, 그리고 0.3.0 설치 → 0.3.1 `update` 한 번으로 V-2(b), V-4(i)가 실제로 성립함을 임시 저장소에서 확인.
 
 ## 우려

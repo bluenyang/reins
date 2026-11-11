@@ -81,8 +81,8 @@ intent 021의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - [x] W-4 (3970abe; 리뷰 수정 8ca5579) 검사 스크립트와 훅 줄(S-9~S-12, S-13의 테스트 설정 부분): 스크립트 생성 함수, `generate.ts`·`install.ts`(`.loctx/README` 포함)·`update.ts`·`configure.ts`(gates), `skills/onboard`·`audit`·`retro`, auditor 역할 "Reads", 설계서 양판 §0·§1·§3-3·§4-2·§6, README 양판(훅 설명이 있으면), 테스트.
 - [x] W-5 (613017b) 모델 목록(S-14): `harness/models.yaml`, `cli/src/lib/detect.ts`, 설계서·README 예시, 테스트.
 - [x] W-6 (c39ee6e) previous 머리 경고(S-15): `cli/src/commands/update.ts`, 설계서 양판 §5 재구성 표시 문장, 테스트.
-- [x] W-7 (3a0a453) 대체 모델(S-16~S-20): `bindings.ts`, `bindings.schema.json`, `agents-md.ts`, `configure.ts`, `config-models.ts`, `harness/templates/agents-md-blocks.md`(해당되면), 설계서 양판 §5·§9, README 양판, 테스트.
-- [ ] W-9 검사 다시 찾기(S-22~S-26): `configure.ts`(gates), `config.ts`(화면), `reins.ts`, 설계서 양판 §9, README 양판, 테스트. W-4 다음에 한다(스크립트를 다시 만드는 함수를 쓴다); 구현 순서는 W-1~W-7, W-9이고 W-8은 릴리스 뒤다.
+- [x] W-7 (3a0a453; 리뷰 수정 d8804f7) 대체 모델(S-16~S-20): `bindings.ts`, `bindings.schema.json`, `agents-md.ts`, `configure.ts`, `config-models.ts`, `harness/templates/agents-md-blocks.md`(해당되면), 설계서 양판 §5·§9, README 양판, 테스트.
+- [x] W-9 (c9ae5af) 검사 다시 찾기(S-22~S-26): `configure.ts`(gates), `config.ts`(화면), `reins.ts`, 설계서 양판 §9, README 양판, 테스트. W-4 다음에 한다(스크립트를 다시 만드는 함수를 쓴다); 구현 순서는 W-1~W-7, W-9이고 W-8은 릴리스 뒤다.
 - [x] W-10 (c3c1b97) e2e 테스트 수정(S-27): `test/e2e/harness-only.test.ts`.
 - [ ] W-8 이 저장소의 훅(S-13): 0.3.1 stable 뒤, 자기 업데이트(`reins update`, 별도 커밋) 다음에 `.husky/pre-commit`·`pre-push`를 바꾼다. 릴리스 뒤 단위라 0.3.1 감사 범위 밖이고, 0.3.1 회고에서 V-11로 확인한다(사용자 2026-11-11 "그렇게 해").
 

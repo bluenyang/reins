@@ -1,11 +1,13 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker } from '../src/lib/ask.js';
-import { generateVendorFiles } from '../src/lib/generate.js';
+import { localDelegation, renderDelegation, WRITES } from '../src/lib/agents-md.js';
+import { GROUPS, type BindingsV2 } from '../src/lib/bindings.js';
+import { generateVendorFiles, readGroup } from '../src/lib/generate.js';
 import { splitFrontmatter } from '../src/lib/skills.js';
 
 async function installed(vendors: string[]): Promise<string> {
@@ -36,6 +38,45 @@ describe('Claude Code generator (design §6)', () => {
   it('single mode generates no agent file', async () => {
     const g = generateVendorFiles(await installed(['claude']));
     expect(g.writes.filter((w) => w.path.startsWith('.claude/agents/'))).toEqual([]);
+  });
+
+  it('the auditor is read-only on every vendor (021 S-7)', async () => {
+    const d = await installed(['claude']);
+    // a Claude auditor: its agent file withholds the write tools
+    multi(d, '  auditor: { vendor: claude, model: claude-fable-5-1 }\n');
+    const file = generateVendorFiles(d).writes.find(
+      (w) => w.path === '.claude/agents/rs-auditor.md',
+    )!;
+    const tools = String(splitFrontmatter(file.content).data?.['disallowedTools']);
+    for (const t of ['Edit', 'Write', 'NotebookEdit']) expect(tools).toContain(t);
+    // another vendor's auditor: the call line asks for no write access
+    const doc = (vendor: string, model: string): BindingsV2 => ({
+      schema: 'reins/bindings@2',
+      mode: 'multi',
+      groups: { auditor: { vendor, model } },
+    });
+    const openai = renderDelegation(doc('openai', 'gpt-6-astra'));
+    expect(openai).toContain(
+      '| auditor/auditor | openai gpt-6-astra | `openai exec -m gpt-6-astra -s read-only -` (task on stdin) |',
+    );
+    expect(openai).not.toContain('workspace-write');
+    expect(renderDelegation(doc('google', 'gemini-4-argon-high'))).toContain(
+      '--model gemini-4-argon-high --mode plan`',
+    );
+    // a person's own table is drawn by the same renderer
+    expect(
+      localDelegation(doc('claude', 'claude-opus-5-5'), doc('openai', 'gpt-6-astra')),
+    ).toContain('-s read-only -`');
+  });
+
+  it('a group is called with write access exactly when one of its roles writes (021 S-7)', () => {
+    const writing = GROUPS.filter((g) => {
+      const roles = readGroup(
+        readFileSync(join(process.cwd(), 'harness/roles', `${g}.md`), 'utf8'),
+      ).roles;
+      return Object.values(roles).some((r) => r.tools?.write === true);
+    });
+    expect(writing.toSorted()).toEqual([...WRITES].toSorted());
   });
 
   it('multi: one rs- file per role on a Claude model, with its model, must_not and tools', async () => {

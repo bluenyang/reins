@@ -43,7 +43,8 @@ export function callLine(b: Binding, cli: string, writes: boolean): string {
   }
 }
 
-const WRITES = new Set(['implementer', 'planner', 'auditor']);
+/** Groups whose roles write files (`tools.write` in `harness/roles/<group>.md`); the others are called read-only. */
+export const WRITES: ReadonlySet<string> = new Set(['implementer', 'planner']);
 
 /** Where `config`, `install` and `update` write a person's own delegation table (spec 020 S-1). */
 export const LOCAL_DELEGATION = '.loctx/delegation.local.md';

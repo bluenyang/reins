@@ -91,7 +91,7 @@ With no verifier, stop conditions are plain rules the agent keeps and the audit 
 - **Judges**: whether §3-1's flow was followed, against the rules and approved exceptions in force at each action. Commits are judged too: each should be a meaningful unit — a point you can revert or reset to without taking other working work or features with it. Several commits for one work unit are fine; a commit mixing unrelated work, or a change to the spec's work units without approval, is a violation (nothing blocks it). A generated or harness file changed during the version by a commit that is not an `update` or `config` commit is a violation (drift). No evidence path means "cannot confirm", never a pass.
 - **Skipped steps**: a step or approval the user told the agent to skip passes when it was recorded in the intent's `waivers:` at the time. It applies once.
 - **Violations**: fixed, or accepted by the user. Either way the audit and the retro criticise them precisely and, by severity, give a remedy with PL or Advisor opinions.
-- **Record**: `.agents/audit/<version>.md` (committed). The version's closing report states the audit status.
+- **Record**: `.agents/audit/<version>.md` (committed). The audit run is read-only: the auditor returns the whole record as its answer, and the PM keeps that answer as it came under `.loctx/reports/<version>/` and writes it to the record file unchanged (no verdict reworded or shortened). The user's decision (fixed or accepted) is added in its own section. The version's closing report states the audit status.
 - **Mandatory**: `audit.required: true` in `bindings.yaml` by default; only the user switches it off, through `config`. In single mode the user chooses the audit's session and model (recommended: a new run on another vendor, or a new run on the same vendor's top model).
 - Passing a procedural audit does not vouch for direction or code quality; direction is for the plan-reviewer and the user.
 
@@ -115,7 +115,7 @@ There is no plan.md, ticket file or bus file. Commit messages name spec items (`
 ### 4-2. Lifetimes
 | File | Created by | Deleted by, when |
 |---|---|---|
-| intent, spec, audit, knowledge | PM, Planner, Auditor | never (committed) |
+| intent, spec, audit, knowledge | PM, Planner (the audit: the auditor's answer, written by the PM as it came) | never (committed) |
 | `.loctx/history/<version>.md` | PM | never (local know-how) |
 | `.loctx/reports/<version>/` (raw gate and test logs, sub-reports) | the role that ran the stage | the PM after the retro, after summarising them in history and the audit record |
 | `.agents/AGENTS.previous.md` | install, migrate, config | the PM when the reconcile is done |

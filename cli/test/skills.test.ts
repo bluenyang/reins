@@ -61,6 +61,22 @@ const STAGES = [
 
 describe('stage skills (019 S-9, design §3-1)', () => {
   const read = (n: string) => readFileSync(join(process.cwd(), 'skills', n, 'SKILL.md'), 'utf8');
+  /** One managed block of the AGENTS.md template, by name. */
+  const block = (name: string) => {
+    const t = readFileSync(join(process.cwd(), 'harness/templates/agents-md-blocks.md'), 'utf8');
+    const m = new RegExp(
+      `<!-- reins:begin ${name} [^>]*-->\\n([\\s\\S]*?)<!-- reins:end ${name} -->`,
+    ).exec(t);
+    if (!m) throw new Error(`no block ${name}`);
+    return m[1]!;
+  };
+  /** The text of one `## n. Title` section of a skill, up to the next `## `. */
+  const section = (text: string, heading: string) => {
+    const i = text.indexOf(heading);
+    if (i < 0) throw new Error(`no section ${heading}`);
+    const j = text.indexOf('\n## ', i + heading.length);
+    return text.slice(i, j < 0 ? undefined : j);
+  };
   it('ships the eleven skills and nothing else but the plugin setup', () => {
     expect(
       readdirSync(join(process.cwd(), 'skills'))
@@ -224,6 +240,28 @@ describe('stage skills (019 S-9, design §3-1)', () => {
     expect(read('audit')).not.toContain("same vendor's top model");
     expect(read('audit')).toContain('a new run of your own model, or another one the user chooses');
     expect(doc('harness/CHANGELOG.md')).toContain('The PM is the model in the conversation.');
+  });
+  it('after the approvals the work is one flow without asking (022 S-1..S-4, V-1)', () => {
+    const flow = block('flow');
+    expect(flow).toContain('one flow without asking');
+    const stops = block('stops');
+    expect(stops).not.toContain('anything that leaves the machine');
+    expect(stops).toContain(
+      'Pushing a branch of the work in progress and opening its PR is part of the flow',
+    );
+    const ask = stops.split('\n').find((l) => l.startsWith('- **Ask the user and stop:**'))!;
+    expect(ask).toContain('a merge;');
+    expect(ask).toContain('a stable release;');
+    const merge = section(read('merge'), '## 2. Procedure');
+    expect(merge).not.toContain('otherwise ask');
+    expect(merge).toContain('Push the branch and open the PR without asking');
+    expect(merge).toContain('report once');
+    expect(merge).toContain("Every merge needs the user's instruction");
+    const doc = (f: string) => readFileSync(join(process.cwd(), 'docs', f), 'utf8');
+    expect(doc('design.md')).toContain('**one flow without asking**');
+    expect(doc('design.md')).not.toContain('anything that leaves the machine');
+    expect(doc('design.ko.md')).toContain('**묻지 않고 이어 가는 하나의 흐름**');
+    expect(doc('design.ko.md')).not.toContain('기계 밖으로 나가는 일(push');
   });
   it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
     const t = read(n);

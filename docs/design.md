@@ -72,7 +72,7 @@ What no role does (the former C1–C10): implement "to pass" · edit AGENTS.md m
 | `implement` | work units, tests, commits at meaningful units (a point you can revert or reset to without taking other working work or features with it; changing the spec's work units needs the spec changed and approved first), self-review table | `review` |
 | `review` | review (multi: one reviewer / single: self-review); Discussion for large decisions | `implement` or `test` |
 | `test` | run the checks, raw logs | `merge` |
-| `merge` | PR → CI → merge (per the user's instruction or setting) | `audit` |
+| `merge` | push → PR → CI (without asking), one report, the merge (on the user's instruction) | `audit` |
 | `audit` | version audit → `.agents/audit/<version>.md` | `release` |
 | `release` | rc; stable on the user's instruction | `retro` |
 | `retro` | retro, proposals, cleanup | `roadmap` |
@@ -81,7 +81,8 @@ There is no conductor skill. AGENTS.md's default block holds the order and each 
 
 ### 3-2. When to stop and ask
 With no verifier, stop conditions are plain rules the agent keeps and the audit judges (from the former `stops.yaml`, keeping only those that apply during work). They are written in AGENTS.md's default block and in each skill's ⑥.
-- **Ask the user and stop**: an irreversible action (force push, deleting a tag, rewriting the default branch, data or production changes), a stable release, anything that leaves the machine (push, PR, release; unless set up or instructed), scope moving outside the intent and spec, a conflict with a past decision, a next step that needs an approval not yet given.
+Once the spec is accepted, implementation → review → test → push → PR → CI is **one flow without asking**. Between those steps the agent does not stop for permission unless a condition below applies, and it reports once at the end. A merge is made on the user's instruction, PR by PR (the PR of the work, and a PR of records or release documents alike); the rc follows the merge the way the repository releases, and stable is cut on the user's instruction.
+- **Ask the user and stop**: an irreversible action (force push, deleting a tag, rewriting the default branch, data or production changes), a merge, a stable release, work that would touch a red line, scope moving outside the intent and spec, a conflict with a past decision, a next step that needs an approval not yet given. Pushing a branch of the work in progress (an accepted spec's work units, their records, release documents) and opening its PR is part of the flow. Taking anything else out of the machine still needs the user's word.
 - **Stop and find the cause**: two failures in the same work unit (PL or Advisor opinions by severity, else options for the user), empty or doubtful gate output, a pass without evidence.
 - **User interrupt**: on chat, Ctrl+C or session end, stop and write the resume point in history.
 

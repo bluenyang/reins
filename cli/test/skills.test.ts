@@ -372,6 +372,34 @@ describe('stage skills (019 S-9, design §3-1)', () => {
     expect(harness('docs/design.ko.md')).toContain('회고가 루프를 끝낸다');
     expect(harness('docs/design.ko.md')).toContain('**루프의 끝.**');
   });
+  it('merge, review and retro carry what this repository had to learn (022 S-21..S-24a, V-7)', () => {
+    const harness = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
+    const review = section(read('review'), '## 2. Procedure');
+    expect(review).toContain('including one that changes tests or documents only');
+    expect(review).toContain('record that and why');
+    const merge = section(read('merge'), '## 2. Procedure');
+    for (const k of [
+      'the PM judges which PR the instruction means',
+      'If you cannot tell, ask',
+      'A general "go on" is not a merge instruction',
+      'Delete the merged branch, remote and local',
+      "names the default branch's SHAs",
+      'Do not rewrite the first audit',
+      '`### SHA 대응`',
+    ])
+      expect(merge, k).toContain(k);
+    expect(section(read('merge'), '## 4. Files and lifetime')).toContain(
+      'The work branch — deleted at the merge',
+    );
+    expect(section(read('retro'), '## 2. Procedure')).toContain('about the harness itself');
+    expect(read('audit')).toContain("unless the spec's adjustment record says so and why");
+    // nothing about one agent tool's own permission checks
+    for (const n of STAGES) expect(read(n), n).not.toMatch(/auto mode|Claude Code/);
+    expect(harness('docs/design.md')).toContain('the PM judges which PR a merge instruction means');
+    expect(harness('docs/design.ko.md')).toContain(
+      '머지 지시가 어느 PR을 말하는지는 PM이 판단한다',
+    );
+  });
   it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
     const t = read(n);
     expect(t.slice(t.indexOf('## 3. Delegation')).split('\n')[1]).toMatch(

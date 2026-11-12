@@ -252,6 +252,7 @@ describe('stage skills (019 S-9, design §3-1)', () => {
     );
     const ask = stops.split('\n').find((l) => l.startsWith('- **Ask the user and stop:**'))!;
     expect(ask).toContain('a merge;');
+    expect(ask).toContain('a work unit that has to be added, dropped or rescoped;');
     expect(ask).toContain('a stable release;');
     const merge = section(read('merge'), '## 2. Procedure');
     expect(merge).not.toContain('otherwise ask');

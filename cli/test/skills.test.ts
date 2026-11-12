@@ -342,6 +342,36 @@ describe('stage skills (019 S-9, design §3-1)', () => {
     expect(harness('docs/design.md')).toContain('**Accepted findings.**');
     expect(harness('docs/design.ko.md')).toContain('**수용된 지적.**');
   });
+  it('the retro ends the loop, and waiting is not filled with the next work (022 S-25..S-26a, V-6)', () => {
+    const harness = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
+    const flow = block('flow');
+    expect(flow).toContain('**The retro ends the loop**');
+    expect(flow).toContain('Naming a version is not an instruction to start it');
+    expect(flow).toContain('for that instruction only');
+    expect(flow).toContain('every merge and the stable release still wait for the user');
+    const stops = block('stops');
+    expect(stops).toContain('- **While you wait for the user**');
+    expect(stops).toContain("do not start another unit's work");
+    expect(stops).toContain('- **The retro ends the loop:** report that it is closed and stop.');
+    const when = section(read('intent'), '## 1. When');
+    expect(when).toContain('the user started this work');
+    expect(when).toContain('the previous loop is closed');
+    expect(when).toContain('record a waiver');
+    const roadmap = section(read('roadmap'), '## 2. Procedure');
+    expect(roadmap).toContain('it is not an instruction to start it');
+    expect(roadmap).toContain('A version name alone is not a settlement');
+    expect(roadmap).toContain('when the user starts that work and the previous loop is closed');
+    const retro = section(read('retro'), '## 2. Procedure').trimEnd().split('\n').at(-1)!;
+    expect(retro).toMatch(/^7\. Report that the loop is closed and stop\./);
+    expect(section(read('release'), '## 2. Procedure')).toContain('report and wait');
+    expect(section(read('release'), '## 2. Procedure')).toContain(
+      'Do not start the work of another unit meanwhile',
+    );
+    expect(harness('docs/design.md')).toContain('The retro ends the loop');
+    expect(harness('docs/design.md')).toContain('**Where a loop ends.**');
+    expect(harness('docs/design.ko.md')).toContain('회고가 루프를 끝낸다');
+    expect(harness('docs/design.ko.md')).toContain('**루프의 끝.**');
+  });
   it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
     const t = read(n);
     expect(t.slice(t.indexOf('## 3. Delegation')).split('\n')[1]).toMatch(

@@ -15,6 +15,7 @@ After the second audit — that is, after stable, or when the user declares a ve
 4. Apply only what the user accepts: project sections of AGENTS.md and `.agents/knowledge/` entries (`approved: {by, at, words}`) by you; harness sources by the user with `reins config` / `reins update`.
 5. Write `.loctx/history/<version>.md` from `.agents/harness/templates/history.md`: decisions, verdicts, skipped steps, the audit and retro summary, and a summary of the logs about to be deleted (commits, check commands and results, exceptions).
 6. Delete `.loctx/reports/<version>/`, and the gate logs in `.loctx/reports/gates/` last written before the version's stable tag was made (logs of later work stay).
+7. Report that the loop is closed and stop. The retro ends the loop; the next work begins when the user starts it — unless the user named another end for this run (quoted in `.loctx/ROADMAP.local.md`).
 
 ## 3. Delegation
 Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you.
@@ -26,7 +27,7 @@ Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table 
 - `.loctx/reports/gates/<tree>.log` — those written before the stable tag are deleted here.
 
 ## 5. Next
-`roadmap`.
+`roadmap` — when the user starts the next work.
 
 ## 6. Stop and ask
 - Never edit harness sources or generated files by hand.

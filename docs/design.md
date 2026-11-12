@@ -66,7 +66,7 @@ What no role does (the former C1–C10): implement "to pass" · edit AGENTS.md m
 | Skill | Work | Next |
 |---|---|---|
 | `onboard` | first-conversation onboarding, AGENTS.md reconcile (§5) | `roadmap` |
-| `roadmap` | local ideas → settled with the user → public roadmap | `intent` |
+| `roadmap` | local ideas → settled with the user → public roadmap | `intent` (when the user starts that work) |
 | `intent` | direction and plan, approval record | `spec` |
 | `spec` | spec, work units, checks, 진행/수정 on the summary, approval record | `implement` |
 | `implement` | work units, tests, commits at meaningful units (a point you can revert or reset to without taking other working work or features with it; adding, dropping or rescoping a work unit needs the spec changed and approved first, a smaller adjustment goes on and into the spec's adjustment record), self-review table | `review` |
@@ -75,7 +75,9 @@ What no role does (the former C1–C10): implement "to pass" · edit AGENTS.md m
 | `merge` | push → PR → CI (without asking), one report after the first audit, the merge (on the user's instruction) | after CI `audit` (first), after the merge `release` |
 | `audit` | the first audit (before the merge, risk) and the second audit (after the release, procedure) → `.agents/audit/<version>.md` | after the first `merge`, after the second `retro` |
 | `release` | rc; stable on the user's instruction | `audit` (second), then `retro` |
-| `retro` | retro, proposals, cleanup | `roadmap` |
+| `retro` | retro, proposals, cleanup, the report that the loop is closed, and the stop | `roadmap` (when the user starts the next work) |
+
+**Where a loop ends.** A loop is the work the user started — usually one version — up to its retro. The retro ends the loop: the PM reports that it is closed and stops, and the next intent is written when the user starts the next work. If the user named another end ("go on to …", "do not stop"), the PM follows it for that instruction only and quotes it in `.loctx/ROADMAP.local.md`. The intent's approval, the spec's 진행 or 수정, the instruction for every merge and the one for stable are still asked for. Ideas for later work are written to the roadmap while another version is in work, and a settled item may be entered in the public roadmap. Naming a version says where an item belongs — it is not an instruction to start it, and a version name alone is not a settlement either. An intent added to the version in work belongs to the same loop, and when the user asks for the next intent before the retro it is recorded as a waiver.
 
 There is no conductor skill. AGENTS.md's default block holds the order and each skill names the next. Every skill has the same six sections: ① when to use ② procedure ③ delegation (its first sentence: "check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md"; the group's model if one is assigned, else do it yourself; read-heavy or urgent parallel work may use same-model subagents; the files and decisions to hand over) ④ files made and their lifetime ⑤ next skill ⑥ when to stop and ask. Skills are plain text and never call reins. Single and multi mode share the skills, so switching modes does not regenerate them.
 
@@ -83,6 +85,8 @@ There is no conductor skill. AGENTS.md's default block holds the order and each 
 With no verifier, stop conditions are plain rules the agent keeps and the audit judges (from the former `stops.yaml`, keeping only those that apply during work). They are written in AGENTS.md's default block and in each skill's ⑥.
 Once the spec is accepted, implementation → review → test → push → PR → CI → the first audit is **one flow without asking**. Between those steps the agent does not stop for permission unless a condition below applies, and it reports once at the end. A merge is made on the user's instruction, PR by PR (the PR of the work, and a PR of records or release documents alike); the rc follows the merge the way the repository releases, and stable is cut on the user's instruction.
 - **Ask the user and stop**: an irreversible action (force push, deleting a tag, rewriting the default branch, data or production changes), a merge, a stable release, work that would touch a red line, scope moving outside the intent and spec, a conflict with a past decision, a next step that needs an approval not yet given. Pushing a branch of the work in progress (an accepted spec's work units, their records, release documents) and opening its PR is part of the flow. Taking anything else out of the machine still needs the user's word.
+- **While waiting for the user**: for a release approval, a merge instruction or a stable instruction, the agent reports and waits. It does not start another unit's work in that time. Stabilising the same version is this loop's work.
+- **The retro ends the loop**: the agent reports that it is closed and stops (§3-1).
 - **Stop and find the cause**: two failures in the same work unit (PL or Advisor opinions by severity, else options for the user), empty or doubtful gate output, a pass without evidence.
 - **User interrupt**: on chat, Ctrl+C or session end, stop and write the resume point in history.
 

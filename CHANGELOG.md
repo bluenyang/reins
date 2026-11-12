@@ -9,6 +9,46 @@ everything planned for it is done, later `rc.N` are stabilisation only (see
 This file is about the package. The harness that `reins update` re-applies to installed projects
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md).
 
+## [0.3.2] — unreleased
+
+rc.1: 2026-11-12 (intent 022). The flow between the approvals and the merge, two audits, where a loop ends,
+and what the 0.3.1 retro found.
+
+### Added
+- `.agents/harness/templates/agents-md-guide.md`: what the project sections of AGENTS.md hold and where
+  everything else goes (roadmap, knowledge, `.loctx/`, CONTRIBUTING). The `onboard` skill sorts existing
+  content by it and shows the user what goes where. `update` from 0.3.0 or 0.3.1 leaves a
+  `reins:tidy pending` note in AGENTS.md once; reins does not touch the project's own text.
+- A second audit: after the stable release an audit looks at procedure only and hands its result to the
+  retro. `.agents/audit/<version>.md` holds both audits.
+- An adjustment record (`A-n`) in the spec template, for changes smaller than a work unit made while working.
+- Knowledge entries of `kind: accepted-finding`: an audit finding accepted three times or more is proposed
+  by the retro, and the audits then list it as a known acceptance instead of a violation.
+
+### Changed
+- After the spec is accepted, implementation, review, test, push, PR, CI and the first audit are one flow
+  without asking. "Anything that leaves the machine" is no longer a stop for a branch of the work in
+  progress; every merge and a stable release still wait for the user's instruction.
+- The audit that ran after the merge now runs before it, on the PR branch, and looks for risk; its record
+  is committed on that branch. Fixing records or documents does not call for another audit.
+- Only a work unit added, dropped or rescoped stops for approval; another order of the units, another
+  method inside a unit and a small fix from a review, an audit or an rc check go on and are recorded.
+- The retro ends a loop: the PM reports and stops, and the next intent is written when the user starts the
+  next work. While a release approval or a merge or stable instruction is awaited, no other unit's work is
+  started. Naming a version is not an instruction to start it.
+- The PM is the model in the conversation. No setting names its model: the delegation block says
+  "you are the PM — the model in this conversation", and without an auditor model the audit is a fresh run
+  of that model. `default` in `bindings.yaml` is no longer read; files that hold it keep loading, `config`
+  drops the key when it writes the file, and `config bindings --set default=…` is refused.
+- The `merge` skill: the PM judges which PR a merge instruction means and asks when it cannot tell, deletes
+  the merged branch, and keeps a table of branch and default-branch SHAs when the merge rewrote commits.
+  The `review` skill: every work unit is reviewed, or the spec records that it was not and why. The `retro`
+  skill lists apart the proposals that are about the harness itself.
+
+### Fixed
+- The report of `update`, `install` and `config` marks a generated file it rewrote as changed (`~`); only a
+  path that did not exist before the run is new (`+`).
+
 ## [0.3.1] — 2026-11-11
 
 Stable: 2026-11-11 (the rc.2 commit, unchanged). rc.1: 2026-11-11 (intent 021). Follow-ups from the 0.3 retro and from the reviews and the audit of this version. rc.2 (2026-11-11): `update` prints what a hooks block held when it rewrites it, the hook line to add where it adds none, and a generated file it left alone — the report of rc.1 did not show them (found while checking the published rc.1).

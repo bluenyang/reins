@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import { runInstall } from './commands/install.js';
 import { runMigrate } from './commands/migrate.js';
 import { formatUpdate, runUpdate } from './commands/update.js';
-import { configureBindings, configureGates } from './commands/configure.js';
+import { configureBindings, configureGates, formatGenerated } from './commands/configure.js';
 import { refreshGates } from './commands/config-gates.js';
 import { applicable, formatGateDiff } from './lib/gate-refresh.js';
 import { NotARepository, repoRoot } from './lib/git.js';
@@ -248,13 +248,8 @@ config
         process.stdout.write(
           '• AGENTS.md has a mode-changed note — the PM checks the project sections in the next conversation\n',
         );
-      const g = r.generated;
-      if (g) {
-        for (const p of g.written)
-          process.stdout.write(`  ${g.created.includes(p) ? '+' : '~'} ${p}\n`);
-        for (const p of g.removed) process.stdout.write(`  - ${p}\n`);
-        for (const x of g.refused) process.stdout.write(`• left alone ${x.path}: ${x.why}\n`);
-      }
+      if (r.generated)
+        for (const line of formatGenerated(r.generated)) process.stdout.write(`${line}\n`);
     },
   );
 

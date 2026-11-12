@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
-import { configureBindings } from '../src/commands/configure.js';
+import { configureBindings, formatGenerated } from '../src/commands/configure.js';
 import { retiredFiles, runInstall } from '../src/commands/install.js';
 import {
   beforeGuide,
@@ -49,6 +49,9 @@ describe('reins update', () => {
     const qa = '.claude/agents/rs-implementer-qa.md';
     // config: the files of a group just switched on are new
     expect(on.generated?.created).toEqual(expect.arrayContaining([code, qa]));
+    // what `config` prints: a new file is +, never ~
+    expect(formatGenerated(on.generated!)).toContain(`  + ${code}`);
+    expect(formatGenerated(on.generated!)).not.toContain(`  ~ ${code}`);
     // an earlier reins wrote other text into one file (nobody edited it), and another file is gone
     const m = join(d, MANIFEST);
     const was = sha(readFileSync(join(d, code), 'utf8'));
@@ -69,6 +72,11 @@ describe('reins update', () => {
     const again = await configureBindings({ cwd: d, set: ['implementer=claude-haiku-5-5'] });
     expect(again.generated?.written).toContain(code);
     expect(again.generated?.created).toEqual([]);
+    expect(formatGenerated(again.generated!)).toContain(`  ~ ${code}`);
+    expect(formatGenerated(again.generated!).some((l) => l.startsWith('  + '))).toBe(false);
+    // a group switched off: its files are removed and printed as -
+    const off = await configureBindings({ cwd: d, off: ['implementer'] });
+    expect(formatGenerated(off.generated!)).toContain(`  - ${code}`);
   });
 
   describe('the AGENTS.md guide note for installs made before it (022 S-20..S-20b, V-5)', () => {

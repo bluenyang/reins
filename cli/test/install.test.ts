@@ -273,7 +273,7 @@ describe('re-running install keeps what the project owns', () => {
     const g = join(d, '.agents/harness/gates.yaml');
     writeFileSync(
       b,
-      readFileSync(b, 'utf8').replace('model: claude-opus-5-5', 'model: claude-fable-5-1'),
+      `${readFileSync(b, 'utf8')}groups:\n  auditor: { vendor: claude, model: claude-fable-5-1 }\n`,
     );
     writeFileSync(g, readFileSync(g, 'utf8').replace('cmd: pnpm check', 'cmd: pnpm check:all'));
     const again = await runInstall(opts);

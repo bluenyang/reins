@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -12,10 +13,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { runConfig } from '../src/commands/config.js';
+import { CONFIG_HINT, formatBindings, runConfig } from '../src/commands/config.js';
 import { configureBindings } from '../src/commands/configure.js';
 import { runInstall } from '../src/commands/install.js';
 import { runUpdate } from '../src/commands/update.js';
+import { renderDelegation } from '../src/lib/agents-md.js';
 import { LOCAL_DELEGATION_NOTE } from '../src/lib/local-delegation.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { askerPrompter, BACK, EXIT, isInteractive, scriptedPrompter } from '../src/lib/prompter.js';
@@ -186,6 +188,18 @@ describe('reins config (019 S-6, design §9)', () => {
       'Configuration',
     ]);
     expect(p.asked[0]?.values).toEqual(['models', 'tools', 'mode', 'audit', 'gates', 'exit']);
+    // no PM entry: the PM is the model in the conversation (022 S-27b)
+    expect(p.asked[1]?.values).toEqual([
+      'back',
+      'exit',
+      'scope',
+      'pl',
+      'planner',
+      'implementer',
+      'executor',
+      'advisor',
+      'auditor',
+    ]);
   });
 
   it('the screen sets a group model on the project scope and regenerates', async () => {
@@ -378,13 +392,102 @@ describe('reins config bindings (flags)', () => {
     const d = await repo();
     await configureBindings({ cwd: d, mode: 'multi', set: ['implementer=claude-sonnet-5-5'] });
     const team = readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8');
-    const l = await configureBindings({ cwd: d, local: true, set: ['default=claude-fable-5-1'] });
-    expect(l.doc?.default).toEqual({ vendor: 'claude', model: 'claude-fable-5-1' });
+    const l = await configureBindings({ cwd: d, local: true, set: ['advisor=claude-fable-5-1'] });
+    expect(l.doc?.groups?.advisor).toMatchObject({ vendor: 'claude', model: 'claude-fable-5-1' });
     expect(readFileSync(join(d, '.agents/harness/bindings.yaml'), 'utf8')).toBe(team);
     expect(existsSync(join(d, '.loctx/bindings.local.yaml'))).toBe(true);
     const off = await configureBindings({ cwd: d, off: ['implementer'] });
-    expect(off.roles.filter((x) => x.on)).toEqual([]);
+    expect(off.roles.filter((x) => x.on && x.group !== 'advisor')).toEqual([]);
     expect(existsSync(join(d, '.claude/agents/rs-implementer-code.md'))).toBe(false);
+  });
+});
+
+describe('the PM is the model in the conversation (022 S-27..S-27b, V-9)', () => {
+  const TEAM = '.agents/harness/bindings.yaml';
+  const LOCAL = '.loctx/bindings.local.yaml';
+  const withDefault = (d: string, rel: string) => {
+    const p = join(d, rel);
+    mkdirSync(join(p, '..'), { recursive: true });
+    const cur = existsSync(p) ? readFileSync(p, 'utf8') : 'schema: reins/bindings@2\n';
+    writeFileSync(p, `${cur}default: { vendor: claude, model: claude-fable-5-1 }\n`);
+  };
+
+  it('a new install names no PM model, in the file or in AGENTS.md', async () => {
+    const d = await repo();
+    expect(readFileSync(join(d, TEAM), 'utf8')).not.toMatch(/^default:/m);
+    const a = readFileSync(join(d, 'AGENTS.md'), 'utf8');
+    expect(a).toContain('you are the PM — the model in this conversation');
+    expect(a).not.toContain('you are the PM (');
+    expect(a).toContain('run it in a fresh run of your own model');
+  });
+
+  it('the delegation text names the auditor model when there is one, and never a PM model', () => {
+    const fable = { vendor: 'claude', model: 'claude-fable-5-1' };
+    for (const mode of ['single', 'multi'] as const) {
+      const none = renderDelegation({ schema: 'reins/bindings@2', mode, default: fable });
+      expect(none).toContain('the model in this conversation');
+      expect(none).not.toContain('you are the PM (');
+      expect(none).not.toContain('claude-fable-5-1');
+      expect(none).toContain('in a fresh run of your own model (or another one the user chooses)');
+      const own = renderDelegation({
+        schema: 'reins/bindings@2',
+        mode,
+        groups: { auditor: { vendor: 'openai', model: 'gpt-6-astra' } },
+      });
+      expect(own).toContain('run it on openai gpt-6-astra in a fresh run');
+      expect(own).not.toContain('your own model (or');
+    }
+  });
+
+  it('a file that still holds `default` loads; nothing prints its model', async () => {
+    const d = await repo();
+    withDefault(d, TEAM);
+    withDefault(d, LOCAL);
+    const shown = await configureBindings({ cwd: d, show: true });
+    expect(shown.refused).toBeUndefined();
+    expect(shown.doc?.default).toBeUndefined();
+    const text = formatBindings(shown.doc!);
+    expect(text).toContain('PM: the model in the conversation');
+    expect(text).not.toContain('claude-fable-5-1');
+    const u = await runUpdate({ cwd: d, detectVendors: detect, yes: true });
+    expect(u.refused).toBeUndefined();
+    expect(readFileSync(join(d, 'AGENTS.md'), 'utf8')).not.toContain('claude-fable-5-1');
+    // update does not rewrite a version-2 file
+    expect(readFileSync(join(d, TEAM), 'utf8')).toMatch(/^default:/m);
+  });
+
+  it('config drops `default` when it writes the file, and says so', async () => {
+    const d = await repo();
+    withDefault(d, TEAM);
+    withDefault(d, LOCAL);
+    const r = await configureBindings({ cwd: d, mode: 'multi' });
+    expect(r.changed).toEqual([
+      'mode',
+      'default removed (the PM is the model in the conversation)',
+    ]);
+    expect(readFileSync(join(d, TEAM), 'utf8')).not.toMatch(/^default:/m);
+    expect(readFileSync(join(d, LOCAL), 'utf8')).toMatch(/^default:/m);
+    const l = await configureBindings({ cwd: d, local: true, audit: 'off' });
+    expect(l.changed).toContain('default removed (the PM is the model in the conversation)');
+    expect(readFileSync(join(d, LOCAL), 'utf8')).not.toMatch(/^default:/m);
+    // nothing to write: the key stays and nothing is announced
+    const e = await repo();
+    withDefault(e, TEAM);
+    expect((await configureBindings({ cwd: e, mode: 'single' })).changed).toEqual([]);
+    expect(readFileSync(join(e, TEAM), 'utf8')).toMatch(/^default:/m);
+  });
+
+  it('--set default=… is refused, at either scope', async () => {
+    const d = await repo();
+    for (const local of [false, true]) {
+      const r = await configureBindings({ cwd: d, local, set: ['default=claude-fable-5-1'] });
+      expect(r.code).toBe(1);
+      expect(r.refused).toContain('the PM is the model in the conversation');
+    }
+    expect(
+      (await configureBindings({ cwd: d, set: ['nope=claude-fable-5-1'] })).refused,
+    ).not.toContain('default');
+    expect(CONFIG_HINT).not.toContain('default');
   });
 });
 
@@ -430,8 +533,8 @@ describe('the personal delegation table (020 V-1)', () => {
 
   it('(c) a personal file that repeats the team makes no table', async () => {
     const d = await repo();
-    const r = await configureBindings({ cwd: d, local: true, set: ['default=claude-opus-5-5'] });
-    expect(r.changed).toEqual(['default']);
+    const r = await configureBindings({ cwd: d, local: true, mode: 'single' });
+    expect(r.changed).toEqual(['mode']);
     expect(r.localDelegation).toBeUndefined();
     expect(existsSync(join(d, LD))).toBe(false);
   });

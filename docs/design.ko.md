@@ -52,7 +52,7 @@ PM 말고는 모두 선택이다. 켜지 않은 군의 일은 PM이 한다.
 - Discussion·Committee를 부르는 때: intent 확정 전 큰 결정, 감사 뒤 위반 해결안, 절차 미준수 사고, 풀리지 않은 이견. 티켓 단위 리뷰에는 쓰지 않는다.
 
 ### 2-3. 단일 모드
-상시 위임 구조가 없다. PM이 위 일을 단계로 한다. PM은 읽기 위주의 일(조사, 큰 로그 요약, 리뷰, 감사)과 급할 때 서로 독립인 기능의 병렬 구현에 같은 모델의 서브에이전트를 쓸 수 있다. 계획과 구현처럼 이어지는 일은 한 실행이 이어서 한다. PM 컨텍스트가 무거워지면 새 세션을 열어 파일로 이어 간다. 감사와 큰 결정에는 사용자가 별도 세션이나 다른 벤더로 외부 검토를 요청할 수 있다. 자기 리뷰는 spec 항목 ↔ 커밋 ↔ 증거 경로 대조표를 채우고 결함도 찾으며, 독립 검토가 아니라고 적는다.
+상시 위임 구조가 없다. PM이 위 일을 단계로 한다. PM은 읽기 위주의 일(조사, 큰 로그 요약, 리뷰, 감사)과 급할 때 서로 독립인 기능의 병렬 구현에 같은 모델의 서브에이전트를 쓸 수 있다. "같은 모델"은 지금 대화하는 모델이다: 하네스는 PM의 모델을 정하지 않는다(§5). 계획과 구현처럼 이어지는 일은 한 실행이 이어서 한다. PM 컨텍스트가 무거워지면 새 세션을 열어 파일로 이어 간다. 감사와 큰 결정에는 사용자가 별도 세션이나 다른 벤더로 외부 검토를 요청할 수 있다. 자기 리뷰는 spec 항목 ↔ 커밋 ↔ 증거 경로 대조표를 채우고 결함도 찾으며, 독립 검토가 아니라고 적는다.
 
 ### 2-4. 역할 파일과 하지 않을 일
 `harness/roles/<group>.md` 일곱 개(pm, pl, planner, implementer, executor, advisor, auditor). 프론트매터는 상세 역할마다 `does`(한 문장 목표), `must_not`, `tools`(쓰기·셸·push 허용 여부)를 둔다. 모델은 군 단위로 상속해도 도구 권한은 상세 역할마다 고정한다(예: researcher는 읽기 전용, deployer만 반출). 역할 문서의 금지와 호스트가 실제로 막는 권한(생성된 에이전트 파일의 `tools`)은 구분해 적는다.
@@ -139,7 +139,6 @@ install·update는 history에 쓰지 않는다. 각 스킬의 ④가 이 표를 
 schema: reins/bindings@2
 mode: single            # single | multi
 audit: { required: true }
-default: { vendor: claude, model: claude-opus-5-5 }    # PM
 tools: { claude: { cli: claude, use: true }, openai: { cli: codex, use: true } }
 groups:                 # 적지 않은 군 = 꺼짐(PM이 함)
   pl:
@@ -148,6 +147,8 @@ groups:                 # 적지 않은 군 = 꺼짐(PM이 함)
   implementer: { vendor: claude, model: claude-sonnet-5-5, fallback: { vendor: openai, model: gpt-6.1-terra } }
   auditor: { vendor: openai, model: gpt-6.1-sol }
 ```
+**PM의 모델은 적지 않는다.** PM은 지금 대화하는 모델이다: 위임 절은 "you are the PM — the model in this conversation"이라고만 적고, 모델을 배정하지 않은 역할과 감사는 그 모델(새 실행이나 서브에이전트)이 한다. 0.3.1까지 PM의 모델이던 `default` 키는 읽지 않는다. 기존 파일이 깨지지 않게 스키마에는 남기고, `config`가 그 파일을 쓸 때 지우고 알린다.
+
 상속: 상세 역할 > 군 > 꺼짐. 로컬 파일의 빈 군(`{}`)은 팀이 켠 군을 그 사람에게만 끈다. vendor와 model은 한 묶음으로 상속한다. `models`는 pl·advisor만. 실행 중 해석이 필요한 키(`escalation`, `limits`, `parallel`)는 없다. **대체 모델** `fallback`은 군(`groups.<g>.fallback`)과 상세 역할(`roles.<r>.fallback`)에 `{vendor, model}` 하나를 적을 수 있고(한 단계뿐, PM에는 없음) reins가 실행 중에 해석하지 않는다: `config`가 쓸 때 위임 표의 그 역할 칸 끝에 `; fallback: <vendor> <model> — <실행 줄>`로 풀어 적고(감사 줄에는 모델 이름), 역할의 호출을 할 수 없을 때(CLI 없음, 모델 거부, 한도 초과 — 답이 마음에 들지 않는 것은 아님) PM이 그 줄을 한 번 쓰고 사용자 보고와 그 단계의 기록에 썼다는 것과 이유를 적는다. 대체가 없거나 대체도 안 되면 멈추고 묻는다. 대체는 모델과 한 묶음으로 상속한다: 자기 모델을 가진 상세 역할은 자기 대체만 쓰고, 군의 모델을 쓰는 역할은 군의 대체를 쓴다(모델이 여럿인 군도 군 대체 하나). 대체는 같은 파일의 같은 자리에 모델이 있을 때만 적을 수 있고(모델 없이 대체만 있는 개인 설정은 그 군을 꺼 버린다) 그 모델과 달라야 한다. Claude 대체는 전용 `rs-*` 파일 없이 "그 모델의 일반 서브에이전트에 역할 파일의 해당 절을 넘겨"로 적는다. 대체가 하나도 없는 설정의 위임 절은 대체를 말하지 않는다. `config`가 쓸 때 상속을 풀어 생성물과 위임 표에 적는다. 로컬 덮어쓰기 `.loctx/bindings.local.yaml`(같은 모양, 키 단위로 이김)은 사람마다 다를 수 있으므로 생성물에는 쓰지 않는다. 그 사람의 위임이 팀과 달라지면, 위임 블록을 쓰는 명령(`config` 두 범위, `install`, `update`)이 같은 렌더러로 그 사람의 위임 표를 `.loctx/delegation.local.md`에 쓰고, 같아지면 지운다(그린 결과로 비교). 이 표의 Claude 역할은 팀이 같은 이름·모델의 `rs-*`를 생성했으면 그 이름을, 아니면 "그 모델의 일반 서브에이전트에 `.agents/harness/roles/<group>.md`의 해당 역할을 넘겨"를 적는다(로컬용 `rs-*`는 만들지 않음 — `.claude/agents/`는 팀 생성물). 따르게 하는 것은 차단이 아니라 문서다: 스킬 ③의 첫 문장, 위임 절 첫 줄, 그리고 `config`가 표를 쓰거나 지울 때 "열린 세션에는 다시 읽으라고 하거나 새 세션" 안내(intent 020).
 
 ## 6. 생성과 드리프트
@@ -164,7 +165,7 @@ groups:                 # 적지 않은 군 = 꺼짐(PM이 함)
 ## 7. 세대 판별, migrate, 0.x 이전
 세대 신호와 `.ai/` 매핑은 v1.0과 같되, 열린 work는 ticket 대신 intent 000의 계획 목록으로 옮긴다. AGENTS.md 충돌은 §5 재구성으로 처리한다.
 
-**0.1.x·0.2.0 → 0.3**(`update`가 감지, 멱등): 스킬 `reins-*` 삭제·새 스킬 설치 · 훅 파일의 `reins:begin hooks` 블록 제거(사용자 줄 보존)와 §6 훅 제안 · `.claude/settings.json`의 reins 훅 항목 제거(사용자 항목 보존) · `.claude/agents/reins-*.md` 삭제 · bindings 1판 → 2판(역할 → 군: pm→pm, planner·pl→pl/planner, implementer→implementer, code-review→pl.code-reviewer, verify-tool·qa-run·deploy·lookup→executor, qa-design→planner.qa-designer, docs→implementer.doc, advisor→advisor; 사용자가 확인) · `install.yaml`의 `tier` 삭제 · AGENTS.md는 재구성 · `.loctx`의 bus·ticket·dispatch·hook-state·journal·reports·metrics 목록을 보여 주고 확인 뒤 삭제(history·context·ROADMAP.local은 보존). 중간에 멈춰도 다시 실행하면 이어진다.
+**0.1.x·0.2.0 → 0.3**(`update`가 감지, 멱등): 스킬 `reins-*` 삭제·새 스킬 설치 · 훅 파일의 `reins:begin hooks` 블록 제거(사용자 줄 보존)와 §6 훅 제안 · `.claude/settings.json`의 reins 훅 항목 제거(사용자 항목 보존) · `.claude/agents/reins-*.md` 삭제 · bindings 1판 → 2판(역할 → 군: pm은 옮기지 않음 — PM은 지금 대화하는 모델, planner·pl→pl/planner, implementer→implementer, code-review→pl.code-reviewer, verify-tool·qa-run·deploy·lookup→executor, qa-design→planner.qa-designer, docs→implementer.doc, advisor→advisor; 사용자가 확인) · `install.yaml`의 `tier` 삭제 · AGENTS.md는 재구성 · `.loctx`의 bus·ticket·dispatch·hook-state·journal·reports·metrics 목록을 보여 주고 확인 뒤 삭제(history·context·ROADMAP.local은 보존). 중간에 멈춰도 다시 실행하면 이어진다.
 
 ## 8. knowledge
 `.agents/knowledge/<date>_<slug>.md` 형식(결정 · 이유 · 적용 · 바뀌면)은 v1.0과 같다. 승격은 회고에서(`retro` 스킬): retrospector나 PM이 history·감사에서 반복된(두 번 이상) 결정·실패를 찾아 제안하고 — 이미 같은 항목이 있으면 그 항목의 갱신을 제안한다 — 사용자가 받아들이면 PM이 쓴다(`approved: {by, at, words}`). 찾기는 `grep -l 'decisions:.*<keyword>' .loctx/history/* .agents/knowledge/*`. 세는 CLI는 없다.

@@ -213,6 +213,18 @@ describe('stage skills (019 S-9, design §3-1)', () => {
     for (const f of ['README.md', 'docs/README.ko.md'])
       expect(doc(f)).toContain('`config gates --refresh`');
   });
+  it('no document names a PM model (022 S-27c, V-9)', () => {
+    const doc = (f: string) => readFileSync(join(process.cwd(), f), 'utf8');
+    for (const f of ['docs/design.md', 'docs/design.ko.md']) {
+      expect(doc(f)).not.toMatch(/^default: \{ vendor/m);
+      expect(doc(f)).toContain('you are the PM — the model in this conversation');
+    }
+    expect(doc('docs/design.md')).toContain("The PM's model is not written down.");
+    expect(doc('docs/design.ko.md')).toContain('PM의 모델은 적지 않는다.');
+    expect(read('audit')).not.toContain("same vendor's top model");
+    expect(read('audit')).toContain('a new run of your own model, or another one the user chooses');
+    expect(doc('harness/CHANGELOG.md')).toContain('The PM is the model in the conversation.');
+  });
   it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
     const t = read(n);
     expect(t.slice(t.indexOf('## 3. Delegation')).split('\n')[1]).toMatch(

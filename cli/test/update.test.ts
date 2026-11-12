@@ -48,7 +48,7 @@ describe('reins update', () => {
     const b = join(d, '.agents/harness/bindings.yaml');
     writeFileSync(
       b,
-      readFileSync(b, 'utf8').replace('model: claude-opus-5-5', 'model: claude-fable-5-1'),
+      `${readFileSync(b, 'utf8')}groups:\n  auditor: { vendor: claude, model: claude-fable-5-1 }\n`,
     );
 
     const r = await runUpdate({ cwd: d, detectVendors: claude, now: new Date(2026, 9, 25, 14, 0) });
@@ -345,7 +345,9 @@ describe('reins update', () => {
       >;
       expect(b['schema']).toBe('reins/bindings@2');
       expect(b['mode']).toBe('single');
-      expect(b['default']).toEqual({ vendor: 'claude', model: 'claude-fable-5-1' });
+      // the PM is the model in the conversation: a version-1 `pm` is not carried over (022 S-27a)
+      expect(b['default']).toBeUndefined();
+      expect(r.converted?.some((n) => n.startsWith('role pm: not moved'))).toBe(true);
       expect(r.converted?.some((n) => n.includes('code-review → pl.code-reviewer'))).toBe(true);
       for (const p of [
         '.agents/harness/policy/stops.yaml',

@@ -38,6 +38,10 @@ export interface BindingsV2 {
   schema: 'reins/bindings@2';
   mode?: 'single' | 'multi';
   audit?: { required?: boolean };
+  /**
+   * No longer read (0.3.2, design §5): the PM is the model in the conversation. The key stays valid so a
+   * file written by an earlier reins still loads; `config` drops it when it writes the file.
+   */
   default?: Binding;
   tools?: Record<string, { cli?: string; use?: boolean }>;
   groups?: Partial<Record<Group, GroupSpec>>;
@@ -72,9 +76,6 @@ const PL_REVIEWERS = new Set([
   'doc-reviewer',
   'retrospector',
 ]);
-
-/** Used when a file names no default. */
-export const DEFAULT_BINDING: Binding = { vendor: 'claude', model: 'claude-opus-5-5' };
 
 export interface ResolvedRole {
   group: Group;
@@ -142,18 +143,15 @@ export function resolveRoles(doc: BindingsV2): ResolvedRole[] {
   return out;
 }
 
-/** The PM's model. */
-export function pmBinding(doc: BindingsV2): Binding {
-  return doc.default ? pair(doc.default) : { ...DEFAULT_BINDING };
-}
-
-/** The model an audit should run on: the auditor group's, else the PM's (design §3-3). */
-export function auditBinding(doc: BindingsV2): Binding {
+/**
+ * The model an audit should run on: the auditor group's. Without one the audit is a fresh run of the PM's
+ * own model — the model in the conversation, which no file names (design §3-3, §5).
+ */
+export function auditBinding(doc: BindingsV2): Binding | undefined {
   const a = doc.groups?.auditor;
   const own = a?.roles?.auditor;
   if (own) return pair(own);
-  const ms = a ? groupModels(a) : [];
-  return ms[0] ?? pmBinding(doc);
+  return a ? groupModels(a)[0] : undefined;
 }
 
 /** The fallback of the model `auditBinding` names, if the file gives one. */
@@ -192,13 +190,13 @@ export function fallbackProblems(doc: Partial<BindingsV2>): string[] {
 /** Whether the per-version audit is mandatory (design §3-3): true unless the file says false. */
 export const auditRequired = (doc: BindingsV2): boolean => doc.audit?.required !== false;
 
-/** The local override wins per key: mode, audit, default, each tool and each group as a whole. */
+/** The local override wins per key: mode, audit, each tool and each group as a whole. `default` is read from neither. */
 export function mergeLocal(team: BindingsV2, local: Partial<BindingsV2> | undefined): BindingsV2 {
   if (!local) return team;
   const out: BindingsV2 = { ...team, schema: 'reins/bindings@2' };
+  delete out.default;
   if (local.mode) out.mode = local.mode;
   if (local.audit) out.audit = { ...team.audit, ...local.audit };
-  if (local.default) out.default = pair(local.default);
   if (local.tools) out.tools = { ...team.tools, ...local.tools };
   if (local.groups) out.groups = { ...team.groups, ...local.groups };
   return out;
@@ -218,7 +216,7 @@ export function validateBindings(doc: unknown): string[] {
   return (errs ?? []).map((e) => `${e.instancePath || '(root)'} ${e.message ?? 'invalid'}`);
 }
 
-/** Where each version-1 role goes in version 2 (design §7). `pm` becomes `default`. */
+/** Where each version-1 role goes in version 2 (design §7). `pm` has no place: the PM is the model in the conversation. */
 export const V1_ROLE_MAP: Record<string, { group: Group; role?: string }> = {
   planner: { group: 'planner', role: 'spec-writer' },
   pl: { group: 'pl' },
@@ -263,8 +261,8 @@ export function convertV1(v1: Record<string, unknown>): { doc: BindingsV2; notes
           : 'claude';
     return { vendor, model: m };
   };
-  const pm = bindingOf(roles['pm']);
-  if (pm) doc.default = pm;
+  if (roles['pm'] !== undefined)
+    notes.push('role pm: not moved — the PM is the model in the conversation, no setting names it');
   for (const [name, raw] of Object.entries(roles)) {
     if (name === 'pm') continue;
     const target = V1_ROLE_MAP[name];
@@ -374,13 +372,12 @@ export function writeBindings(
   writeFileSync(p, `${HEADER}${stringify({ ...doc, schema: 'reins/bindings@2' })}`);
 }
 
-/** A fresh file for install: single mode, the audit required, the PM on Claude, the detected tools. */
+/** A fresh file for install: single mode, the audit required, the detected tools. */
 export function defaultBindings(tools: { name: string; cli: string; use: boolean }[]): BindingsV2 {
   return {
     schema: 'reins/bindings@2',
     mode: 'single',
     audit: { required: true },
-    default: { ...DEFAULT_BINDING },
     tools: Object.fromEntries(tools.map((t) => [t.name, { cli: t.cli, use: t.use }])),
   };
 }

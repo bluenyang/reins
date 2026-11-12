@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { cliOf, localDelegation, renderDelegation, FALLBACK_RULE } from '../src/lib/agents-md.js';
 import {
   auditBinding,
+  defaultBindings,
   auditFallback,
   auditRequired,
   convertV1,
   fallbackProblems,
   mergeLocal,
-  pmBinding,
   resolveRoles,
   validateBindings,
   type BindingsV2,
@@ -25,7 +25,6 @@ describe('bindings v2 resolution (019 S-4, S-5)', () => {
   it('single mode is the default and switches every group off', () => {
     const doc: BindingsV2 = { schema: 'reins/bindings@2', groups: { implementer: sonnet } };
     expect(resolveRoles(doc).every((r) => !r.on && r.source === 'off')).toBe(true);
-    expect(pmBinding(doc)).toEqual({ vendor: 'claude', model: 'claude-opus-5-5' });
   });
 
   it('a group without a model is off in multi mode', () => {
@@ -69,9 +68,13 @@ describe('bindings v2 resolution (019 S-4, S-5)', () => {
     expect(pick(doc, 'advisor', 'committee').models).toEqual([fable, sol]);
   });
 
-  it('the audit runs on the auditor model, else the PM; required unless false', () => {
+  it('the audit runs on the auditor model, else on no named model; required unless false', () => {
     const base: BindingsV2 = { schema: 'reins/bindings@2', default: fable };
-    expect(auditBinding(base)).toEqual(fable);
+    // `default` named the PM's model before 0.3.2; nothing reads it now (022 S-27a)
+    expect(auditBinding(base)).toBeUndefined();
+    expect(mergeLocal(base, { default: sol }).default).toBeUndefined();
+    expect(mergeLocal(base, {}).default).toBeUndefined();
+    expect(defaultBindings([]).default).toBeUndefined();
     expect(auditBinding({ ...base, groups: { auditor: sol } })).toEqual(sol);
     expect(auditRequired(base)).toBe(true);
     expect(auditRequired({ ...base, audit: { required: false } })).toBe(false);
@@ -134,7 +137,10 @@ describe('version 1 → 2 (019 S-15, design §7)', () => {
     });
     expect(validateBindings(doc)).toEqual([]);
     expect(doc.mode).toBe('single');
-    expect(doc.default).toEqual({ vendor: 'claude', model: 'claude-opus-5-5' });
+    expect(doc.default).toBeUndefined();
+    expect(notes).toContain(
+      'role pm: not moved — the PM is the model in the conversation, no setting names it',
+    );
     expect(doc.groups?.pl).toMatchObject({ vendor: 'openai', model: 'gpt-6.1-sol' });
     // a fallback moves with the model it belonged to (021 S-19)
     expect(doc.groups?.pl?.roles?.['code-reviewer']).toEqual({

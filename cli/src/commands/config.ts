@@ -21,14 +21,14 @@ export interface ConfigOptions {
 }
 
 export const CONFIG_HINT =
-  'change with: reins config bindings --set <default|group|group.role>=<model> [--fallback <group|group.role>=<model|none>] [--local]  (see: reins config bindings --help)';
+  'change with: reins config bindings --set <group|group.role>=<model> [--fallback <group|group.role>=<model|none>] [--local]  (see: reins config bindings --help)';
 
-/** The effective settings as text: mode, audit, the PM, each role that is on. */
+/** The effective settings as text: mode, audit, each role that is on. */
 export function formatBindings(doc: BindingsV2): string {
   const lines = [
     `  mode: ${doc.mode ?? 'single'}`,
     `  audit: ${doc.audit?.required === false ? 'off (switched off by the user)' : 'required every version'}`,
-    `  PM: ${doc.default ? `${doc.default.vendor} ${doc.default.model}` : 'claude claude-opus-5-5'}`,
+    '  PM: the model in the conversation',
   ];
   const on = resolveRoles(doc).filter((r) => r.on);
   if (on.length === 0) lines.push('  every role: the PM');

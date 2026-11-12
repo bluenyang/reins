@@ -181,7 +181,7 @@ config
 config
   .command('bindings')
   .description('change the model assignment without a screen')
-  .option('--set <pairs...>', 'default|<group>|<group>.<role>=<model> or =<vendor>:<model>')
+  .option('--set <pairs...>', '<group>|<group>.<role>=<model> or =<vendor>:<model>')
   .option('--models <pairs...>', '<pl|advisor>=<model>,<model>,… (several models)')
   .option('--off <groups...>', 'switch groups off (the PM does their work)')
   .option(

@@ -2,6 +2,9 @@
 
 Read by `reins update`: it lists the entries newer than a project's pinned version.
 
+## 0.3.2
+- The PM is the model in the conversation. The delegation block no longer names a PM model, and roles without a model and the audit are done by that same model. `default` in `bindings.yaml` (and the personal file) is no longer read: files that hold it keep loading, `config` drops the key when it writes the file, and `config bindings --set default=…` is refused. `update` no longer carries a 0.2.0 `pm` role over.
+
 ## 0.3.1
 - Stable 2026-11-11 (same harness as rc.2).
 - The `retro` skill and the retrospector propose knowledge candidates from decisions and failures repeated in history and the audit.

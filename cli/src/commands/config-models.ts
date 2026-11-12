@@ -76,7 +76,6 @@ export function knownModels(vendor: string, current: BindingsV2[]): string[] {
     if (b && b.vendor === vendor) out.push(b.model);
   };
   for (const d of current) {
-    take(d.default);
     for (const g of Object.values(d.groups ?? {})) {
       if (!g) continue;
       if (g.vendor && g.model) take({ vendor: g.vendor, model: g.model });
@@ -127,7 +126,6 @@ export async function modelsScreen(o: ModelsScreenOptions): Promise<'back' | 'ex
         value: 'scope',
         label: `scope: ${scope === 'local' ? 'local | project' : 'project | local'}`,
       },
-      { value: 'default', label: `${'PM'.padEnd(12)} ${show(doc.default)}` },
       ...GROUPS.map((g) => ({ value: g, label: groupLine(g, doc.groups?.[g], doc.mode) })),
     ];
     const v = await prompter.select<string>({
@@ -151,12 +149,6 @@ export async function modelsScreen(o: ModelsScreenOptions): Promise<'back' | 'ex
       });
       if (s === EXIT) return 'exit';
       if (s !== BACK) scope = s;
-      continue;
-    }
-    if (v === 'default') {
-      const b = await pickModel(o, 'PM', doc.default);
-      if (b === EXIT) return 'exit';
-      if (b) await write({ set: [`default=${b.vendor}:${b.model}`] }, `PM → ${show(b)}`);
       continue;
     }
     const r = await groupScreen(o, v as Group, doc.groups?.[v as Group], write, doc.mode);

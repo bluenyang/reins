@@ -250,7 +250,8 @@ config
         );
       const g = r.generated;
       if (g) {
-        for (const p of g.written) process.stdout.write(`  ~ ${p}\n`);
+        for (const p of g.written)
+          process.stdout.write(`  ${g.created.includes(p) ? '+' : '~'} ${p}\n`);
         for (const p of g.removed) process.stdout.write(`  - ${p}\n`);
         for (const x of g.refused) process.stdout.write(`• left alone ${x.path}: ${x.why}\n`);
       }

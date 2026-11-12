@@ -497,7 +497,12 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
     : workTreeReader(root);
   const generated = writeGenerated(root, generateVendorFiles(root, rd), !!o.dryRun, !!o.force);
   if (generated) {
-    applied.created.push(...generated.written.filter((p) => !applied.created.includes(p)));
+    // a generated file that was there before this run is a changed one, not a new one (022 S-28)
+    const fresh = new Set(generated.created);
+    for (const p of generated.written) {
+      const into = fresh.has(p) ? applied.created : applied.changed;
+      if (!applied.created.includes(p) && !applied.changed.includes(p)) into.push(p);
+    }
     applied.removed.push(...generated.removed);
     for (const r of generated.refused) notes.push(`left alone ${r.path}: ${r.why}`);
   }

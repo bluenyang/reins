@@ -280,8 +280,11 @@ describe('re-running install keeps what the project owns', () => {
     expect(readFileSync(b, 'utf8')).toContain('model: claude-fable-5-1');
     expect(readFileSync(g, 'utf8')).toContain('cmd: pnpm check:all');
     expect(
-      again.applied?.changed.filter((p) => p.includes('bindings') || p.includes('gates')),
+      again.applied?.changed.filter((p) => p.endsWith('bindings.yaml') || p.endsWith('gates.yaml')),
     ).toEqual([]);
+    // the gate script follows the customised gates: rewritten, so reported as changed and not as new (022 S-28)
+    expect(again.applied?.changed).toContain('.agents/harness/run-gates.sh');
+    expect(again.applied?.created).not.toContain('.agents/harness/run-gates.sh');
   });
 });
 

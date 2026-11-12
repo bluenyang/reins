@@ -28,7 +28,7 @@ Follow these steps in order; each has a skill in `.agents/skills/`, and each ski
 2. `intent` — the PM writes the direction and the plan; **the user approves**.
 3. `spec` — the spec, its work units (W-n) and checks (V-n); **the user answers 진행 or 수정 on its summary, every time**.
 4. `implement` → `review` — commit at meaningful units (a point you can revert or reset to without taking other working work or features with it), each naming its spec items; changing the spec's work units needs the spec changed and approved first.
-5. `test` → `merge` → **`audit`** (after the merge, before the rc) → `release` → `retro` (after stable), then delete the version's working files.
+5. `test` → `merge` (push, PR, CI) — from the accepted spec to a green CI this is **one flow without asking**: do not stop for permission between these steps; report once at its end. Then the merge on the user's instruction → **`audit`** (after the merge, before the rc) → `release` (the rc the way the repository releases; stable on the user's instruction) → `retro` (after stable), then delete the version's working files.
 
 The first conversation after installation (or after a reconcile or mode-changed marker appears in this file) starts with `onboard`.
 <!-- reins:end flow -->
@@ -48,7 +48,7 @@ The first conversation after installation (or after a reconcile or mode-changed 
 <!-- reins:begin stops v=0.3.0 -->
 ## When to stop and ask
 
-- **Ask the user and stop:** an irreversible action (force push, deleting a tag, rewriting the default branch, data or production changes); a stable release; anything that leaves the machine (push, PR, release) unless the settings or the user allow it; scope moving outside the intent and spec; a conflict with a past decision; a next step that needs an approval not yet given.
+- **Ask the user and stop:** an irreversible action (force push, deleting a tag, rewriting the default branch, data or production changes); a merge; a stable release; work that would touch a red line; scope moving outside the intent and spec; a conflict with a past decision; a next step that needs an approval not yet given. Pushing a branch of the work in progress and opening its PR is part of the flow (an accepted spec's work units, their records, release documents); taking anything else out of the machine still needs the user's word.
 - **Stop and find the cause:** two failures in the same work unit; empty or doubtful check output; a pass without evidence (a pass needs the raw output's path).
 - **When the user interrupts** (chat, Ctrl+C, session end): stop and write the resume point in `.loctx/history/<version>.md`.
 - What no role does: `.agents/harness/policy/common-red-lines.yaml`.

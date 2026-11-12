@@ -37,7 +37,7 @@ export type Scope = 'local' | 'project';
 
 export interface ConfigureBindingsOptions {
   cwd?: string;
-  /** `target=model` or `target=vendor:model`; target is `default` (the PM), `<group>` or `<group>.<role>` */
+  /** `target=model` or `target=vendor:model`; target is `<group>` or `<group>.<role>` */
   set?: string[];
   /** `<group>=m1,m2` — several models (pl and advisor) */
   models?: string[];
@@ -145,28 +145,28 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
     const target = pair.slice(0, eq).trim();
     const b = eq > 0 ? parseBinding(pair.slice(eq + 1)) : null;
     if (!target || !b) return refuse(`"${pair}" is not target=model`);
-    if (target === 'default') {
-      next.default = b;
+    if (target === 'default')
+      return refuse(
+        'the PM is the model in the conversation — there is nothing to set; assign models to the groups that need another one',
+      );
+    const [g, role] = target.split('.');
+    const group = groupOf(g ?? '');
+    if (!group) return refuse(`unknown group "${g}" — groups: ${GROUPS.join(', ')}`);
+    const roles = GROUP_ROLES[group];
+    next.groups = { ...next.groups };
+    const spec = { ...next.groups[group] };
+    if (role) {
+      if (!roles.includes(role))
+        return refuse(`unknown role "${role}" in ${group} — roles: ${roles.join(', ') || group}`);
+      // a new model keeps the role's fallback; the check below refuses it when they are now the same
+      const kept = spec.roles?.[role]?.fallback;
+      spec.roles = { ...spec.roles, [role]: kept ? { ...b, fallback: kept } : b };
     } else {
-      const [g, role] = target.split('.');
-      const group = groupOf(g ?? '');
-      if (!group) return refuse(`unknown group "${g}" — groups: default, ${GROUPS.join(', ')}`);
-      const roles = GROUP_ROLES[group];
-      next.groups = { ...next.groups };
-      const spec = { ...next.groups[group] };
-      if (role) {
-        if (!roles.includes(role))
-          return refuse(`unknown role "${role}" in ${group} — roles: ${roles.join(', ') || group}`);
-        // a new model keeps the role's fallback; the check below refuses it when they are now the same
-        const kept = spec.roles?.[role]?.fallback;
-        spec.roles = { ...spec.roles, [role]: kept ? { ...b, fallback: kept } : b };
-      } else {
-        delete spec.models;
-        spec.vendor = b.vendor;
-        spec.model = b.model;
-      }
-      next.groups[group] = spec;
+      delete spec.models;
+      spec.vendor = b.vendor;
+      spec.model = b.model;
     }
+    next.groups[group] = spec;
     changed.push(target);
   }
   for (const pair of o.models ?? []) {
@@ -279,6 +279,11 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
   const problems = o.local ? [] : validateBindings({ ...next, schema: 'reins/bindings@2' });
   if (problems.length) return refuse(`the result would not be valid: ${problems.join('; ')}`);
   const wrote = JSON.stringify(next) !== JSON.stringify(base);
+  // a file from an earlier reins may still name a PM model; it goes when the file is written (design §5)
+  if (wrote && next.default) {
+    delete next.default;
+    changed.push('default removed (the PM is the model in the conversation)');
+  }
   if (!wrote) {
     const doc = effective();
     return { changed: [], doc, roles: resolveRoles(doc) };

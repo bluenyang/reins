@@ -5,7 +5,6 @@ import {
   KNOWN_TOOLS,
   auditBinding,
   auditFallback,
-  pmBinding,
   resolveRoles,
   type Binding,
   type ResolvedRole,
@@ -81,7 +80,6 @@ export function renderDelegation(
   doc: BindingsV2,
   local?: { teamAgents: { name: string; model: string }[] },
 ): string {
-  const pm = pmBinding(doc);
   const lines = ['## Delegation', ''];
   if (!local)
     lines.push(
@@ -90,11 +88,11 @@ export function renderDelegation(
     );
   if (doc.mode !== 'multi') {
     lines.push(
-      `Mode: **single** — you are the PM (${pm.vendor} ${pm.model}) and do every role yourself, stage by stage. You may use subagents of your own model for read-heavy work (research, large log summaries, review, audit) and, when urgent, for parallel work on independent units; keep connected work (plan and implementation of one feature) in one run. Switching to multi is the user's choice.`,
+      `Mode: **single** — you are the PM — the model in this conversation — and do every role yourself, stage by stage. You may use subagents of your own model for read-heavy work (research, large log summaries, review, audit) and, when urgent, for parallel work on independent units; keep connected work (plan and implementation of one feature) in one run. Switching to multi is the user's choice.`,
     );
   } else {
     lines.push(
-      `Mode: **multi** — you are the PM (${pm.vendor} ${pm.model}). Hand a role its work with the list of files and decisions it needs; every report comes back to you, and a role never calls another model itself. Roles not listed are yours.`,
+      `Mode: **multi** — you are the PM — the model in this conversation. Hand a role its work with the list of files and decisions it needs; every report comes back to you, and a role never calls another model itself. Roles not listed are yours.`,
       '',
       '| role | model | how to call |',
       '|---|---|---|',
@@ -129,7 +127,7 @@ export function renderDelegation(
   const af = auditFallback(doc);
   lines.push(
     '',
-    `Audit: ${doc.audit?.required === false ? '**switched off by the user**' : '**required every version**'}; run it on ${a.vendor} ${a.model}${af ? ` (fallback: ${af.vendor} ${af.model}, when that model cannot be called — say so in the audit report)` : ''} in a fresh run that gets only the records, never this conversation.`,
+    `Audit: ${doc.audit?.required === false ? '**switched off by the user**' : '**required every version**'}; run it ${a ? `on ${a.vendor} ${a.model}${af ? ` (fallback: ${af.vendor} ${af.model}, when that model cannot be called — say so in the audit report)` : ''} in a fresh run` : 'in a fresh run of your own model (or another one the user chooses)'} that gets only the records, never this conversation.`,
   );
   return lines.join('\n');
 }

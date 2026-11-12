@@ -2,9 +2,10 @@
 id: "022"
 slug: continuous-flow-two-audits
 version: "0.3.2"
-status: draft
+status: approved
 origin: user
-approvals: []
+approvals:
+  - { role: user, by: BlueNyang, at: 2026-11-12, words: "승인", rev: d02edfc }
 waivers: []
 supersedes: null
 ---

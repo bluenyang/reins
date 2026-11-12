@@ -6,6 +6,7 @@ Read by `reins update`: it lists the entries newer than a project's pinned versi
 - The PM is the model in the conversation. The delegation block no longer names a PM model, roles without a model are done by that same model, and so is the audit when the auditor has no model (a fresh run, or another model the user chooses). `default` in `bindings.yaml` (and the personal file) is no longer read: files that hold it keep loading, `config` drops the key when it writes the file, and `config bindings --set default=…` is refused. `update` no longer carries a 0.2.0 `pm` role over.
 - The report of `update` (and of `install` and `config`) marks a generated file it rewrote as changed (`~`); only a path that did not exist before the run is new (`+`).
 - One flow after the approvals: once the spec is accepted, implementation, review, test, push, PR and CI follow without asking, with one report at the end. "Anything that leaves the machine" is no longer a stop for a branch of the work in progress; a merge (every PR) and a stable release still wait for the user's instruction.
+- Adjusting the spec while working: only a work unit added, dropped or rescoped stops for approval. A smaller adjustment (another method inside a unit, a small fix from a review, an audit or an rc check, another order, a change with a precedent) goes on, is recorded in the spec's new adjustment record (`A-n`) and is reported at the end of the flow. The audit keeps a recorded adjustment and names an unrecorded one.
 
 ## 0.3.1
 - Stable 2026-11-11 (same harness as rc.2).

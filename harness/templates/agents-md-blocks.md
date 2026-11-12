@@ -27,7 +27,7 @@ Follow these steps in order; each has a skill in `.agents/skills/`, and each ski
 1. `roadmap` — ideas go to `.loctx/ROADMAP.local.md`; once settled with the user, to `docs/ROADMAP.md`.
 2. `intent` — the PM writes the direction and the plan; **the user approves**.
 3. `spec` — the spec, its work units (W-n) and checks (V-n); **the user answers 진행 or 수정 on its summary, every time**.
-4. `implement` → `review` — commit at meaningful units (a point you can revert or reset to without taking other working work or features with it), each naming its spec items; changing the spec's work units needs the spec changed and approved first.
+4. `implement` → `review` — commit at meaningful units (a point you can revert or reset to without taking other working work or features with it), each naming its spec items. Adding, dropping or rescoping a work unit needs the spec changed and approved first; a smaller adjustment goes on, is recorded in the spec (`A-n`) and is reported at the end of the flow.
 5. `test` → `merge` (push, PR, CI) — from the accepted spec to a green CI this is **one flow without asking**: do not stop for permission between these steps; report once at its end. Then the merge on the user's instruction → **`audit`** (after the merge, before the rc) → `release` (the rc the way the repository releases; stable on the user's instruction) → `retro` (after stable), then delete the version's working files.
 
 The first conversation after installation (or after a reconcile or mode-changed marker appears in this file) starts with `onboard`.

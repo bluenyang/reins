@@ -32,7 +32,7 @@ Follow these steps in order; each has a skill in `.agents/skills/`, and each ski
 
 A loop is the work the user started — usually one version — up to its retro. **The retro ends the loop**: report that it is closed and stop; the next `intent` is written when the user starts the next work. If the user named another end ("go on to …", "do not stop"), follow it for that instruction only and quote it in `.loctx/ROADMAP.local.md`; the intent's approval, the spec's 진행 or 수정, every merge and the stable release still wait for the user. Ideas for later work go to the roadmap whenever they come. Naming a version is not an instruction to start it.
 
-The first conversation after installation (or after a reconcile or mode-changed marker appears in this file) starts with `onboard`.
+The first conversation after installation, and any conversation that finds a pending `reins:` marker in this file (onboarding, reconcile, mode-changed, tidy), starts with `onboard`.
 <!-- reins:end flow -->
 
 <!-- reins:begin delegation v=0.3.0 -->

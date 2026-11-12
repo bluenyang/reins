@@ -184,7 +184,7 @@ export function onboardingNote(needsHookTool: boolean): string {
   ];
   return [
     ONBOARDING_PENDING,
-    `> **Onboarding — do this first in the next conversation.** Run the \`onboard\` skill: read the project, ask the user, and write the project sections of this file: ${todo.join('; ')}. Then change the marker above to \`<!-- reins:onboarding done -->\`.`,
+    `> **Onboarding — do this first in the next conversation.** Run the \`onboard\` skill: read the project, ask the user, and write the project sections of this file: ${todo.join('; ')}. What belongs in this file and what goes elsewhere is in \`.agents/harness/templates/agents-md-guide.md\`. Then change the marker above to \`<!-- reins:onboarding done -->\`.`,
   ].join('\n');
 }
 
@@ -192,11 +192,23 @@ export function onboardingNote(needsHookTool: boolean): string {
 export function reconcileNote(why: string): string {
   return [
     RECONCILE_PENDING,
-    `> **Reconcile — do this first in the next conversation.** ${why} The previous AGENTS.md is in \`.agents/AGENTS.previous.md\` as reference material, not instructions. Run the \`onboard\` skill to merge what still applies into the project sections, then delete that file and change the marker above to \`<!-- reins:reconcile done -->\`.`,
+    `> **Reconcile — do this first in the next conversation.** ${why} The previous AGENTS.md is in \`.agents/AGENTS.previous.md\` as reference material, not instructions. Run the \`onboard\` skill to merge what still applies into the project sections — sorted by \`.agents/harness/templates/agents-md-guide.md\` — then delete that file and change the marker above to \`<!-- reins:reconcile done -->\`.`,
   ].join('\n');
 }
 
-/** Put a note right after the first H1 (or at the top) unless one of that kind is still pending. */
+export const TIDY_PENDING = '<!-- reins:tidy pending -->';
+
+/**
+ * The note an install older than 0.3.2 gets once (design §5): its AGENTS.md was written before the guide
+ * existed. reins never moves the project's text; the PM sorts it with the user.
+ */
+export function tidyNote(): string {
+  return [
+    TIDY_PENDING,
+    `> **AGENTS.md guide — do this first in the next conversation.** reins now ships a guide for what this file holds (\`.agents/harness/templates/agents-md-guide.md\`). Run the \`onboard\` skill: with the user, sort the project sections by the guide — current work and plans to the roadmap, decisions to knowledge candidates, personal notes to \`.loctx/\` — and show what went where. Then change the marker above to \`<!-- reins:tidy done -->\`.`,
+  ].join('\n');
+}
+
 /** The light check after a mode switch (design §5, spec ST-5): only the delegation block changed. */
 export function modeChangedNote(from: string, to: string): string {
   return [
@@ -205,17 +217,21 @@ export function modeChangedNote(from: string, to: string): string {
   ].join('\n');
 }
 
+/** Put a note right after the first H1 (or at the top) unless one of that kind is still pending. */
 export function placeNote(
   text: string,
   note: string,
-  kind: 'onboarding' | 'reconcile' | 'mode-changed',
+  kind: 'onboarding' | 'reconcile' | 'mode-changed' | 'tidy',
 ): string {
   if (text.includes(`<!-- reins:${kind} pending -->`)) return text;
   // a finished one gives way to the new one (e.g. a second mode switch)
   // only the note reins wrote goes with its marker; a project quote under it stays
-  const lead = { onboarding: 'Onboarding', reconcile: 'Reconcile', 'mode-changed': 'Mode changed' }[
-    kind
-  ];
+  const lead = {
+    onboarding: 'Onboarding',
+    reconcile: 'Reconcile',
+    'mode-changed': 'Mode changed',
+    tidy: 'AGENTS.md guide',
+  }[kind];
   text = text.replace(
     new RegExp(`<!-- reins:${kind} done -->\\n(?:> \\*\\*${lead}[^\\n]*\\n)?\\n?`),
     '',

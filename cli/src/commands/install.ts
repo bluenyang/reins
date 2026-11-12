@@ -20,7 +20,15 @@ import { generateVendorFiles } from '../lib/generate.js';
 import { hookLine, requiredGates } from '../lib/gate-script.js';
 import { defaultBindings, readTeam, type BindingsV2 } from '../lib/bindings.js';
 import { overlayReader, workTreeReader } from '../lib/reader.js';
-import { LOCAL_DELEGATION, onboardingNote, placeNote, renderBlocks } from '../lib/agents-md.js';
+import {
+  LOCAL_DELEGATION,
+  ONBOARDING_PENDING,
+  RECONCILE_PENDING,
+  onboardingNote,
+  placeNote,
+  renderBlocks,
+  tidyNote,
+} from '../lib/agents-md.js';
 import { syncLocalDelegation } from '../lib/local-delegation.js';
 import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
 
@@ -51,6 +59,8 @@ export interface InstallOptions {
   pending?: { path: string; content: string }[];
   /** update, dry run: paths it would have deleted first (0.x skills, agent files), for the plan */
   pendingDeletes?: string[];
+  /** `update` from a 0.3 harness older than 0.3.2: leave the AGENTS.md guide note once (design §5) */
+  tidy?: boolean;
 }
 
 export interface InstallResult {
@@ -446,6 +456,19 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   // a reconcile note already sends the PM to `onboard`; one note is enough
   if (!/<!-- reins:onboarding done -->/.test(agents) && !agents.includes('<!-- reins:reconcile'))
     agents = placeNote(agents, onboardingNote(tool === null), 'onboarding');
+  // an install from before the AGENTS.md guide gets its note once; a pending onboarding or reconcile
+  // follows the guide anyway (design §5)
+  if (
+    o.tidy &&
+    !agents.includes('<!-- reins:tidy') &&
+    !agents.includes(ONBOARDING_PENDING) &&
+    !agents.includes(RECONCILE_PENDING)
+  ) {
+    agents = placeNote(agents, tidyNote(), 'tidy');
+    notes.push(
+      'AGENTS.md has a note about the AGENTS.md guide — the PM sorts the project sections with the user in the next conversation',
+    );
+  }
   if (agents !== before)
     add(
       'AGENTS.md',

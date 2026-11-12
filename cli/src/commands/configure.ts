@@ -74,6 +74,18 @@ export interface ConfigureResult {
   localDelegation?: 'written' | 'removed';
 }
 
+/**
+ * The generated files of one `config` call as report lines: `+` a path that did not exist before the call,
+ * `~` one that was rewritten, `-` one removed, and what was left alone and why.
+ */
+export function formatGenerated(g: GenWriteResult): string[] {
+  return [
+    ...g.written.map((p) => `  ${g.created.includes(p) ? '+' : '~'} ${p}`),
+    ...g.removed.map((p) => `  - ${p}`),
+    ...g.refused.map((x) => `• left alone ${x.path}: ${x.why}`),
+  ];
+}
+
 /** A model given alone, or `vendor:model`. */
 export function parseBinding(v: string): Binding | null {
   const s = v.trim();

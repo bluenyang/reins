@@ -276,7 +276,7 @@ describe('fallback models (021 S-16, S-17, S-19)', () => {
     expect(t.split('\n').slice(-3)).toEqual([
       'Routine review takes one reviewer; `pl/discussion` and `advisor/committee` (every listed model, without seeing each other) are for large decisions, audit remedies, incidents and unresolved disagreements.',
       '',
-      'Audit: **required every version**; run it on openai gpt-6-astra in a fresh run that gets only the records, never this conversation.',
+      'Audit: **required every version, before the merge and after the release**; run it on openai gpt-6-astra in a fresh run that gets only the records, never this conversation.',
     ]);
   });
 

@@ -7,6 +7,7 @@ Read by `reins update`: it lists the entries newer than a project's pinned versi
 - The report of `update` (and of `install` and `config`) marks a generated file it rewrote as changed (`~`); only a path that did not exist before the run is new (`+`).
 - One flow after the approvals: once the spec is accepted, implementation, review, test, push, PR and CI follow without asking, with one report at the end. "Anything that leaves the machine" is no longer a stop for a branch of the work in progress; a merge (every PR) and a stable release still wait for the user's instruction.
 - Adjusting the spec while working: only a work unit added, dropped or rescoped stops for approval. A smaller adjustment (another method inside a unit, a small fix from a review, an audit or an rc check, another order, a change with a precedent) goes on, is recorded in the spec's new adjustment record (`A-n`) and is reported at the end of the flow. The audit keeps a recorded adjustment and names an unrecorded one.
+- Two audits per version. The first audit runs after CI and before the merge, on the PR branch, and looks for risk; its record is committed on that branch and the merge follows on the user's instruction. The second audit runs after the stable release, looks at procedure only and hands its result to the retro. Fixing records or documents does not call for another audit. `.agents/audit/<version>.md` holds both (`## 1차 감사`, `## 2차 감사`); the template changed.
 
 ## 0.3.1
 - Stable 2026-11-11 (same harness as rc.2).

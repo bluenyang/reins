@@ -14,7 +14,7 @@
 ## Settings
 
 - `.agents/harness/bindings.yaml` — the mode (`single` or `multi`), which model does which role group, and `audit.required`. A personal override may sit in `.loctx/bindings.local.yaml`; when it exists, it wins, and when it changes who does what, `.loctx/delegation.local.md` holds that person's delegation table.
-- **When `audit.required` is true (the default), every version ends with an audit (skill `audit`). It is mandatory: never skip it; only the user switches it off.**
+- **When `audit.required` is true (the default), every version is audited twice (skill `audit`): a first audit before the merge and a second audit after the release. Both are mandatory: never skip one; only the user switches them off.**
 - `.agents/harness/gates.yaml` — the project's own check commands; the hooks and the `test` skill run them as they are.
 - `.agents/harness/roles/<group>.md` — what each role does, must not do, and which tools it may use.
 <!-- reins:end settings -->
@@ -28,7 +28,7 @@ Follow these steps in order; each has a skill in `.agents/skills/`, and each ski
 2. `intent` — the PM writes the direction and the plan; **the user approves**.
 3. `spec` — the spec, its work units (W-n) and checks (V-n); **the user answers 진행 or 수정 on its summary, every time**.
 4. `implement` → `review` — commit at meaningful units (a point you can revert or reset to without taking other working work or features with it), each naming its spec items. Adding, dropping or rescoping a work unit needs the spec changed and approved first; a smaller adjustment goes on, is recorded in the spec (`A-n`) and is reported at the end of the flow.
-5. `test` → `merge` (push, PR, CI) — from the accepted spec to a green CI this is **one flow without asking**: do not stop for permission between these steps; report once at its end. Then the merge on the user's instruction → **`audit`** (after the merge, before the rc) → `release` (the rc the way the repository releases; stable on the user's instruction) → `retro` (after stable), then delete the version's working files.
+5. `test` → `merge` (push, PR, CI) → **`audit`** (the first audit: risk, before the merge) — from the accepted spec to the first audit this is **one flow without asking**: do not stop for permission between these steps; report once at its end. Then the merge on the user's instruction → `release` (the rc the way the repository releases; stable on the user's instruction) → **`audit`** (the second audit: procedure only, handed to the retro) → `retro`, then delete the version's working files.
 
 The first conversation after installation (or after a reconcile or mode-changed marker appears in this file) starts with `onboard`.
 <!-- reins:end flow -->
@@ -43,6 +43,7 @@ The first conversation after installation (or after a reconcile or mode-changed 
 - Record an approval by quoting the user in the intent's or spec's `approvals:` — `{ role: user, by, at, words, rev }` — and commit it. Never record an approval the user did not give.
 - A step or approval the user tells you to skip goes to the intent's `waivers:` — `{ step, words, at, scope: once }` — at that moment. It applies once; next time, follow the flow.
 - Every file you create has an owner and a deletion point (each skill lists them). Working files under `.loctx/reports/<version>/` are summarised in history and the audit, then deleted after the retro.
+- `.agents/audit/<version>.md` holds both audits of a version; an adjustment made while working is a line in the spec's adjustment record (`A-n`).
 <!-- reins:end records -->
 
 <!-- reins:begin stops v=0.3.0 -->

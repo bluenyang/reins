@@ -330,12 +330,81 @@ describe('stage skills (019 S-9, design §3-1)', () => {
     );
   });
   it('the next skills follow the flow', () => {
-    const next = (n: string) => /## 5\. Next\n`([a-z]+)`/.exec(read(n))?.[1];
-    const chain = ['roadmap', 'intent', 'spec', 'implement', 'review'];
-    for (let i = 0; i < chain.length - 1; i++) expect(next(chain[i]!)).toBe(chain[i + 1]);
-    expect(next('test')).toBe('merge');
-    expect(next('merge')).toBe('audit');
-    expect(next('audit')).toBe('release');
-    expect(next('release')).toBe('retro');
+    const next = (n: string) =>
+      [...section(read(n), '## 5. Next').matchAll(/`([a-z]+)`/g)].map((m) => m[1]);
+    const chain = ['roadmap', 'intent', 'spec', 'implement'];
+    for (let i = 0; i < chain.length - 1; i++) expect(next(chain[i]!)).toEqual([chain[i + 1]]);
+    expect(next('implement')).toEqual(['review']);
+    expect(next('review')).toEqual(['implement', 'test']);
+    expect(next('test')).toEqual(['merge']);
+    // two audits: the first sits between the PR and the merge, the second between the release and the retro
+    expect(next('merge')).toEqual(['audit', 'release']);
+    expect(next('audit')).toEqual(['merge', 'retro']);
+    expect(next('release')).toEqual(['audit', 'retro']);
+    expect(next('retro')).toEqual(['roadmap']);
+  });
+  it('a version is audited twice: risk before the merge, procedure after the release (022 S-9..S-16, V-3)', () => {
+    const harness = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
+    const audit = read('audit');
+    const a = audit.indexOf('### First audit — before the merge');
+    const b = audit.indexOf('### Second audit — after the release');
+    expect(a).toBeGreaterThan(0);
+    expect(b).toBeGreaterThan(a);
+    const first = audit.slice(a, b);
+    const second = audit.slice(b, audit.indexOf('## 3. Delegation'));
+    for (const k of [
+      'Look for **risk**',
+      'commits the record on the PR branch',
+      'wait for CI again',
+    ])
+      expect(first, k).toContain(k);
+    expect(first).toContain('A fix made after the audit is not audited again');
+    for (const k of [
+      '**procedure only**',
+      'handed to the retro',
+      '### 회고에서의 처리',
+      '### SHA 대응',
+    ])
+      expect(second, k).toContain(k);
+    expect(second).not.toMatch(/remedy/i);
+    expect(section(audit, '## 1. When')).toContain('both are mandatory');
+    const merge = section(read('merge'), '## 2. Procedure');
+    expect(merge).toContain("Every merge needs the user's instruction");
+    expect(merge).toContain('go on to the first audit (`audit`) without asking');
+    expect(merge).toContain('and the user says to merge, merge at once');
+    expect(section(read('release'), '## 1. When')).toContain('The first audit is done');
+    expect(section(read('retro'), '## 2. Procedure')).toContain(
+      'what the second audit handed to the retro',
+    );
+    const tpl = harness('harness/templates/audit.md');
+    for (const h of [
+      '## 1차 감사',
+      '### 사용자 처리',
+      '## 2차 감사',
+      '### 회고로 넘길 것',
+      '### SHA 대응',
+      '### 회고에서의 처리',
+    ])
+      expect(tpl, h).toContain(`\n${h}\n`);
+    expect(tpl).toMatch(/^first: \{ range: /m);
+    expect(tpl).toMatch(/^second: \{ range: /m);
+    expect(tpl.indexOf('### 해결 방법')).toBeLessThan(tpl.indexOf('## 2차 감사'));
+    expect(block('flow')).toContain('the first audit: risk, before the merge');
+    expect(block('flow')).toContain('the second audit: procedure only, handed to the retro');
+    expect(block('flow')).not.toContain('after the merge, before the rc');
+    expect(block('settings')).toContain('every version is audited twice');
+    const role = harness('harness/roles/auditor.md');
+    expect(role).toContain('**First audit**');
+    expect(role).toContain('**Second audit**');
+    expect(harness('docs/design.md')).toContain(
+      'The **first audit** comes after CI passes and before the merge',
+    );
+    expect(harness('docs/design.md')).toContain('it looks at **procedure only**');
+    expect(harness('docs/design.md')).not.toContain('after the merge, before the rc');
+    expect(harness('docs/design.ko.md')).toContain('**1차 감사**는 CI가 통과한 뒤 머지 전에');
+    expect(harness('docs/design.ko.md')).toContain('**절차만** 본다');
+    expect(harness('docs/design.ko.md')).not.toContain('머지 뒤, rc 전');
+    for (const f of ['README.md', 'docs/README.ko.md'])
+      expect(harness(f)).not.toMatch(/After the merge and before the rc|머지 뒤, rc 전/);
   });
 });

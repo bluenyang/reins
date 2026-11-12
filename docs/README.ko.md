@@ -13,9 +13,9 @@ BlueNyang과 Team Croffle의 저장소 열두 곳이 같은 하네스 계통을 
 ## 동작 방식
 
 - **기본은 단일 에이전트입니다.** 에이전트 하나(PM)가 모든 단계를 수행합니다. 조사, 리뷰, 감사처럼 읽기 위주의 일이나 급한 병렬 작업에는 같은 모델의 서브에이전트를 쓸 수 있습니다. 멀티는 역할군(PM, PL, Planner, Implementer, Executor, Advisor, Auditor)에 모델을 할당해 켭니다. 모델이 없는 역할군의 일은 PM이 합니다. 근거는 Anthropic의 [Building agents: When to fold subagents into your main agent loop](https://claude.com/resources/articles/building-agents-when-to-fold-subagents-into-your-main-agent-loop)(2026-10-22)입니다.
-- **흐름은 실행 중 차단이 아니라 문서로 적습니다.** `docs/ROADMAP.md` → intent → spec → 구현 → 리뷰 → 테스트 → 머지 → 감사 → 릴리스 → 회고. 단계마다 `.agents/skills/`에 스킬이 있고, 순서와 멈추고 물을 때는 `AGENTS.md`에 있습니다.
+- **흐름은 실행 중 차단이 아니라 문서로 적습니다.** `docs/ROADMAP.md` → intent → spec → 구현 → 리뷰 → 테스트 → PR·CI → 1차 감사 → 머지 → 릴리스 → 2차 감사 → 회고. 단계마다 `.agents/skills/`에 스킬이 있고, 순서와 멈추고 물을 때는 `AGENTS.md`에 있습니다.
 - **승인은 사용자가 합니다.** intent와 매번의 spec 요약은 사용자를 기다립니다. PM은 사용자의 말을 인용해 승인을 기록합니다. 사용자가 건너뛰라고 한 단계는 한 번만 적용됩니다.
-- **버전마다 감사합니다.** 머지 뒤, rc 전에 감사가 기록(intent, spec, git 이력, 로그)을 읽고 단계마다 판정합니다. 사용자가 끄지 않는 한 필수이고, 결과는 `.agents/audit/`에 커밋됩니다.
+- **버전마다 두 번 감사합니다.** CI 뒤 머지 전에 1차 감사가 기록(intent, spec, git 이력, 로그)을 읽고 위험을 봅니다. 배포 뒤에는 2차 감사가 절차만 보고 결과를 회고로 넘깁니다. 사용자가 끄지 않는 한 필수이고, 기록은 `.agents/audit/`에 커밋됩니다.
 - **온보딩.** 설치 뒤 첫 대화에서 PM이 프로젝트를 파악하고 사용자에게 물어 `AGENTS.md`의 프로젝트 절을 씁니다.
 - **파일마다 수명이 있습니다.** 작업 중 파일은 회고 뒤에 요약하고 지웁니다.
 

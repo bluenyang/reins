@@ -127,7 +127,7 @@ export function renderDelegation(
   const af = auditFallback(doc);
   lines.push(
     '',
-    `Audit: ${doc.audit?.required === false ? '**switched off by the user**' : '**required every version**'}; run it ${a ? `on ${a.vendor} ${a.model}${af ? ` (fallback: ${af.vendor} ${af.model}, when that model cannot be called — say so in the audit report)` : ''} in a fresh run` : 'in a fresh run of your own model (or another one the user chooses)'} that gets only the records, never this conversation.`,
+    `Audit: ${doc.audit?.required === false ? '**switched off by the user**' : '**required every version, before the merge and after the release**'}; run it ${a ? `on ${a.vendor} ${a.model}${af ? ` (fallback: ${af.vendor} ${af.model}, when that model cannot be called — say so in the audit report)` : ''} in a fresh run` : 'in a fresh run of your own model (or another one the user chooses)'} that gets only the records, never this conversation.`,
   );
   return lines.join('\n');
 }

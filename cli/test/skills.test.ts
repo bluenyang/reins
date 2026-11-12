@@ -2,6 +2,7 @@ import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { Ajv2020 } from 'ajv/dist/2020.js';
 import { validateSkillFile } from '../src/lib/skills.js';
 
 function skill(dir: string, name: string, fm: string, body = '# x\n'): string {
@@ -306,6 +307,40 @@ describe('stage skills (019 S-9, design §3-1)', () => {
     expect(read('release')).not.toContain('stabilisation work units');
     expect(harness('docs/design.md')).toContain('**Adjusting the spec while working.**');
     expect(harness('docs/design.ko.md')).toContain('**작업 중 spec 조정.**');
+  });
+  it('a finding accepted three times becomes knowledge and the audits list it apart (022 S-17..S-19, V-4)', () => {
+    const harness = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
+    const schema = JSON.parse(harness('harness/schemas/knowledge.schema.json')) as {
+      properties: { kind: { enum: string[] } };
+    };
+    expect(schema.properties.kind.enum).toEqual(['decision', 'failure', 'accepted-finding']);
+    const ok = new Ajv2020({ strict: false }).compile(schema);
+    const entry = (kind: string) => ({
+      id: '2026-01-01_x',
+      kind,
+      status: 'active',
+      topics: [],
+      decisions: [],
+      applies_to: 'all',
+      source: 'x',
+    });
+    expect(ok(entry('accepted-finding'))).toBe(true);
+    expect(ok(entry('other'))).toBe(false);
+    expect(harness('harness/templates/knowledge.md')).toContain('accepted-finding');
+    const audit = read('audit');
+    const a = audit.indexOf('### First audit — before the merge');
+    const b = audit.indexOf('### Second audit — after the release');
+    expect(audit.slice(0, a)).toContain('is listed as a **known acceptance**');
+    expect(audit.slice(a, b)).toContain('list each known acceptance apart from the violations');
+    expect(audit.slice(b)).toContain('with each known acceptance apart');
+    expect(harness('harness/roles/auditor.md')).toContain('is listed as a known acceptance');
+    const tpl = harness('harness/templates/audit.md');
+    expect(tpl.split('### 알려진 수용').length).toBe(3);
+    const retro = section(read('retro'), '## 2. Procedure');
+    expect(retro).toContain('accepted three times or more');
+    expect(retro).toContain('`kind: accepted-finding`');
+    expect(harness('docs/design.md')).toContain('**Accepted findings.**');
+    expect(harness('docs/design.ko.md')).toContain('**수용된 지적.**');
   });
   it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
     const t = read(n);

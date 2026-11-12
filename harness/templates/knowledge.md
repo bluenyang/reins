@@ -1,6 +1,6 @@
 ---
 id: YYYY-MM-DD_slug
-kind: decision
+kind: decision   # decision | failure | accepted-finding (an audit finding the user accepts every time; the audit lists it as a known acceptance)
 status: active
 supersedes: null
 topics: []

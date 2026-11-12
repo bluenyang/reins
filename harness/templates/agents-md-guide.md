@@ -5,12 +5,12 @@ AGENTS.md is read by every agent at the start of every session, and by everyone 
 ## What belongs
 
 - What the project is, in a few lines.
-- Its goals and scope — the long-term ones, the reason the project exists.
+- Its goals and scope — the overall ones, the reason the project exists.
 - Its structure: where things are.
 - The stack and the commands to build, check and run it.
 - Common rules and conventions that hold for all work (branches, commits, documents, review).
 - Red lines: paths not to touch, secret files, actions never taken.
-- Instructions that matter and keep mattering.
+- The important instructions that must keep being followed.
 
 ## What does not, and where it goes
 

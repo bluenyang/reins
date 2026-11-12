@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
+import { configureBindings } from '../src/commands/configure.js';
 import { retiredFiles, runInstall } from '../src/commands/install.js';
 import {
   changesBetween,
@@ -13,6 +14,7 @@ import {
   runUpdate,
 } from '../src/commands/update.js';
 import { defaultsAsker } from '../src/lib/ask.js';
+import { MANIFEST, sha } from '../src/lib/generate.js';
 import { scriptedPrompter } from '../src/lib/prompter.js';
 import { packageHarness } from '../src/lib/upstream.js';
 
@@ -29,6 +31,42 @@ describe('reins update', () => {
     expect(newer('0.1.0', '0.1.0')).toBe(false);
     const cl = '## 0.3.0\n- c [skill]\n## 0.2.0\n- b\n## 0.1.0\n- a\n';
     expect(changesBetween(cl, '0.1.0', '0.3.0')).toEqual(['c [skill]', 'b']);
+  });
+
+  it('the report marks a rewritten generated file ~ and only a new one + (022 S-28, V-8)', async () => {
+    const d = mkdtempSync(join(tmpdir(), 'reins-up-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    writeFileSync(join(d, 'package.json'), '{}');
+    await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: d, detectVendors: claude });
+    const on = await configureBindings({
+      cwd: d,
+      mode: 'multi',
+      set: ['implementer=claude-sonnet-5-5'],
+    });
+    const code = '.claude/agents/rs-implementer-code.md';
+    const qa = '.claude/agents/rs-implementer-qa.md';
+    // config: the files of a group just switched on are new
+    expect(on.generated?.created).toEqual(expect.arrayContaining([code, qa]));
+    // an earlier reins wrote other text into one file (nobody edited it), and another file is gone
+    const m = join(d, MANIFEST);
+    const was = sha(readFileSync(join(d, code), 'utf8'));
+    writeFileSync(join(d, code), 'written by an earlier reins\n');
+    writeFileSync(m, readFileSync(m, 'utf8').replace(was, sha('written by an earlier reins\n')));
+    rmSync(join(d, qa));
+    for (const dryRun of [true, false]) {
+      const r = await runUpdate({ cwd: d, detectVendors: claude, dryRun, yes: !dryRun });
+      const lines = formatUpdate(r, dryRun).split('\n');
+      expect(lines, String(dryRun)).toContain(`  ~ ${code}`);
+      expect(lines, String(dryRun)).not.toContain(`  + ${code}`);
+      expect(lines, String(dryRun)).toContain(`  + ${qa}`);
+      expect(lines, String(dryRun)).not.toContain(`  ~ ${qa}`);
+      expect(r.install?.generated?.created).toEqual([qa]);
+    }
+    expect(readFileSync(join(d, code), 'utf8')).not.toContain('earlier reins');
+    // config: a model change rewrites the group's files; none of them is new
+    const again = await configureBindings({ cwd: d, set: ['implementer=claude-haiku-5-5'] });
+    expect(again.generated?.written).toContain(code);
+    expect(again.generated?.created).toEqual([]);
   });
 
   it('brings an old pin and a hand-edited harness file back to upstream, keeping bindings', async () => {

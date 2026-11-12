@@ -68,7 +68,10 @@ function settingsDeny(text: string): string[] {
 }
 
 export interface GenWriteResult {
+  /** every path written: new ones and rewritten ones */
   written: string[];
+  /** the paths of `written` that did not exist before this run; the rest were rewritten */
+  created: string[];
   removed: string[];
   unchanged: string[];
   refused: { path: string; why: string }[];
@@ -88,6 +91,7 @@ export function writeGenerated(
 ): GenWriteResult {
   const res: GenWriteResult = {
     written: [],
+    created: [],
     removed: [],
     unchanged: [],
     refused: [],
@@ -133,6 +137,7 @@ export function writeGenerated(
         writeFileSync(abs, w.content);
       }
       res.written.push(w.path);
+      res.created.push(w.path);
       after[w.path] = next;
       continue;
     }

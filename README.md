@@ -25,12 +25,13 @@ knowledge lost in gitignored space, copies that drift apart. The full list is in
   without a model is done by the PM. The basis is Anthropic's
   [Building agents: When to fold subagents into your main agent loop](https://claude.com/resources/articles/building-agents-when-to-fold-subagents-into-your-main-agent-loop) (2026-10-22).
 - **A flow written down, not enforced at run time.** `docs/ROADMAP.md` → intent → spec → implement →
-  review → test → merge → audit → release → retro. Each stage is a skill in `.agents/skills/`; `AGENTS.md`
+  review → test → PR and CI → first audit → merge → release → second audit → retro. Each stage is a skill in `.agents/skills/`; `AGENTS.md`
   holds the order and the rules for stopping and asking.
 - **The user approves.** The intent and every spec summary wait for the user; the PM records approvals by
   quoting the user. A step the user tells the agent to skip is recorded once.
-- **An audit for every version.** After the merge and before the rc, an audit reads the records (intent, spec,
-  git history, logs) and judges each stage; it is mandatory unless the user switches it off. Its record is
+- **Two audits for every version.** After CI and before the merge, a first audit reads the records (intent,
+  spec, git history, logs) and looks for risk; after the release a second audit looks at procedure only and
+  hands its result to the retro. They are mandatory unless the user switches them off, and their record is
   committed to `.agents/audit/`.
 - **Onboarding.** After installation, the first conversation reads the project, asks the user, and writes the
   project sections of `AGENTS.md`.

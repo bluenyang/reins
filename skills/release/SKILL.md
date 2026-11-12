@@ -1,12 +1,12 @@
 ---
 name: release
-description: Cut the rc and, on the user's explicit instruction only, the stable release, as the repository's release setup allows. Use when the version is audited.
+description: Cut the rc and, on the user's explicit instruction only, the stable release, as the repository's release setup allows. Use when the version is merged after its first audit.
 ---
 
 # release
 
 ## 1. When
-The version is audited (or the user accepted its findings).
+The first audit is done (its findings fixed or accepted by the user) and the work is merged.
 
 ## 2. Procedure
 1. Update the release documents (changelog, roadmap state, README status) in the release PR.
@@ -20,7 +20,7 @@ Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table 
 - Tags, release notes — on the forge, kept.
 
 ## 5. Next
-`retro` (after stable, or when the user declares the version closed).
+`audit` (the second audit — after stable, or when the user declares the version closed), then `retro`.
 
 ## 6. Stop and ask
 - Stable, force-pushing, deleting tags: ask the user every time.

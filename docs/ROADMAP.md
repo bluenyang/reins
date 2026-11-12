@@ -77,6 +77,8 @@ Fills the gaps in the flow that building 0.3.1 showed (maintainer, 2026-11-11; b
 - **Two audits.** When CI passes, a first audit looks at risk before the merge; after the merge and the release a second audit looks at procedure only, and its result goes to the retro. Fixing records or documents does not call for another audit.
 - **Accepted findings.** An audit finding that keeps repeating and is accepted every time is written into knowledge, and the audit marks it as a known acceptance instead of a violation.
 - **A guide for AGENTS.md, and onboarding.** AGENTS.md holds the project's goal, its structure, the common rules and the instructions that matter. In the first conversation after an installation or a migration the existing content is sorted: progress goes to the roadmap, decisions to knowledge, personal notes to `.loctx`.
+- **Where a version ends.** After a release (rc or stable) the PM reports and stops; time spent waiting for the maintainer is not filled with the next version. The retro closes a version, and the next version's intent is written after it, when the user starts it. Naming a version is not an instruction to start it; ideas for a later version are written to the roadmap whenever they come (0.3.1 retro: the first draft of this version's intent was written right after 0.3.1-rc.1).
+- **Two small fixes from the 0.3.1 retro.** The `review` skill has a unit that changed tests only reviewed, or recorded as not reviewed. The `update` report no longer marks an existing generated file it rewrote as a new file.
 
 ## 0.4 — rollout
 

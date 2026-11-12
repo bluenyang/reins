@@ -263,6 +263,44 @@ describe('stage skills (019 S-9, design §3-1)', () => {
     expect(doc('design.ko.md')).toContain('**묻지 않고 이어 가는 하나의 흐름**');
     expect(doc('design.ko.md')).not.toContain('기계 밖으로 나가는 일(push');
   });
+  it('the spec may be adjusted while working; only a changed work unit stops (022 S-5..S-8, V-2)', () => {
+    const harness = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
+    // the template has the adjustment record between the checks and the concerns
+    const heads = [...harness('harness/templates/spec.md').matchAll(/^## (.+)$/gm)].map(
+      (m) => m[1],
+    );
+    expect(heads).toEqual([
+      '요구 해석',
+      '설계',
+      '작업 단위',
+      '검증 기준',
+      '조정 기록',
+      '우려',
+      '범위 밖',
+    ]);
+    const stop = 'Adding, dropping or rescoping a work unit';
+    expect(section(read('implement'), '## 2. Procedure')).toContain(stop);
+    expect(section(read('implement'), '## 2. Procedure')).toContain('is an adjustment');
+    expect(section(read('implement'), '## 2. Procedure')).toContain('names its `A-n`');
+    expect(section(read('implement'), '## 6. Stop and ask')).toContain(
+      'has to be added, dropped or rescoped',
+    );
+    expect(section(read('spec'), '## 2. Procedure')).toContain('added, dropped or rescoped');
+    expect(section(read('spec'), '## 2. Procedure')).toContain('adjustment record (`A-n`)');
+    expect(section(read('review'), '## 2. Procedure')).toContain('A small fix is an adjustment');
+    expect(block('flow')).toContain(stop);
+    expect(block('flow')).toContain('a smaller adjustment goes on');
+    for (const t of [read('audit'), harness('harness/roles/auditor.md')]) {
+      expect(t).toContain('an adjustment recorded in the spec is kept');
+      expect(t).toContain('added, dropped or rescoped without approval is a violation');
+    }
+    // another order of the units is an adjustment now, and an rc fix is no unit of its own kind
+    for (const n of STAGES) expect(read(n), n).not.toContain('reordered');
+    expect(block('flow')).not.toContain('reordered');
+    expect(read('release')).not.toContain('stabilisation work units');
+    expect(harness('docs/design.md')).toContain('**Adjusting the spec while working.**');
+    expect(harness('docs/design.ko.md')).toContain('**작업 중 spec 조정.**');
+  });
   it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
     const t = read(n);
     expect(t.slice(t.indexOf('## 3. Delegation')).split('\n')[1]).toMatch(

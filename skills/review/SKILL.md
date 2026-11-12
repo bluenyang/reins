@@ -11,7 +11,7 @@ Work units are done and not reviewed.
 ## 2. Procedure
 1. Review the diff against the spec: does each S-n hold, with which commit and which evidence (test, log path)? Look for defects, not only for the checklist.
 2. Multi mode: one reviewer (pl/code-reviewer, doc-reviewer …). Single mode: fill the table spec item ↔ commit ↔ evidence path yourself and state that it is not an independent review.
-3. Findings go back to the PM, who sends fixes to `implement`.
+3. Findings go back to the PM, who sends fixes to `implement`. A small fix is an adjustment: it goes on and is recorded in the spec (`A-n`); a finding that needs a work unit added, dropped or rescoped changes the spec first.
 4. A large decision or an unresolved disagreement: pl/discussion (every assigned model, without seeing each other); combine with the originals attached, keeping minority views.
 
 ## 3. Delegation

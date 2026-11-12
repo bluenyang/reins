@@ -12,8 +12,8 @@ The spec is accepted and has open work units.
 1. Work on a feature branch (`type/topic`), never the default branch.
 2. Take the next open work unit. Implement it so the requirement holds everywhere it applies — never to pass.
 3. Run the project's gates (`.agents/harness/gates.yaml`; the hooks run them too). Keep the raw output under `.loctx/reports/<version>/`.
-4. Commit at meaningful units: each commit is a point you can revert or reset to without taking other working work or features with it. One work unit may take several commits (implementation, review fixes); small units that may be reverted together may share one; never mix unrelated work in one commit. If the spec's work units themselves must change (added, dropped, rescoped, reordered), stop: change the spec with the reason, get the user's 진행 or 수정 on the summary, then go on.
-5. Commit: `type(scope): title` naming the spec items (S-n, W-n). Tick the work unit in `spec.md` with the commit.
+4. Commit at meaningful units: each commit is a point you can revert or reset to without taking other working work or features with it. One work unit may take several commits (implementation, review fixes); small units that may be reverted together may share one; never mix unrelated work in one commit. Adding, dropping or rescoping a work unit is a change of the spec: stop, change the spec with the reason, and get the user's 진행 or 수정 on the summary. Anything smaller is an adjustment — another method inside the same unit, a small fix that a review, an audit or the check of an rc asks for, another order of the units, a change with a similar precedent in `.agents/knowledge/` or history: go on, record it in the spec's adjustment record (`A-n`: what, why, which commit), and list the adjustments in the report at the end of the flow. If you cannot tell which it is, stop and ask.
+5. Commit: `type(scope): title` naming the spec items (S-n, W-n); a commit that makes an adjustment names its `A-n`. Tick the work unit in `spec.md` with the commit.
 6. When the plan turns out wrong, update the intent or spec in the same commit, or stop and ask.
 
 ## 3. Delegation
@@ -28,5 +28,5 @@ Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table 
 
 ## 6. Stop and ask
 - Two failures in the same work unit: stop, find the cause (pl or advisor opinions by severity), or bring options to the user.
-- A change outside the spec's approved work units (working across approved units that may be reverted together is fine).
-- The spec's work units need to change (added, dropped, rescoped, reordered): the spec changes and is approved first.
+- A work unit has to be added, dropped or rescoped: the spec changes and is approved first. A smaller adjustment does not stop the work (2.4); working across approved units that may be reverted together is fine.
+- A user who does not accept an adjustment when it is reported: treat it as a change of the spec — revert it or get it approved.

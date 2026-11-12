@@ -355,7 +355,9 @@ describe('stage skills (019 S-9, design §3-1)', () => {
     for (const k of [
       'Look for **risk**',
       'commits the record on the PR branch',
+      'Push it',
       'wait for CI again',
+      'until CI is green on the last of these commits',
     ])
       expect(first, k).toContain(k);
     expect(first).toContain('A fix made after the audit is not audited again');

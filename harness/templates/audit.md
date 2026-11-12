@@ -20,6 +20,9 @@ second: { range: "<first head>..<last>", at: 0000-00-00, auditor: { vendor: —,
 | 생성 파일·하네스 손 수정 | — | — |
 ### 비판
 —
+### 알려진 수용
+<!-- knowledge의 accepted-finding 항목 범위 안의 지적: 위반이 아니라 여기에, 항목 파일과 함께 -->
+—
 ### 해결 방법
 —
 ### 사용자 처리
@@ -35,6 +38,8 @@ second: { range: "<first head>..<last>", at: 0000-00-00, auditor: { vendor: —,
 | CI·배포 기록 | — | — |
 | 릴리스 문서 | — | — |
 | 기록의 완결성 | — | — |
+### 알려진 수용
+—
 ### 회고로 넘길 것
 —
 ### SHA 대응

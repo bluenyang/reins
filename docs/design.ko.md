@@ -174,6 +174,8 @@ groups:                 # 적지 않은 군 = 꺼짐(PM이 함)
 ## 8. knowledge
 `.agents/knowledge/<date>_<slug>.md` 형식(결정 · 이유 · 적용 · 바뀌면)은 v1.0과 같다. 승격은 회고에서(`retro` 스킬): retrospector나 PM이 history·감사에서 반복된(두 번 이상) 결정·실패를 찾아 제안하고 — 이미 같은 항목이 있으면 그 항목의 갱신을 제안한다 — 사용자가 받아들이면 PM이 쓴다(`approved: {by, at, words}`). 찾기는 `grep -l 'decisions:.*<keyword>' .loctx/history/* .agents/knowledge/*`. 세는 CLI는 없다.
 
+**수용된 지적.** 감사는 다 잡아내고, 사용자가 수용할 것을 고른다. 같은 지적이 세 번 이상 수용되면(감사 기록의 `사용자 처리`와 `회고에서의 처리`, 여러 버전에 걸쳐) 회고가 `kind: accepted-finding` 항목으로 제안한다: 어떤 지적을 수용으로 보는가(결정), 몇 번 어디서 수용했는가(이유 — 파일 경로와 사용자의 말), 어디까지가 수용이고 어디부터는 다시 위반인가(적용). 승격은 다른 항목과 같다(사용자가 받아들인 것만). 두 감사는 이 항목들을 읽고, 범위 안의 지적을 위반이 아니라 "알려진 수용"으로 항목 파일과 함께 따로 적는다. 범위 밖이면 전처럼 위반이다.
+
 ## 9. CLI와 플러그인
 `npx @bluenyang/reins` — 네 명령. `install`·`migrate`·`update`는 `--dry-run`, 넷 모두 `--json`. TS, Node ≥ 22, 배포물에 Python 불필요(R65). CLI는 모델을 부르지 않는다.
 - `install [--mode manual|auto] [--hooks]`: 하네스 배치, 도구 감지, 게이트 확인, 훅 제안, 온보딩 표시. 기본 모드 single. 3·4세대 위에서는 거부하고 `migrate`로 안내.

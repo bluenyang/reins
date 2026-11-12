@@ -92,7 +92,7 @@ With no verifier, stop conditions are plain rules the agent keeps and the audit 
 - **Skipped steps**: a step or approval the user told the agent to skip passes when it was recorded in the intent's `waivers:` at the time. It applies once.
 - **Violations**: fixed, or accepted by the user. Either way the audit and the retro criticise them precisely and, by severity, give a remedy with PL or Advisor opinions.
 - **Record**: `.agents/audit/<version>.md` (committed). The audit run is read-only: the auditor returns the whole record as its answer, and the PM keeps that answer as it came under `.loctx/reports/<version>/` and writes it to the record file unchanged (no verdict reworded or shortened). The user's decision (fixed or accepted) is added in its own section. The version's closing report states the audit status.
-- **Mandatory**: `audit.required: true` in `bindings.yaml` by default; only the user switches it off, through `config`. In single mode the user chooses the audit's session and model (recommended: a new run on another vendor, or a new run on the same vendor's top model).
+- **Mandatory**: `audit.required: true` in `bindings.yaml` by default; only the user switches it off, through `config`. Without an auditor model the audit is a new run of the PM's own model, or of another one the user chooses (recommended: a new run on another vendor).
 - Passing a procedural audit does not vouch for direction or code quality; direction is for the plan-reviewer and the user.
 
 ### 3-4. Approvals and retro

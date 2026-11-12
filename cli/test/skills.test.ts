@@ -278,6 +278,12 @@ describe('stage skills (019 S-9, design §3-1)', () => {
       '우려',
       '범위 밖',
     ]);
+    expect(harness('harness/templates/spec.md')).toContain(
+      '## 조정 기록\n<!-- - A-n (YYYY-MM-DD, W-n) 무엇을 · 왜 · 커밋 -->\n—\n',
+    );
+    expect(section(read('implement'), '## 2. Procedure')).toContain(
+      '`- A-n (date, W-n) what · why · commit`',
+    );
     const stop = 'Adding, dropping or rescoping a work unit';
     expect(section(read('implement'), '## 2. Procedure')).toContain(stop);
     expect(section(read('implement'), '## 2. Procedure')).toContain('is an adjustment');

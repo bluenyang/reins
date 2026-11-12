@@ -124,19 +124,6 @@ intent 022의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - V-12 (rc 뒤) 배포본 smoke: `.loctx/context/scripts/smoke-published-0.3.1.sh`를 0.3.2용으로 고쳐 새 설치, 0.3.1 → 0.3.2 `update`(tidy 표시 한 번, `+`/`~` 표시, `default`가 있는 bindings), `config` 요약을 확인한다. 실패 0.
 - V-13 (W-10, stable 뒤) 이 저장소의 `reins update` 드라이 런과 실행이 종료 0이고, AGENTS.md 위임 블록에 모델 이름이 붙은 PM 표기가 없다.
 
-## 조정 기록`을 갖고 스키마를 통과한다. `skills.test.ts`: `implement`·`spec`·`audit` 스킬과 흐름 블록이 추가·삭제·범위 변경(added, dropped, rescoped)을 멈춤으로, 조정(adjustment)을 진행으로 적고, "reordered"가 멈춤 목록에 없다.
-- V-3 (W-3) `skills.test.ts`: `audit` 스킬에 "First audit"과 "Second audit" 절이 있고, 첫 절이 "before the merge", 둘째 절이 "procedure"와 "retro"를 말하며 둘째 절에 remedy를 내라는 말이 없다. 다음 스킬 순서 테스트가 `test → merge → audit → merge → release → audit → retro`를 따른다. 감사 템플릿이 두 절 구조이고 스키마(있으면)를 통과한다. 설계 양판 §3-3에 같은 낱말.
-- V-4 (W-4) knowledge 스키마가 `kind: accepted-finding`을 받아들이고 모르는 값은 거부한다. `audit` 스킬에 "known acceptance", `retro` 스킬에 "three"와 "accepted"가 있다.
-- V-5 (W-5) 가이드 문서가 있고 설치 계획(`install`의 쓰기 목록)에 들어간다. `update.test.ts` 표: ① 0.3.1 설치 → `tidy pending` 한 번 ② 다시 `update` → 더 넣지 않음 ③ `tidy done`인 파일 → 넣지 않음 ④ 온보딩이나 재구성이 pending → 넣지 않음 ⑤ 0.2.0 설치 → 재구성 표시만 ⑥ 프로젝트 절의 글은 표시 줄 말고는 바이트가 같다. `onboard` 스킬이 guide와 `tidy`를 말한다.
-- V-6 (W-6) `skills.test.ts`: 흐름 블록에 "The retro ends the loop"에 해당하는 문장과 "not an instruction to start", 정지 블록에 "Report and wait", `intent` 스킬의 When에 "started"와 "closed", `roadmap` 스킬에 "not an instruction to start", `retro` 스킬에 "stop", `release` 스킬에 "wait". 설계 양판 §3-1·§3-2에 같은 낱말.
-- V-7 (W-7) `skills.test.ts`: `review` 스킬에 "tests or documents only"와 기록하라는 말, `merge` 스킬에 "which PR"·"ask"·"delete"·"default branch"와 SHA, `retro` 스킬에 하네스 자체에 대한 제안을 가르는 문장.
-- V-8 (W-8) `update.test.ts`: 0.3.0 하네스로 설치한 임시 저장소를 지금 코드로 `update`(드라이 런과 실제) — 실행 전에 있던 경로가 `+` 줄에 하나도 없다.
-- V-9 (W-9) 표 기반: `renderDelegation`의 단일·멀티 출력에 "you are the PM (" 이 없고 "the model in this conversation"이 있다 · auditor 모델이 없으면 감사 줄이 "your own model", 있으면 그 모델 · `default`가 있는 bindings 파일(팀, 개인)로 `config`(읽기), `update`가 종료 0 · `config`가 쓰면 `default`가 사라지고 알림 한 줄 · `--set default=x`는 거부(종료 0 아님, 메시지에 conversation) · 새 설치의 `bindings.yaml`에 `default`가 없다 · 0.2.0 bindings의 `pm`은 옮기지 않고 알림. 화면 테스트(`install-update-tui.test.ts`나 `config.test.ts`)에서 PM 항목이 없다.
-- V-10 (전체) `pnpm check` 종료 0. 원본 로그 `.loctx/reports/0.3.2/check.log`. CI 9개 검사(Ubuntu·macOS·Windows × Node 22·24, 집계, label, trufflehog) 통과.
-- V-11 (전체, 글) 설계 양판 대조: 이 버전이 고친 절(§2-1, §2-3, §3, §4, §5, §8, §9)을 국문·영문으로 나란히 읽어 뜻이 다른 문장이 없는지 본다. 결과 `.loctx/reports/0.3.2/design-twin-comparison.md`. 다른 곳이 있으면 실패.
-- V-12 (rc 뒤) 배포본 smoke: `.loctx/context/scripts/smoke-published-0.3.1.sh`를 0.3.2용으로 고쳐 새 설치, 0.3.1 → 0.3.2 `update`(tidy 표시 한 번, `+` 표시, `default`가 있는 bindings), `config` 요약을 확인한다. 실패 0.
-- V-13 (W-10, stable 뒤) 이 저장소의 `reins update` 드라이 런과 실행이 종료 0이고, AGENTS.md 위임 블록에 모델 이름이 붙은 PM 표기가 없다.
-
 ## 조정 기록
 - A-1 (2026-11-12, W-9) 설계 §3-3 "필수" 줄의 단일 모드 감사 문장("같은 벤더 최상급 모델")도 S-27c대로 고침 — spec은 §2-1·§2-3·§5만 적었고 §3-3의 같은 문장을 빠뜨렸다 · 이 커밋
 - A-2 (2026-11-12, W-1) S-2·V-1의 구절 "a branch of the loop in progress"를 "a branch of the work in progress"로 — "loop"는 W-6이 들여오는 말이라 W-1만으로 글이 서지 않는다 · W-1 커밋
@@ -145,7 +132,15 @@ intent 022의 "바라는 결과"를 아래로 옮긴다. 각 줄 끝의 ← 는 
 - A-5 (2026-11-12, W-3·W-5) V-11 첫 실행에서: 영문 설계 §5와 가이드의 "long-term goals"·"instructions that keep mattering"를 국문("거시적 목표", "계속 지켜야 하는 중요한 지시")에 맞춤. W-3에서 양판 모두에서 빠뜨린 두 구절("버전 종료 보고에 감사 상태", "PR 본문의 게이트 출력")을 되살림 · `9f93009`
 - A-6 (2026-11-12, W-3·W-5·W-6) V-11 두 번째 실행에서: 영문 설계 네 문장(2차 감사에는 "사용자 처리 절"이 없다는 것, 다시 감사하는 조건, "작업 중에도", "짧고 잘 바뀌지 않아야 한다")을 국문에 맞추고 `audit` 스킬의 같은 문장도 고침 · `9bcf2a5`
 - A-7 (2026-11-12, W-3·W-5) V-11 세 번째 실행(96쌍, "뚜렷한 차이 없음")이 낸 경계 사례 둘(머지 조건의 "위반", "프로젝트 절의 글")을 영문에 반영하고 `merge` 스킬의 같은 문장도 고침. 네 번째 실행은 하지 않음 · `f53469b`
-- A-8 (2026-11-12, S-29) rc.1 릴리스 문서(루트 CHANGELOG, 로드맵 상태, README 상태, `harness/VERSION`)를 따로 PR로 내지 않고 작업 PR에 실음 — 머지 한 번 뒤 바로 rc를 낼 수 있고 PR·머지 지시가 하나 줄어든다(0.3.1에서는 기록·릴리스 문서 PR이 따로 필요했다) · 이 커밋
+- A-8 (2026-11-12, S-29) rc.1 릴리스 문서(루트 CHANGELOG, 로드맵 상태, README 상태, `harness/VERSION`)를 따로 PR로 내지 않고 작업 PR에 실음 — 머지 한 번 뒤 바로 rc를 낼 수 있고 PR·머지 지시가 하나 줄어든다(0.3.1에서는 기록·릴리스 문서 PR이 따로 필요했다) · `4b4eab3`
+
+1차 감사(2026-11-12, `.agents/audit/0.3.2.md`) 뒤에 보충한 기록 — 아래는 그때 적지 않았던 것을 감사 뒤에 적은 것이다:
+- A-9 (W-8, 감사 비판 3·6) `8634dce`의 방법: S-28은 결과를 `created`와 `changed`로 "나눈다"고 적었으나, 기존 목록 `written`은 그대로 두고 그 부분집합 `created`를 더했다(`written`을 읽는 코드와 테스트가 그대로 돈다; 보고의 `+`/`~`는 같다). V-8의 재현 방법도 spec과 다르다: spec은 "설치된 역할 원본을 한 줄 바꾼 뒤 `update`"라고 적었으나, `update`가 원본을 먼저 되돌려 생성 파일이 다시 쓰이지 않는다. 대신 생성 파일과 그 manifest 해시를 "이전 reins가 다른 글로 써 둔 상태"로 만들었다(다시 쓰인 파일), 새 파일은 생성 파일 하나를 지워서 만들었다. `config`의 `+`·`~` 출력은 결과 목록만 확인하고 출력 줄은 확인하지 않았었다 — `e40711c`에서 출력 줄을 확인하도록 고쳤다
+- A-10 (감사 비판 6) 리뷰에서 나온 작은 보완을 조정으로 적지 않았던 것: `d9b71e5`(W-9, 설계·변경 목록의 감사 문장), `a62384d`(W-2, 조정 기록의 줄 형식), `9753529`(W-3, 감사 기록 커밋을 푸시), `71de49a`의 온보딩 부분(W-5, 받아들이지 않은 것은 버리지 않음). 작업 단위 줄에 커밋으로만 적혀 있었다
+- A-4는 `a4c5559`의 일인데 `71de49a`에서야 적었다(늦은 기록)
+- A-11 (감사 비판 8) 이 파일의 검증 기준 아래에 남아 있던 옛 V-2(뒷부분)~V-13 문단을 지움: spec 검토의 지적을 반영하며 검증 기준을 새로 쓸 때 지우지 못한 이전 초안이다. 유효한 기준은 위의 V-1~V-13 하나씩이고 바뀐 것은 없다(수락 때의 요약도 이 목록을 말한다). `cfbb541`부터 있었다 · 이 커밋
+- A-12 (감사 비판 5) 단위별 리뷰 뒤의 변경은 리뷰하지 않았었다: `71de49a`의 정지 목록 줄(A-3), `9f93009`·`9bcf2a5`·`f53469b`(A-5~A-7; 국문에 맞춘 영문 문장과 스킬 두 문장), `4b4eab3`(A-8, 릴리스 문서). 이유는 적지 않았고, 실제 이유는 "양판 대조가 본 것"이라는 판단이었으나 대조는 뜻의 일치만 보고 기능을 보지 않는다. 감사 뒤 `132ded1..` 범위를 한 번에 리뷰어(GPT-6.1 Sol)에게 보냄 — 결과는 A-13
+- (감사 비판 7) `71de49a`는 서로 독립인 두 변경(W-5의 온보딩 보완, W-1·W-2의 정지 목록 줄)을 한 커밋에 담았다. 푸시된 이력이라 나누지 않았고, 사용자 처리에 올린다
 
 ## 우려
 - **글만으로 선 경계.** 루프의 끝과 "기다리는 동안 채우지 않는다"는 차단 장치 없이 글로만 선다(intent 제약). 지켜졌는지는 2차 감사와 회고가 본다.

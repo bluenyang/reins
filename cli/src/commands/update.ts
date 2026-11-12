@@ -63,6 +63,12 @@ export interface UpdateResult {
 }
 
 /** Numeric dotted-version compare; pre-release suffixes are ignored. */
+/** A 0.3 harness from before the AGENTS.md guide (0.3.0, 0.3.1 and their rcs); 0.x installs are reconciled instead. */
+export function beforeGuide(version: string): boolean {
+  const [major, minor, patch] = version.split(/[.-]/).map((x) => Number.parseInt(x, 10) || 0);
+  return major === 0 && minor === 3 && (patch ?? 0) < 2;
+}
+
 export function newer(a: string, b: string): boolean {
   const pa = a.split(/[.-]/).map((x) => Number.parseInt(x, 10) || 0);
   const pb = b.split(/[.-]/).map((x) => Number.parseInt(x, 10) || 0);
@@ -318,6 +324,7 @@ async function updateNow(o: UpdateOptions): Promise<UpdateResult> {
     force: o.force,
     pending,
     pendingDeletes: o.dryRun ? legacy.deletes : [],
+    tidy: beforeGuide(pin.version),
   });
   res.handEdited = (res.install.generated?.refused ?? [])
     .filter((r) => r.why.startsWith('edited by hand'))

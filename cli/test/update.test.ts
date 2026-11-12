@@ -7,12 +7,14 @@ import { describe, expect, it } from 'vitest';
 import { configureBindings } from '../src/commands/configure.js';
 import { retiredFiles, runInstall } from '../src/commands/install.js';
 import {
+  beforeGuide,
   changesBetween,
   formatUpdate,
   newer,
   PREVIOUS_WARNING,
   runUpdate,
 } from '../src/commands/update.js';
+import { onboardingNote, reconcileNote, tidyNote } from '../src/lib/agents-md.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { MANIFEST, sha } from '../src/lib/generate.js';
 import { scriptedPrompter } from '../src/lib/prompter.js';
@@ -67,6 +69,98 @@ describe('reins update', () => {
     const again = await configureBindings({ cwd: d, set: ['implementer=claude-haiku-5-5'] });
     expect(again.generated?.written).toContain(code);
     expect(again.generated?.created).toEqual([]);
+  });
+
+  describe('the AGENTS.md guide note for installs made before it (022 S-20..S-20b, V-5)', () => {
+    const TIDY = '<!-- reins:tidy pending -->';
+    const count = (text: string, part: string) => text.split(part).length - 1;
+    /** An install pinned to `version`, with the project's own section and AGENTS.md changed by `edit`. */
+    async function installed(version: string, edit: (agents: string) => string): Promise<string> {
+      const d = mkdtempSync(join(tmpdir(), 'reins-tidy-'));
+      execFileSync('git', ['init', '-q'], { cwd: d });
+      writeFileSync(join(d, 'package.json'), '{}');
+      await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: d, detectVendors: claude });
+      const pin = join(d, '.agents/harness/install.yaml');
+      writeFileSync(pin, readFileSync(pin, 'utf8').replace(/version: .*/, `version: ${version}`));
+      const a = join(d, 'AGENTS.md');
+      writeFileSync(a, edit(`${readFileSync(a, 'utf8')}\n## Project\n\nShipping 1.2 this week.\n`));
+      return d;
+    }
+    const agents = (d: string) => readFileSync(join(d, 'AGENTS.md'), 'utf8');
+    const onboarded = (a: string) =>
+      a.replace(
+        /<!-- reins:onboarding pending -->\n> \*\*Onboarding[^\n]*\n/,
+        '<!-- reins:onboarding done -->\n',
+      );
+    const run = (d: string) => runUpdate({ cwd: d, detectVendors: claude, yes: true });
+
+    it('which versions are from before the guide', () => {
+      for (const v of ['0.3.0', '0.3.1', '0.3.0-rc.4', '0.3.1-rc.2'])
+        expect(beforeGuide(v), v).toBe(true);
+      for (const v of ['0.2.0', '0.1.5', '0.3.2', '0.3.2-rc.1', '0.3.10', '0.4.0', '1.0.0'])
+        expect(beforeGuide(v), v).toBe(false);
+    });
+
+    it('a 0.3.1 install gets the note once, and its own text is left as it was', async () => {
+      const d = await installed('0.3.1', onboarded);
+      const before = agents(d);
+      expect(before).not.toContain('reins:tidy');
+      const r = await run(d);
+      const after = agents(d);
+      expect(count(after, TIDY)).toBe(1);
+      // nothing but the note was added: the project's section is byte for byte what it was
+      expect(after.replace(`\n${tidyNote()}\n`, '')).toBe(before);
+      expect(after).toContain('## Project\n\nShipping 1.2 this week.\n');
+      expect(r.install?.notes.some((n) => n.includes('AGENTS.md guide'))).toBe(true);
+      expect(existsSync(join(d, '.agents/harness/templates/agents-md-guide.md'))).toBe(true);
+      // the pin moved on, so a second update adds nothing
+      await run(d);
+      expect(agents(d)).toBe(after);
+    });
+
+    it('the dry run plans the same note and writes nothing', async () => {
+      const d = await installed('0.3.0', onboarded);
+      const before = agents(d);
+      const r = await runUpdate({ cwd: d, detectVendors: claude, dryRun: true });
+      expect(agents(d)).toBe(before);
+      expect(r.install?.applied?.changed).toContain('AGENTS.md');
+    });
+
+    it('no note when one is there already, done or pending', async () => {
+      for (const state of ['done', 'pending']) {
+        const d = await installed('0.3.1', (a) =>
+          onboarded(a).replace('# AGENTS.md\n', `# AGENTS.md\n\n<!-- reins:tidy ${state} -->\n`),
+        );
+        const before = agents(d);
+        await run(d);
+        expect(agents(d), state).toBe(before);
+      }
+    });
+
+    it('no note while an onboarding or a reconcile is pending: that procedure follows the guide', async () => {
+      const fresh = await installed('0.3.1', (a) => a);
+      expect(agents(fresh)).toContain('<!-- reins:onboarding pending -->');
+      await run(fresh);
+      expect(agents(fresh)).not.toContain('reins:tidy');
+      const rec = await installed('0.3.1', (a) =>
+        onboarded(a).replace('# AGENTS.md\n', '# AGENTS.md\n\n<!-- reins:reconcile pending -->\n'),
+      );
+      await run(rec);
+      expect(agents(rec)).not.toContain('reins:tidy');
+    });
+
+    it('an install already on 0.3.2 or later gets none', async () => {
+      const d = await installed('0.3.2', onboarded);
+      const before = agents(d);
+      await run(d);
+      expect(agents(d)).toBe(before);
+    });
+
+    it('the onboarding and reconcile notes point at the guide', () => {
+      const g = '`.agents/harness/templates/agents-md-guide.md`';
+      for (const n of [onboardingNote(false), onboardingNote(true), reconcileNote('x'), tidyNote()])
+        expect(n).toContain(g);
+    });
   });
 
   it('brings an old pin and a hand-edited harness file back to upstream, keeping bindings', async () => {
@@ -382,6 +476,11 @@ describe('reins update', () => {
         unknown
       >;
       expect(b['schema']).toBe('reins/bindings@2');
+      // a 0.x install is reconciled; it gets no note about the AGENTS.md guide on top (022 S-20b)
+      expect(readFileSync(join(d, 'AGENTS.md'), 'utf8')).toContain(
+        '<!-- reins:reconcile pending -->',
+      );
+      expect(readFileSync(join(d, 'AGENTS.md'), 'utf8')).not.toContain('reins:tidy');
       expect(b['mode']).toBe('single');
       // the PM is the model in the conversation: a version-1 `pm` is not carried over (022 S-27a)
       expect(b['default']).toBeUndefined();

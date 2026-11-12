@@ -400,6 +400,52 @@ describe('stage skills (019 S-9, design §3-1)', () => {
       '머지 지시가 어느 PR을 말하는지는 PM이 판단한다',
     );
   });
+  it('the AGENTS.md guide says what belongs and where the rest goes; onboard sorts by it (022 S-20, S-20a, V-5)', () => {
+    const harness = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
+    const guide = harness('harness/templates/agents-md-guide.md');
+    expect(guide).toContain('\n## What belongs\n');
+    expect(guide).toContain('\n## What does not, and where it goes\n');
+    const rest = guide.slice(guide.indexOf('## What does not, and where it goes'));
+    for (const k of [
+      'docs/ROADMAP.md',
+      '.loctx/ROADMAP.local.md',
+      '.agents/knowledge/',
+      '`.loctx/`',
+      'CONTRIBUTING.md',
+    ])
+      expect(rest, k).toContain(k);
+    expect(guide.split('\n').length).toBeLessThan(45);
+    const onboard = read('onboard');
+    expect(section(onboard, '## 1. When')).toContain('`<!-- reins:tidy pending -->`');
+    expect(section(onboard, '## 1. When')).toContain('For `tidy` only');
+    const proc = section(onboard, '## 2. Procedure');
+    expect(proc).toContain('`.agents/harness/templates/agents-md-guide.md`');
+    expect(proc).toContain('a table of what goes where');
+    expect(proc).toContain('move only what they accept');
+    expect(block('flow')).toContain(
+      'a pending `reins:` marker in this file (onboarding, reconcile, mode-changed, tidy)',
+    );
+    expect(harness('docs/design.md')).toContain('**The AGENTS.md guide.**');
+    expect(harness('docs/design.md')).toContain('**Tidy marker.**');
+    expect(harness('docs/design.ko.md')).toContain('**AGENTS.md 가이드.**');
+    expect(harness('docs/design.ko.md')).toContain('**정리 표시.**');
+  });
+  it('the harness changelog has a line for every unit of 0.3.2 (022 S-29, V-11)', () => {
+    const t = readFileSync(join(process.cwd(), 'harness/CHANGELOG.md'), 'utf8');
+    const s = t.slice(t.indexOf('## 0.3.2'), t.indexOf('## 0.3.1'));
+    for (const k of [
+      'One flow after the approvals',
+      'Adjusting the spec while working',
+      'Two audits per version',
+      'Accepted findings',
+      'agents-md-guide.md',
+      'Where a loop ends',
+      'Merge, review and retro',
+      'The report of `update`',
+      'The PM is the model in the conversation',
+    ])
+      expect(s, k).toContain(k);
+  });
   it.each(STAGES)('%s delegates from the personal table first when there is one (020 S-4)', (n) => {
     const t = read(n);
     expect(t.slice(t.indexOf('## 3. Delegation')).split('\n')[1]).toMatch(

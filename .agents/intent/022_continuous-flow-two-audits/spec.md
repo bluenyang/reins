@@ -1,7 +1,8 @@
 ---
 intent: "022"
-status: draft
-approvals: []
+status: accepted
+approvals:
+  - { role: user, by: BlueNyang, at: 2026-11-12, words: "진행", rev: cfbb541, kind: summary }
 summary_for_user: |
   작업 단위 열: W-1 spec 수락 뒤 구현~CI를 묻지 않는 하나의 흐름, 정지 목록에서 "기계를 떠나는 일"을 빼고 머지·stable만 지시 · W-2 spec의 `조정 기록`(A-n) — 단위의 추가·삭제·범위 변경만 멈추고 승인, 나머지는 진행 후 기록·보고 · W-3 감사 두 번(1차: CI 뒤 머지 전에 위험, 기록은 PR 브랜치에 / 2차: stable 뒤 회고 직전에 절차만, 회고로 넘김) · W-4 수용된 지적(세 번 이상 수용 → knowledge `accepted-finding`, 감사는 "알려진 수용"으로 분류) · W-5 AGENTS.md 가이드 문서와 온보딩의 가르기, 기존 설치에 `tidy` 표시 한 번 · W-6 회고가 루프의 끝, 기다리는 동안 다음 일로 채우지 않음, 버전 선택은 시작 지시가 아님 · W-7 머지 지시는 PM이 판단, 머지 때 브랜치 삭제, SHA 대응표, 모든 단위 리뷰, 회고가 하네스 자체의 문제를 가림 · W-8 `update`·`config` 보고의 `+`/`~` · W-9 PM은 지금 대화하는 모델(bindings의 `default`는 읽지 않고, `config`가 쓸 때 지움) · W-10 stable 뒤 이 저장소 자기 업데이트.
   intent에 없어 PM이 옮긴 곳(확인 필요): ① rc는 머지 지시 뒤 묻지 않고 냄 ② 작업 단위의 순서 변경은 조정(지금은 멈춤) ③ rc 확인에서 나온 작은 결함은 조정으로, 그 PR은 1차 감사 없이 감(리뷰·CI는 거침; 새 단위가 필요하면 승인과 1차 감사) ④ 머지는 PR마다 지시가 필요(기록·릴리스 문서 PR 포함, 묶음 제안 가능) ⑤ "멈추지 않고 진행"이라 해도 intent 승인·spec 진행/수정·머지·stable 지시는 받음 ⑥ 2차 감사 뒤의 닫는 PR(감사 기록·회고·자기 업데이트)은 감사 밖.

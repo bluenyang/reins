@@ -9,9 +9,9 @@ everything planned for it is done, later `rc.N` are stabilisation only (see
 This file is about the package. The harness that `reins update` re-applies to installed projects
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md).
 
-## [0.3.2] — unreleased
+## [0.3.2] — 2026-11-15
 
-rc.1: 2026-11-12 (intent 022). The flow between the approvals and the merge, two audits, where a loop ends,
+Stable: 2026-11-15 (the rc.1 commit, unchanged). rc.1: 2026-11-12 (intent 022). The flow between the approvals and the merge, two audits, where a loop ends,
 and what the 0.3.1 retro found.
 
 ### Added

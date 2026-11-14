@@ -1,7 +1,6 @@
 # AGENTS.md
 
-<!-- reins:tidy pending -->
-> **AGENTS.md guide — do this first in the next conversation.** reins now ships a guide for what this file holds (`.agents/harness/templates/agents-md-guide.md`). Run the `onboard` skill: with the user, sort the project sections by the guide — current work and plans to the roadmap, decisions to knowledge candidates, personal notes to `.loctx/` — and show what went where. Then change the marker above to `<!-- reins:tidy done -->`.
+<!-- reins:tidy done -->
 
 <!-- reins:mode-changed done -->
 <!-- reins:onboarding done -->
@@ -31,7 +30,7 @@ the project can follow them. reins is never called while a project works.
 ### Stack and commands
 
 - Node ≥ 22, pnpm, TypeScript (ESM). Lint/format: oxlint, oxfmt. Tests: vitest. Hooks: husky (`.husky/pre-commit`
-  and `pre-push` run `pnpm check`).
+  and `pre-push` call the gate script `.agents/harness/run-gates.sh`, which runs `pnpm check` and keeps its log).
 - `pnpm check` — lint, format check, typecheck, tests. Run before reporting done.
 - `pnpm build` — `cli/src` → `cli/dist` (the `reins` bin).
 - Running reins on this repository: use an installed copy (`npm i -g @bluenyang/reins@<version>`, then `reins …`).
@@ -48,27 +47,19 @@ the project can follow them. reins is never called while a project works.
 - What ships (the CLI, generators and build output) is TypeScript and never needs Python (R65). Development, test,
   verification and editing scripts may use Python; do not block Python itself — target repositories may be Python
   projects.
-- Merging a PR needs the maintainer's instruction to merge. Naming the PR is best; an instruction that names none
-  means the PR when one is open, or every PR the PM proposed to merge together. A general "carry on" is not a merge
-  instruction. Run the merge as a command of its own: Claude Code's auto mode refuses a merge without such an
-  instruction, and one chained with other commands.
+- Run a merge as a command of its own: Claude Code's auto mode refuses a merge chained with other commands. (Which PR
+  a merge instruction means is in the `merge` skill.)
 
 ## Conventions (this repository)
 
 - Branches: `type/topic` from a freshly pulled `master`, rebase onto `master`, rebase merge. Never commit on `master`.
 - Commit messages: `type(scope): title`, one-line summary, bullets, `Co-Authored-By` footer only. A commit that only
   records something done (ticking a work unit, naming a SHA) may be the title and the footer alone.
-- After a rebase merge GitHub gives the commits new SHAs; records (spec, audit) name the master SHAs.
-- PR bodies carry the raw check log's path and the last lines of its output; the audit gets the PR and CI records
-  the PM collects into `.loctx/reports/<version>/`.
+- PR bodies carry the raw check log's path and the last lines of its output.
 - Public documents: English by default with a Korean `.ko.md` twin, cross-linked (R67). Exception: `docs/conversation/` (the maintainer's design conversations) is written in Korean only, with no English twin (maintainer, 2026-11-11). Korean documents for the
   user may be polished with humanize-korean; English ones are not.
 - `CLAUDE.md` contains only `@AGENTS.md`.
-- Spec summaries wait for the maintainer's 진행 or 수정 every time; there is no standing auto-accept (maintainer,
-  2026-10-30). Intent approval, knowledge promotion and stable releases stay explicit.
 - Before a non-trivial decision, search `.agents/knowledge/` and `grep -l 'decisions:.*<keyword>' .loctx/history/*`.
-- The maintainer's own delegation is in `.loctx/delegation.local.md` (code review GPT-6.1 Sol, committee
-  Claude Fable and GPT-6 Astra, audit GPT-6 Astra in a fresh read-only run); follow it as the delegation block says.
 
 ## Language
 

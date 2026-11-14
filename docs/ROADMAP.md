@@ -68,9 +68,9 @@ State: **0.3.1 published** (2026-11-11, stable from the rc.2 commit; intent 021)
 - **Known models refreshed.** The model list `config` offers follows the current models. `claude-fable-5-2` can be chosen, but is not on the list of models seen working in this environment (decided after the audit).
 - **A warning at the head of `AGENTS.previous.md`.** The copy made when `update` moves an install of 0.2.0 or earlier starts by saying that it is a copy of instructions from 0.2.0 or earlier and that the reins commands it names do not exist in 0.3 and must not be run.
 
-### 0.3.2 — rc.1
+### 0.3.2 — published
 
-State: 0.3.2-rc.1 (2026-11-12, intent 022); stable on the maintainer's instruction.
+State: **0.3.2 published** (2026-11-15, stable from the rc.1 commit; intent 022).
 
 Fills the gaps in the flow that building 0.3.1 showed (maintainer, 2026-11-11; background in the [design conversation](conversation/2026-11-11_flow-audit-agents-md.md), in Korean).
 

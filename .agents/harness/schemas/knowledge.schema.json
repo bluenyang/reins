@@ -2,7 +2,7 @@
   "required": ["id", "kind", "status", "topics", "decisions", "applies_to", "source"],
   "properties": {
     "id": { "type": "string" },
-    "kind": { "enum": ["decision", "failure"] },
+    "kind": { "enum": ["decision", "failure", "accepted-finding"] },
     "status": { "enum": ["active", "superseded"] },
     "supersedes": { "type": ["string", "null"] },
     "topics": { "type": "array", "items": { "type": "string" } },

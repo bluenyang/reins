@@ -13,6 +13,7 @@ The intent is approved and has no accepted spec.
 2. Review it against the user's own words, the intent and the product boundary (pl/plan-reviewer and pl/qa-plan-reviewer if switched on; else review it yourself and say so).
 3. Write `summary_for_user` (3–5 lines) and show it. Wait for 진행 or 수정 — every time, no auto-accept.
 4. On 진행: add `{ role: user, by, at, words, rev, kind: summary }` to `approvals:`, set `status: accepted`, commit.
+5. After acceptance the spec may still move while the work goes on. A work unit added, dropped or rescoped comes back here: change the spec, show the summary, wait for 진행 or 수정. A smaller adjustment is recorded by `implement` under the spec's adjustment record (`A-n`) without stopping.
 
 ## 3. Delegation
 Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Planner (spec-writer, qa-designer) does steps 1 when switched on.

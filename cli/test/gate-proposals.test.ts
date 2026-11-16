@@ -279,9 +279,14 @@ describe('root typecheck and lint (023 S-1..S-9)', () => {
       names: ['check', 'lint', 'typecheck'],
     },
     {
-      id: '11h quoted names, options after the name, value-free run-all flags (A-6)',
-      scripts: { check: 'pnpm run "lint" --quiet && npm-run-all -p \'typecheck\'', ...TC },
+      id: '11h quoted names and value-free run-all flags count (A-6)',
+      scripts: { check: 'pnpm run "lint" && npm-run-all -p \'typecheck\'', ...TC },
       names: ['check'],
+    },
+    {
+      id: '11j any option on a package manager command does not count (A-6)',
+      scripts: { check: 'pnpm lint --quiet && npm run typecheck --help=true', ...TC },
+      names: ['check', 'lint', 'typecheck'],
     },
     {
       id: '11i help instead of a run (A-6)',

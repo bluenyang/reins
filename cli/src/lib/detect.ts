@@ -104,23 +104,6 @@ function pieces(body: string): string[] {
     .filter(Boolean);
 }
 
-/** Options that send a package manager to other packages or another directory (023 S-2.1). */
-const ELSEWHERE = new Set([
-  '-r',
-  '--recursive',
-  '-F',
-  '--filter',
-  '--workspaces',
-  '-ws',
-  '--workspace',
-  '-w',
-  '--dir',
-  '-C',
-  '--prefix',
-  '--cwd',
-]);
-const elsewhere = (w: string) =>
-  ELSEWHERE.has(w) || ELSEWHERE.has(w.split('=')[0] ?? '') || /^-[FCw]\S/.test(w);
 /** run-s / run-p / npm-run-all options that take no value; any other option makes the command unclear. */
 const RUN_ALL_FLAGS = new Set([
   '-p',
@@ -135,28 +118,23 @@ const RUN_ALL_FLAGS = new Set([
   '--print-name',
   '--silent',
 ]);
-/** Options that print help instead of running the script. */
-const HELP = new Set(['-h', '--help', '-?', '--usage']);
 const unquote = (w: string) => w.replace(/^(['"])(.*)\1$/, '$2');
 
 /**
  * Whether one command runs the root script `name` by name (023 S-2.1, A-5, A-6): `pnpm|yarn|bun [run]
- * name`, `npm run|run-script name`, or `run-s|run-p|npm-run-all … name …`. Options may follow the
- * script name, not precede it (an option's value could be read as the name); an option that points at
- * other packages or another directory anywhere makes it not count. When unsure, it does not count, so
- * the check is kept. `echo lint` and `turbo run lint` do not count.
+ * name` or `npm run|run-script name` with no option at all (an option may hold a value read as the
+ * name, print help, or point at another package or directory), or `run-s|run-p|npm-run-all … name …`
+ * with value-free flags only. When unsure, it does not count, so the check is kept: `pnpm lint --quiet`
+ * runs twice, no check is lost. `echo lint` and `turbo run lint` do not count.
  */
 function runsByName(piece: string, name: string): boolean {
-  const words = piece.split(' ').map(unquote);
-  if (words.some((w) => elsewhere(w) || HELP.has(w))) return false;
-  const [tool, ...rest] = words;
-  if (tool === 'pnpm' || tool === 'yarn' || tool === 'bun') {
-    const at = rest[0] === 'run' ? 1 : 0;
-    return rest[at] === name;
-  }
-  if (tool === 'npm') return (rest[0] === 'run' || rest[0] === 'run-script') && rest[1] === name;
+  const [tool, ...rest] = piece.split(' ').map(unquote);
   if (tool === 'run-s' || tool === 'run-p' || tool === 'npm-run-all')
     return rest.every((w) => !w.startsWith('-') || RUN_ALL_FLAGS.has(w)) && rest.includes(name);
+  if (rest.some((w) => w.startsWith('-'))) return false;
+  if (tool === 'pnpm' || tool === 'yarn' || tool === 'bun')
+    return (rest[0] === 'run' ? rest[1] : rest[0]) === name;
+  if (tool === 'npm') return (rest[0] === 'run' || rest[0] === 'run-script') && rest[1] === name;
   return false;
 }
 

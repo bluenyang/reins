@@ -302,6 +302,11 @@ describe('root typecheck and lint (023 S-1..S-9)', () => {
       names: ['check', 'lint', 'typecheck'],
     },
     {
+      id: '11m an escaped quote makes the bundle unclear (A-11)',
+      scripts: { check: 'echo "start \\" && pnpm lint && \\" end" && pnpm typecheck', ...TC },
+      names: ['check', 'lint', 'typecheck'],
+    },
+    {
       id: '11l an open quote makes the bundle unclear (A-11)',
       scripts: { check: 'pnpm lint && echo "oops && pnpm typecheck', ...TC },
       names: ['check', 'lint', 'typecheck'],

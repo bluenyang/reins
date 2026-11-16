@@ -79,7 +79,7 @@ summary_for_user: |
 - [x] W-1 (e8d58a8) 루트 `typecheck`·`lint` 게이트 후보 (S-1~S-10, S-16의 §5) — `cli/src/lib/detect.ts`, `cli/test/gate-proposals.test.ts`(필요하면 `cli/test/gate-refresh.test.ts`), `docs/design.md`·`design.ko.md` §5
 - [x] W-2 (268676f) 2차 감사 범위의 시작점 (S-11~S-15, S-16의 §3-3) — `skills/audit/SKILL.md` L23(게이트 로그 "after the first audit's head")·L24(범위 "from the first audit's head"), `harness/templates/audit.md`, `harness/roles/auditor.md`, `docs/design.md`·`design.ko.md` §3-3, 구절 테스트(`cli/test/skills.test.ts`)
 - [x] W-3 (ed7bebf) 0.3.3 문서 (S-17, S-18) — `CHANGELOG.md`, `harness/CHANGELOG.md`, `docs/ROADMAP.md`·`ROADMAP.ko.md`
-- [x] W-4 (이 커밋; 개정 1) 개인 설정의 병합과 모델 화면 (S-20~S-24) — `cli/src/lib/bindings.ts`(`mergeLocal`), `cli/src/commands/config-models.ts`(`modelsScreen`·`groupLine`·그룹 화면), `cli/test/bindings-v2.test.ts`·`cli/test/config.test.ts`(필요하면 화면 테스트 파일), `docs/design.md`·`design.ko.md` §5(·§9), `CHANGELOG.md`, `harness/CHANGELOG.md`, `docs/ROADMAP.md`·`ROADMAP.ko.md`
+- [x] W-4 (57a1732; 개정 1) 개인 설정의 병합과 모델 화면 (S-20~S-24) — `cli/src/lib/bindings.ts`(`mergeLocal`), `cli/src/commands/config-models.ts`(`modelsScreen`·`groupLine`·그룹 화면), `cli/test/bindings-v2.test.ts`·`cli/test/config.test.ts`(필요하면 화면 테스트 파일), `docs/design.md`·`design.ko.md` §5(·§9), `CHANGELOG.md`, `harness/CHANGELOG.md`, `docs/ROADMAP.md`·`ROADMAP.ko.md`
 
 ## 검증 기준
 - V-1 (W-1; S-9) **고치기 전 실패.** W-1의 테스트를 먼저 쓰고 지금 코드에서 돌린다: 재현 ①행은 기대 `[lint, typecheck, test, build]`에 실제 `[test, build]`, ②행은 기대 `[check, typecheck, build]`에 실제 `[check, build]`로 실패한다. 출력 원본 `.loctx/reports/0.3.3/w1-before.log`. 두 행이 실패하지 않으면(지금 코드로 통과하면) 테스트가 결함을 잡지 못하는 것이라 실패로 본다.
@@ -132,7 +132,7 @@ summary_for_user: |
 - A-5 (2026-11-16, W-1) 2차 코드 리뷰(GPT-6.1 Sol) must-fix: S-2.1의 정규식은 이름이 명령 어디에 있어도 부른 것으로 쳐서 `echo lint`·`pnpm --dir ./cli lint`가 루트 게이트를 지움("틀리면 검사가 남는다"와 어긋남) → 이름 판정을 실행 형태와 디렉터리·패키지 옵션 제외로 좁힘(`runsByName`), V-2 행 11b~11e 추가, 설계 양판 §5 · `.loctx/reports/0.3.3/code-review-2.md` · dedb7d5
 - A-6 (2026-11-16, W-1) A-5의 리뷰(GPT-6.1 Sol) must-fix 2·should-fix 1: 옵션을 모두 버리면 옵션의 값이 이름으로 읽힘(`npm run --script-shell lint typecheck`), 값이 붙은 짧은 옵션(`pnpm -Fweb lint`)을 놓침, 따옴표 이름을 못 알아봄 → 이름 앞의 옵션은 부름으로 치지 않음(run-s 계열은 값 없는 플래그만 허용), `-F`·`-C`·`-w`에 붙은 값도 제외, 따옴표를 벗김, 행 11e 기대값을 `[check, typecheck]`로 바꾸고 11f~11h 추가, 설계 양판 §5 · `.loctx/reports/0.3.3/code-review-3.md` · c5987c3; 이어서 같은 리뷰어의 재리뷰 must-fix 1: `npm run lint --help`는 도움말만 냄 → 도움말 옵션이 있으면 부름이 아님, 행 11i · `.loctx/reports/0.3.3/code-review-4.md` · 33878c6; 세 번째 재리뷰 must-fix 1(`--help=true`)까지 나와, 예외를 하나씩 더하지 않고 규칙을 바꿈: 패키지 매니저 명령은 옵션이 하나라도 있으면 부름이 아님(옵션 목록 ELSEWHERE·HELP는 지움), run-s 계열은 값 없는 플래그만. 대가: `pnpm lint --quiet` 같은 묶음은 같은 검사를 두 번 돌림. 행 11h 기대값 바꿈, 11j 추가 · `.loctx/reports/0.3.3/code-review-5.md` · 50062b5
 - A-7 (2026-11-16, W-3) V-5 두 번째 독립 대조 FAIL 2건: 로드맵 양판 0.3.3 첫 항목에 "옵션이 붙은 명령은 치지 않음"이 빠짐, 두 CHANGELOG의 쉼표 → 보충 · `.loctx/reports/0.3.3/design-twin-comparison-2.md` · 2389ff7
-- A-8 (2026-11-16, W-4) 빈 그룹 `{}`이 화면에서 `off`가 아니라 `—`로 보이던 것(`groupLine`)을 같이 고침 · V-11이 드러냄 · (W-4 커밋)
+- A-8 (2026-11-16, W-4) 빈 그룹 `{}`이 화면에서 `off`가 아니라 `—`로 보이던 것(`groupLine`)을 같이 고침 · V-11이 드러냄 · 57a1732
 
 ## 우려
 1. **intent 밖에서 PM이 정한 것 — 모두 확인 필요.** ① S-15: `harness/roles/auditor.md`도 W-2에서 고침(intent의 영향 범위에 없음) — 확인 필요 ② S-7: `test` 판정은 그대로 — 확인 필요 ③ S-2.2: 직접 호출은 명령이 글자 그대로 같을 때만 부른 것으로 침(감싼 호출은 풀지 않음) — 확인 필요 ④ S-6: lint를 typecheck 앞에 — 확인 필요 ⑤ S-2.1 단서: 재귀·필터·태스크 러너 호출은 부른 것으로 치지 않음 — 확인 필요.

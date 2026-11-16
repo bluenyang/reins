@@ -5,6 +5,7 @@ Read by `reins update`: it lists the entries newer than a project's pinned versi
 ## 0.3.3
 - Gate discovery: the root `typecheck` and `lint` scripts become gate candidates in `reins install` and `reins config gates --refresh`, unless the chosen bundle check already calls them (by name, or an identical command). Only a command that runs the script counts; recursive, filtered, other-directory and task-runner calls (`pnpm -r`, `--filter`, `--dir`, `turbo`, `nx`, `lerna`), a command with any option and a mere mention (`echo lint`) do not; a script that rewrites files is left out. Order: check, lint, typecheck, test, build, e2e.
 - Already installed repositories: `reins update` does not change `gates.yaml`. Run `reins config gates --refresh` once to see the new candidates and apply the ones you want.
+- Personal settings: a group in `.loctx/bindings.local.yaml` wins only where it speaks (a role alone keeps the team's group and its other roles; a group model replaces the team's; `{}` switches it off), and the `config` models screen shows the file of the chosen scope. `reins update` rewrites `.loctx/delegation.local.md` accordingly.
 - The second audit's range starts at the end SHA of the first audit record's `first.range` (the default branch's SHA when the merge rewrote commits); the PM copies it into the audit request and `second.range` unchanged. Changed in the `audit` skill, the auditor role and the audit template.
 
 ## 0.3.2

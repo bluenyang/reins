@@ -1,0 +1,67 @@
+# reins model assignment (design §5) — the user changes it with `reins config`; nothing reads it while you work
+schema: reins/bindings@2
+mode: multi
+audit:
+  required: true
+default:
+  vendor: claude
+  model: claude-opus-5-5
+groups:
+  advisor:
+    vendor: claude
+    model: claude-fable-5-1
+  pl:
+    roles:
+      code-reviewer:
+        vendor: openai
+        model: gpt-6.1-sol
+    vendor: claude
+    model: claude-sonnet-5-5
+  executor:
+    roles:
+      deployer:
+        vendor: claude
+        model: claude-haiku-5-5
+      researcher:
+        vendor: cursor
+        model: cursor-grok-4.5-high-fast
+      qa-runner:
+        vendor: google
+        model: gemini-3.8-flash-medium
+      tool-executor:
+        vendor: claude
+        model: claude-haiku-5-5
+  implementer:
+    roles:
+      doc:
+        vendor: claude
+        model: claude-sonnet-5-5
+    vendor: claude
+    model: claude-sonnet-5-5
+  planner:
+    roles:
+      spec-writer:
+        vendor: claude
+        model: claude-opus-5-5
+      qa-designer:
+        vendor: google
+        model: gemini-4-argon-high
+tools:
+  claude:
+    cli: claude
+    use: true
+  openai:
+    cli: codex
+    use: true
+  google:
+    cli: agy
+    use: true
+  cursor:
+    cli: cursor-agent
+    use: true
+  gemini:
+    cli: gemini
+    use: false
+  copilot:
+    cli: copilot
+    use: true

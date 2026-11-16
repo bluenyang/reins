@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { cliOf, localDelegation, renderDelegation, FALLBACK_RULE } from '../src/lib/agents-md.js';
 import {
@@ -227,11 +230,12 @@ describe('fallback models (021 S-16, S-17, S-19)', () => {
         withGroups({ pl: { ...sonnet, roles: { control: { ...sol, fallback: sol } } } }),
       )[0],
     ).toMatch(/^pl\.control: the fallback is the role's own model/);
-    // a personal file that sets only a fallback would switch the group off for that person
+    // a personal file that sets only a fallback adds it to the team's model (023 S-20; it used to switch the group off)
     const merged = mergeLocal(withGroups({ implementer: sonnet }), {
       groups: { implementer: { fallback: terra } },
     });
-    expect(pick(merged, 'implementer', 'code').on).toBe(false);
+    expect(pick(merged, 'implementer', 'code').on).toBe(true);
+    expect(pick(merged, 'implementer', 'code').fallback).toEqual(terra);
   });
 
   it('(c) the table cell names the fallback and how to call it: another vendor, Claude, a writing group', () => {
@@ -356,5 +360,56 @@ describe('the command of a call line (021 S-28)', () => {
     expect(renderDelegation(doc({ openai: { use: true } }))).toContain(
       '`codex exec -m gpt-6.1-terra',
     );
+  });
+});
+
+describe('a personal group wins only where it speaks (023 S-20, V-10)', () => {
+  const team: BindingsV2 = {
+    schema: 'reins/bindings@2',
+    mode: 'multi',
+    groups: { pl: { ...sonnet, roles: { 'code-reviewer': sol } }, advisor: fable },
+  };
+  const merged = (groups: BindingsV2['groups']) => mergeLocal(team, { groups });
+  const at = (doc: BindingsV2, g: string, r: string) => pick(doc, g, r).models;
+
+  it('(a) roles only: the team group stays, that role is replaced', () => {
+    const d = merged({ pl: { roles: { 'plan-reviewer': terra } } });
+    expect(at(d, 'pl', 'control')).toEqual([sonnet]);
+    expect(at(d, 'pl', 'code-reviewer')).toEqual([sol]);
+    expect(at(d, 'pl', 'plan-reviewer')).toEqual([terra]);
+  });
+  it("(b) a group model replaces the team's group model and its role entries", () => {
+    const d = merged({ pl: terra });
+    expect(d.groups?.pl).toEqual(terra);
+    expect(at(d, 'pl', 'code-reviewer')).toEqual([terra]);
+  });
+  it('(c) a group model with a role of its own', () => {
+    const d = merged({ pl: { ...terra, roles: { 'code-reviewer': fable } } });
+    expect(at(d, 'pl', 'control')).toEqual([terra]);
+    expect(at(d, 'pl', 'code-reviewer')).toEqual([fable]);
+  });
+  it('(d) an empty group switches it off', () => {
+    expect(pick(merged({ pl: {} }), 'pl', 'control').on).toBe(false);
+  });
+  it("(e) a fallback only is added to the team's model", () => {
+    const d = merged({ pl: { fallback: terra } });
+    expect(d.groups?.pl).toEqual({ ...sonnet, roles: { 'code-reviewer': sol }, fallback: terra });
+  });
+  it('(f) several models replace one', () => {
+    const d = merged({ advisor: { models: [sonnet, terra] } });
+    expect(d.groups?.advisor).toEqual({ models: [sonnet, terra] });
+  });
+  it('(g) a group the team does not have is taken as it is', () => {
+    expect(merged({ auditor: terra }).groups?.auditor).toEqual(terra);
+  });
+  it("(h) this repository's own two files: the PL roles keep the team's model", () => {
+    const read = (f: string) =>
+      parse(readFileSync(join(import.meta.dirname, 'fixtures/023', f), 'utf8')) as BindingsV2;
+    const d = mergeLocal(read('team-bindings.yaml'), read('local-bindings.yaml'));
+    const claudeSonnet = { vendor: 'claude', model: 'claude-sonnet-5-5' };
+    expect(at(d, 'pl', 'plan-reviewer')).toEqual([claudeSonnet]);
+    expect(at(d, 'pl', 'control')).toEqual([claudeSonnet]);
+    expect(at(d, 'pl', 'code-reviewer')).toEqual([{ vendor: 'openai', model: 'gpt-6.1-sol' }]);
+    expect(pick(d, 'planner', 'spec-writer').on).toBe(false);
   });
 });

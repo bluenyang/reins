@@ -190,7 +190,12 @@ export function fallbackProblems(doc: Partial<BindingsV2>): string[] {
 /** Whether the per-version audit is mandatory (design §3-3): true unless the file says false. */
 export const auditRequired = (doc: BindingsV2): boolean => doc.audit?.required !== false;
 
-/** The local override wins per key: mode, audit, each tool and each group as a whole. `default` is read from neither. */
+/**
+ * The local override wins per key: mode, audit and each tool; a group wins only where it speaks (023 S-20).
+ * `{}` switches the team's group off. A group model (`vendor`/`model` or `models`) replaces the team's group
+ * model, its fallback and its role entries; each personal role replaces that role; a personal fallback
+ * replaces the group's. `default` is read from neither.
+ */
 export function mergeLocal(team: BindingsV2, local: Partial<BindingsV2> | undefined): BindingsV2 {
   if (!local) return team;
   const out: BindingsV2 = { ...team, schema: 'reins/bindings@2' };
@@ -198,7 +203,31 @@ export function mergeLocal(team: BindingsV2, local: Partial<BindingsV2> | undefi
   if (local.mode) out.mode = local.mode;
   if (local.audit) out.audit = { ...team.audit, ...local.audit };
   if (local.tools) out.tools = { ...team.tools, ...local.tools };
-  if (local.groups) out.groups = { ...team.groups, ...local.groups };
+  if (local.groups) {
+    const groups = { ...team.groups };
+    for (const [g, mine] of Object.entries(local.groups) as [Group, GroupSpec | undefined][]) {
+      if (!mine) continue;
+      groups[g] = mergeGroup(team.groups?.[g], mine);
+    }
+    out.groups = groups;
+  }
+  return out;
+}
+
+function mergeGroup(theirs: GroupSpec | undefined, mine: GroupSpec): GroupSpec {
+  if (!theirs || Object.keys(mine).length === 0) return mine;
+  const speaksModel =
+    (mine.vendor !== undefined && mine.model !== undefined) || !!mine.models?.length;
+  const out: GroupSpec = speaksModel ? {} : { ...theirs };
+  if (speaksModel) {
+    if (mine.models?.length) out.models = mine.models;
+    else {
+      out.vendor = mine.vendor;
+      out.model = mine.model;
+    }
+  }
+  if (mine.roles) out.roles = { ...out.roles, ...mine.roles };
+  if (mine.fallback) out.fallback = mine.fallback;
   return out;
 }
 

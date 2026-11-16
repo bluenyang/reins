@@ -41,7 +41,7 @@ const show = (b: Binding | undefined) => (b ? `${b.vendor} ${b.model}` : 'off (P
 
 /** One line per group: `pl  claude claude-sonnet-5-5, openai gpt-6.1-terra  +1 role`. */
 export function groupLine(group: Group, spec: GroupSpec | undefined, mode?: string): string {
-  if (!spec) return `${group.padEnd(12)} off — the PM does it`;
+  if (!spec || Object.keys(spec).length === 0) return `${group.padEnd(12)} off — the PM does it`;
   const tag =
     mode === 'multi'
       ? ''
@@ -108,8 +108,11 @@ export async function modelsScreen(o: ModelsScreenOptions): Promise<'back' | 'ex
   };
 
   for (;;) {
-    const doc = effectiveBindings(root);
-    if (!doc) {
+    // project shows the team file; local shows what applies to this user, marking what the personal file sets (023 S-22)
+    const team = readTeam(root).doc;
+    const doc: BindingsV2 | null = scope === 'project' ? team : effectiveBindings(root);
+    const mine = scope === 'local' ? readLocalBindings(root)?.groups : undefined;
+    if (!doc || !team) {
       prompter.note('no version-2 bindings.yaml here — run `reins install` or `reins update`');
       return 'back';
     }
@@ -126,10 +129,14 @@ export async function modelsScreen(o: ModelsScreenOptions): Promise<'back' | 'ex
         value: 'scope',
         label: `scope: ${scope === 'local' ? 'local | project' : 'project | local'}`,
       },
-      ...GROUPS.map((g) => ({ value: g, label: groupLine(g, doc.groups?.[g], doc.mode) })),
+      ...GROUPS.map((g) => ({
+        value: g,
+        label: `${groupLine(g, doc.groups?.[g], doc.mode)}${mine?.[g] ? '  (local)' : ''}`,
+      })),
     ];
-    const v = await prompter.select<string>({
-      message: `Models and roles (mode: ${doc.mode ?? 'single'})`,
+    const showing: string = scope === 'project' ? 'team file' : 'your effective settings';
+    const v: string | typeof BACK | typeof EXIT = await prompter.select<string>({
+      message: `Models and roles (mode: ${doc.mode ?? 'single'}, showing: ${showing})`,
       options,
     });
     if (v === EXIT || v === 'exit') return 'exit';

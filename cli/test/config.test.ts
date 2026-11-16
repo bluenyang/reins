@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { CONFIG_HINT, formatBindings, runConfig } from '../src/commands/config.js';
 import { configureBindings } from '../src/commands/configure.js';
+import { modelsScreen } from '../src/commands/config-models.js';
 import { runInstall } from '../src/commands/install.js';
 import { runUpdate } from '../src/commands/update.js';
 import { renderDelegation } from '../src/lib/agents-md.js';
@@ -184,7 +185,7 @@ describe('reins config (019 S-6, design §9)', () => {
     );
     expect(p.asked.map((q) => q.message)).toEqual([
       'Configuration',
-      'Models and roles (mode: single)',
+      'Models and roles (mode: single, showing: your effective settings)',
       'Configuration',
     ]);
     expect(p.asked[0]?.values).toEqual(['models', 'tools', 'mode', 'audit', 'gates', 'exit']);
@@ -824,5 +825,34 @@ describe('fallback models through config (021 S-18, V-7)', () => {
     expect(out.join('')).toMatch(
       /implementer\/code\s+claude claude-sonnet-5-5 \(group\) — fallback: openai gpt-6\.1-terra/,
     );
+  });
+});
+
+describe('the models screen shows the file of its scope (023 S-22, S-23, V-11, V-12)', () => {
+  const plannerLine = (labels: string[] | undefined) =>
+    (labels ?? []).find((l) => l.startsWith('planner')) ?? '';
+
+  it('local shows the effective settings marked (local); project shows the team file', async () => {
+    const d = await repo();
+    await configureBindings({ cwd: d, mode: 'multi', set: ['planner=claude:claude-opus-5-5'] });
+    await configureBindings({ cwd: d, local: true, off: ['planner'] });
+    const p = scriptedPrompter(['scope', 'project', 'exit']);
+    await modelsScreen({ root: d, prompter: p, detectVendors: detect });
+    const screens = p.asked.filter((a) => a.message.startsWith('Models and roles'));
+    expect(screens).toHaveLength(2);
+    expect(screens[0]!.message).toContain('showing: your effective settings');
+    expect(plannerLine(screens[0]!.labels)).toMatch(/off .*\(local\)/);
+    expect(screens[1]!.message).toContain('showing: team file');
+    expect(plannerLine(screens[1]!.labels)).toContain('claude claude-opus-5-5');
+    expect(plannerLine(screens[1]!.labels)).not.toContain('(local)');
+  });
+
+  it("one personal role keeps the team's other roles in the personal table", async () => {
+    const d = await repo();
+    await configureBindings({ cwd: d, mode: 'multi', set: ['pl=claude:claude-sonnet-5-5'] });
+    await configureBindings({ cwd: d, local: true, set: ['pl.code-reviewer=openai:gpt-6.1-sol'] });
+    const t = readFileSync(join(d, '.loctx/delegation.local.md'), 'utf8');
+    expect(t).toContain('| pl/code-reviewer | openai gpt-6.1-sol |');
+    expect(t).toMatch(/\| pl\/plan-reviewer \| claude claude-sonnet-5-5 \|/);
   });
 });

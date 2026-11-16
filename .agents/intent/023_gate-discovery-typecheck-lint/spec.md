@@ -67,7 +67,7 @@ summary_for_user: |
 ## 작업 단위
 - [x] W-1 (e8d58a8) 루트 `typecheck`·`lint` 게이트 후보 (S-1~S-10, S-16의 §5) — `cli/src/lib/detect.ts`, `cli/test/gate-proposals.test.ts`(필요하면 `cli/test/gate-refresh.test.ts`), `docs/design.md`·`design.ko.md` §5
 - [x] W-2 (268676f) 2차 감사 범위의 시작점 (S-11~S-15, S-16의 §3-3) — `skills/audit/SKILL.md` L23(게이트 로그 "after the first audit's head")·L24(범위 "from the first audit's head"), `harness/templates/audit.md`, `harness/roles/auditor.md`, `docs/design.md`·`design.ko.md` §3-3, 구절 테스트(`cli/test/skills.test.ts`)
-- [ ] W-3 0.3.3 문서 (S-17, S-18) — `CHANGELOG.md`, `harness/CHANGELOG.md`, `docs/ROADMAP.md`·`ROADMAP.ko.md`
+- [x] W-3 (ed7bebf) 0.3.3 문서 (S-17, S-18) — `CHANGELOG.md`, `harness/CHANGELOG.md`, `docs/ROADMAP.md`·`ROADMAP.ko.md`
 
 ## 검증 기준
 - V-1 (W-1; S-9) **고치기 전 실패.** W-1의 테스트를 먼저 쓰고 지금 코드에서 돌린다: 재현 ①행은 기대 `[lint, typecheck, test, build]`에 실제 `[test, build]`, ②행은 기대 `[check, typecheck, build]`에 실제 `[check, build]`로 실패한다. 출력 원본 `.loctx/reports/0.3.3/w1-before.log`. 두 행이 실패하지 않으면(지금 코드로 통과하면) 테스트가 결함을 잡지 못하는 것이라 실패로 본다.

@@ -357,6 +357,9 @@ describe('root typecheck and lint (023 S-1..S-9)', () => {
     const cmd = (n: string) => r.gates.find((g) => g.name === n)?.cmd;
     expect(cmd('lint')).toBe('npm run lint');
     expect(cmd('typecheck')).toBe('npm run typecheck');
+    const from = (n: string) => r.gates.find((g) => g.name === n)?.from;
+    expect(from('lint')).toBe('package.json#scripts.lint');
+    expect(from('typecheck')).toBe('package.json#scripts.typecheck');
   });
 
   it('row 23 yarn runner', () => {
@@ -364,6 +367,9 @@ describe('root typecheck and lint (023 S-1..S-9)', () => {
     const cmd = (n: string) => r.gates.find((g) => g.name === n)?.cmd;
     expect(cmd('lint')).toBe('yarn lint');
     expect(cmd('typecheck')).toBe('yarn typecheck');
+    const from = (n: string) => r.gates.find((g) => g.name === n)?.from;
+    expect(from('lint')).toBe('package.json#scripts.lint');
+    expect(from('typecheck')).toBe('package.json#scripts.typecheck');
   });
 
   it('row 24 a Makefile only: lint and typecheck targets are not candidates (S-10)', () => {

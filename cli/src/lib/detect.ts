@@ -104,23 +104,48 @@ function pieces(body: string): string[] {
     .filter(Boolean);
 }
 
-const REACH = new Set(['-r', '--recursive', '-F', '--workspaces', '-ws', '--filter']);
-const RUNNERS = new Set(['turbo', 'nx', 'lerna']);
+/** Options that send a package manager to other packages or another directory (023 S-2.1). */
+const ELSEWHERE = new Set([
+  '-r',
+  '--recursive',
+  '-F',
+  '--filter',
+  '--workspaces',
+  '-ws',
+  '--workspace',
+  '-w',
+  '--dir',
+  '-C',
+  '--prefix',
+  '--cwd',
+]);
+const elsewhere = (w: string) => ELSEWHERE.has(w) || ELSEWHERE.has(w.split('=')[0] ?? '');
 
 /**
- * Whether the bundle body already runs the root script `name` (023 S-2): by its name as a whole word,
- * unless the piece is recursive, filtered or a task runner; or by the script's own body as a piece.
+ * Whether one command runs the root script `name` by name (023 S-2.1): `pnpm|yarn|bun [run] name`,
+ * `npm run|run-script name`, or `run-s|run-p|npm-run-all … name …`, with no option that points at
+ * other packages or another directory. Anything else (`echo lint`, `turbo run lint`) does not count.
+ */
+function runsByName(piece: string, name: string): boolean {
+  const words = piece.split(' ');
+  if (words.some(elsewhere)) return false;
+  const [tool, ...rest] = words;
+  const args = rest.filter((w) => !w.startsWith('-'));
+  if (tool === 'pnpm' || tool === 'yarn' || tool === 'bun')
+    return args[0] === 'run' ? args[1] === name : args[0] === name;
+  if (tool === 'npm') return (args[0] === 'run' || args[0] === 'run-script') && args[1] === name;
+  if (tool === 'run-s' || tool === 'run-p' || tool === 'npm-run-all') return args.includes(name);
+  return false;
+}
+
+/**
+ * Whether the bundle body already runs the root script `name` (023 S-2): one of its commands runs it
+ * by name, or is the script's own body cleaned up the same way.
  */
 function calls(bundle: string | null, name: string, scripts: Record<string, string>): boolean {
   if (bundle === null) return false;
-  const named = new RegExp(`(?<![\\w:./-])${name}(?![\\w:.-])`);
   const own = tidy(unredirect(scripts[name] ?? ''));
-  return pieces(bundle).some((piece) => {
-    const words = piece.split(' ');
-    const reaches =
-      RUNNERS.has(words[0] ?? '') || words.some((w) => REACH.has(w) || w.startsWith('--filter='));
-    return (named.test(piece) && !reaches) || (own !== '' && piece === own);
-  });
+  return pieces(bundle).some((piece) => runsByName(piece, name) || (own !== '' && piece === own));
 }
 
 /**

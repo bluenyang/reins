@@ -246,6 +246,26 @@ describe('root typecheck and lint (023 S-1..S-9)', () => {
       names: ['check', 'lint'],
     },
     {
+      id: '11b echo names the script without running it (A-5)',
+      scripts: { check: 'echo lint && pnpm typecheck', ...TC },
+      names: ['check', 'lint'],
+    },
+    {
+      id: '11c another directory (A-5)',
+      scripts: { check: 'pnpm --dir ./cli lint && npm --prefix web run typecheck', ...TC },
+      names: ['check', 'lint', 'typecheck'],
+    },
+    {
+      id: '11d yarn workspace and bun run (A-5)',
+      scripts: { check: 'yarn workspace web lint && bun run typecheck', ...TC },
+      names: ['check', 'lint'],
+    },
+    {
+      id: '11e npm run-script and options before the name (A-5)',
+      scripts: { check: 'npm run-script lint && pnpm --silent typecheck', ...TC },
+      names: ['check'],
+    },
+    {
       id: '12 task runner',
       scripts: { check: 'turbo run lint typecheck', ...TC },
       names: ['check', 'lint', 'typecheck'],

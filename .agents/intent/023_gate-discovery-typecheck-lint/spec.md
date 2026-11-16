@@ -3,11 +3,12 @@ intent: "023"
 status: accepted
 approvals:
   - { role: user, by: BlueNyang, at: 2026-11-16, words: "진행", rev: ab56c6f, kind: summary }
+  - { role: user, by: BlueNyang, at: 2026-11-16, words: "개정 승인 및 진행", rev: aa3207d, kind: summary }
 summary_for_user: |
   W-1 게이트 탐색: 루트 package.json의 `typecheck`·`lint`도 게이트 후보가 됩니다. 묶음 검사(`check`·`verify`·`ci`·`lint:check` 중 고른 것)가 그 스크립트를 이름으로 부르거나(`pnpm lint`, `run-s lint typecheck`) 같은 명령을 글자 그대로 담으면(`tsc --noEmit`) 넣지 않습니다. 이 판정은 `test`보다 엄격합니다: `\blint\b`로 보면 `lint:check`·`lint:fix`도 lint로 쳐 버리기 때문이고, `test`의 판정은 이미 설치된 저장소의 refresh 결과가 바뀌지 않도록 그대로 둡니다. `pnpm -r`·`--filter`·`turbo`·`nx`·`lerna`처럼 루트 스크립트가 아닌 것을 부를 수 있는 호출은 부른 것으로 치지 않습니다(틀리면 검사가 두 번 돌 뿐 빠지지 않음). 파일을 고치는 lint·typecheck는 빼고, 순서는 check → lint → typecheck → test → build → e2e입니다. 재현 두 모양, 이 저장소 모양(check + build 그대로), 실행기별 명령을 표 테스트로, refresh가 `new typecheck`만 보이고 `--apply` 없이 쓰지 않는 것도 테스트로 확인합니다.
   W-2 2차 감사 범위: 시작점은 1차 감사 기록 `first.range`의 끝 SHA(머지가 SHA를 바꿨으면 SHA 대응 표의 기본 브랜치 SHA)이고, PM은 그 값을 감사 요청에 그대로 옮깁니다. `audit` 스킬·감사 템플릿 4행·감사자 역할 파일·설계 양판 §3-3을 고칩니다. W-3: 두 CHANGELOG와 로드맵 양판에 0.3.3을 적습니다.
   확인 필요(intent에 없어 PM이 정함): ① `harness/roles/auditor.md`도 W-2에서 고침 ② `test` 판정은 그대로 ③ 직접 호출은 명령이 글자 그대로 같을 때만 부른 것으로 침 ④ lint를 typecheck 앞에 ⑤ 재귀·필터·태스크 러너 호출은 부른 것으로 치지 않음.
-  개정 1(2026-11-16, W-4 추가 — 진행/수정 대기): `reins config` 모델 화면이 scope와 상관없이 팀+개인을 합친 값을 보여 주고, 개인 파일의 그룹이 팀 그룹을 통째로 가리는 결함. 개인 설정은 적은 곳만 이깁니다 — 역할만 적으면 그 역할만, 그룹 모델을 적으면 그 그룹의 팀 모델과 팀의 역할별 모델을 덮어씀(개인이 적은 역할은 그 값), `{}`은 끔, 개인 파일의 대체(fallback)만 적으면 팀 모델에 대체만 더함. 화면은 project에서 팀 파일, local에서 합친 결과(개인 파일에서 온 값에 `(local)` 표시). 설계 양판 §5와 두 CHANGELOG·로드맵. 이 기계의 개인 위임 표는 고친 reins로 다시 쓰이면 PL 역할이 돌아옵니다. 검증 V-10~V-12: 병합 표 테스트, 화면 테스트, 개인 위임 표 재생성.
+  개정 1(2026-11-16, W-4 추가): `reins config` 모델 화면이 scope와 상관없이 팀+개인을 합친 값을 보여 주고, 개인 파일의 그룹이 팀 그룹을 통째로 가리는 결함. 개인 설정은 적은 곳만 이깁니다 — 역할만 적으면 그 역할만, 그룹 모델을 적으면 그 그룹의 팀 모델과 팀의 역할별 모델을 덮어씀(개인이 적은 역할은 그 값), `{}`은 끔, 개인 파일의 대체(fallback)만 적으면 팀 모델에 대체만 더함. 화면은 project에서 팀 파일, local에서 합친 결과(개인 파일에서 온 값에 `(local)` 표시). 설계 양판 §5와 두 CHANGELOG·로드맵. 이 기계의 개인 위임 표는 고친 reins로 다시 쓰이면 PL 역할이 돌아옵니다. 검증 V-10~V-12: 병합 표 테스트, 화면 테스트, 개인 위임 표 재생성.
   검증 V-1~V-9: 고치기 전 실패 로그, 표 테스트, install·refresh 테스트, 스킬 구절 테스트, 양판 대조, `pnpm check`와 CI, rc 뒤 배포본 smoke, stable 뒤 자기 업데이트. 진행을 받으면 구현 → 리뷰 → 테스트 → PR → CI → 1차 감사까지 묻지 않고 가고 머지 지시를 기다리며 한 번 보고합니다.
 ---
 ## 요구 해석

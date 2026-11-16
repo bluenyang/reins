@@ -1,7 +1,8 @@
 ---
 intent: "023"
-status: draft
-approvals: []
+status: accepted
+approvals:
+  - { role: user, by: BlueNyang, at: 2026-11-16, words: "진행", rev: ab56c6f, kind: summary }
 summary_for_user: |
   W-1 게이트 탐색: 루트 package.json의 `typecheck`·`lint`도 게이트 후보가 됩니다. 묶음 검사(`check`·`verify`·`ci`·`lint:check` 중 고른 것)가 그 스크립트를 이름으로 부르거나(`pnpm lint`, `run-s lint typecheck`) 같은 명령을 글자 그대로 담으면(`tsc --noEmit`) 넣지 않습니다. 이 판정은 `test`보다 엄격합니다: `\blint\b`로 보면 `lint:check`·`lint:fix`도 lint로 쳐 버리기 때문이고, `test`의 판정은 이미 설치된 저장소의 refresh 결과가 바뀌지 않도록 그대로 둡니다. `pnpm -r`·`--filter`·`turbo`·`nx`·`lerna`처럼 루트 스크립트가 아닌 것을 부를 수 있는 호출은 부른 것으로 치지 않습니다(틀리면 검사가 두 번 돌 뿐 빠지지 않음). 파일을 고치는 lint·typecheck는 빼고, 순서는 check → lint → typecheck → test → build → e2e입니다. 재현 두 모양, 이 저장소 모양(check + build 그대로), 실행기별 명령을 표 테스트로, refresh가 `new typecheck`만 보이고 `--apply` 없이 쓰지 않는 것도 테스트로 확인합니다.
   W-2 2차 감사 범위: 시작점은 1차 감사 기록 `first.range`의 끝 SHA(머지가 SHA를 바꿨으면 SHA 대응 표의 기본 브랜치 SHA)이고, PM은 그 값을 감사 요청에 그대로 옮깁니다. `audit` 스킬·감사 템플릿 4행·감사자 역할 파일·설계 양판 §3-3을 고칩니다. W-3: 두 CHANGELOG와 로드맵 양판에 0.3.3을 적습니다.

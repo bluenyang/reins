@@ -96,8 +96,23 @@ const MUTATING = /--fix\b|--write\b|\bfmt\b(?!:check)|(^|\s)format(\s|$)/;
 const tidy = (s: string) => s.trim().replace(/\s+/g, ' ');
 const unredirect = (s: string) => s.replace(/\d*>&\d+/g, '').replace(/\d*>\s*\S+/g, '');
 
-/** A bundle script's body split into its commands (023 S-2): redirects gone, split on && || ; | &. */
-function pieces(body: string): string[] {
+/**
+ * Quoted text that holds more than one word or a shell operator becomes one opaque word, so text inside
+ * quotes is never split into commands (023 A-11); a quoted single word stays for `unquote`. null when a
+ * quote is left open: the body is then unclear and nothing in it counts.
+ */
+const OPAQUE = '\u0000quoted\u0000';
+function maskQuotes(body: string): string | null {
+  const out = body.replace(/(["'])(.*?)\1/g, (m: string, _q: string, inner: string) =>
+    /^[\w:.-]+$/.test(inner) ? m : OPAQUE,
+  );
+  return /["']/.test(out.replace(/(["'])[\w:.-]+\1/g, '')) ? null : out;
+}
+
+/** A bundle script's body split into its commands (023 S-2): quoted text masked, redirects gone, split on && || ; | &. */
+function pieces(raw: string): string[] {
+  const body = maskQuotes(raw);
+  if (body === null) return [];
   return unredirect(body)
     .split(/&&|\|\||[;|&]/)
     .map(tidy)
@@ -144,7 +159,9 @@ function runsByName(piece: string, name: string): boolean {
  */
 function calls(bundle: string | null, name: string, scripts: Record<string, string>): boolean {
   if (bundle === null) return false;
-  const own = tidy(unredirect(scripts[name] ?? ''));
+  // the script's own body, cleaned up the same way; a body with masked or open quotes never matches (A-11)
+  const masked = maskQuotes(scripts[name] ?? '');
+  const own = masked === null || masked.includes(OPAQUE) ? '' : tidy(unredirect(masked));
   return pieces(bundle).some((piece) => runsByName(piece, name) || (own !== '' && piece === own));
 }
 

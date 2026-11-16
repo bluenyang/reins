@@ -1,0 +1,20 @@
+# reins model assignment (design §5) — the user changes it with `reins config`; nothing reads it while you work
+groups:
+  pl:
+    roles:
+      code-reviewer:
+        vendor: openai
+        model: gpt-6.1-sol
+  planner: {}
+  implementer: {}
+  executor: {}
+  advisor:
+    models:
+      - vendor: claude
+        model: claude-fable-5-2
+      - vendor: openai
+        model: gpt-6-astra
+  auditor:
+    vendor: openai
+    model: gpt-6-astra
+schema: reins/bindings@2

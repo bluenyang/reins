@@ -2,9 +2,10 @@
 id: "023"
 slug: gate-discovery-typecheck-lint
 version: "0.3.3"
-status: draft
+status: approved
 origin: user
-approvals: []
+approvals:
+  - { role: user, by: BlueNyang, at: 2026-11-16, words: "승인", rev: 231e4da }
 waivers: []
 supersedes: null
 ---

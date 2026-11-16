@@ -2,6 +2,11 @@
 
 Read by `reins update`: it lists the entries newer than a project's pinned version.
 
+## 0.3.3
+- Gate discovery: the root `typecheck` and `lint` scripts become gate candidates in `reins install` and `reins config gates --refresh`, unless the chosen bundle check already calls them (by name, or an identical command). Recursive, filtered and task-runner calls (`pnpm -r`, `--filter`, `turbo`, `nx`, `lerna`) do not count as calling them; a script that rewrites files is left out. Order: check, lint, typecheck, test, build, e2e.
+- Already installed repositories: `reins update` does not change `gates.yaml`. Run `reins config gates --refresh` once to see the new candidates and apply the ones you want.
+- The second audit's range starts at the end SHA of the first audit record's `first.range` (the default branch's SHA when the merge rewrote commits); the PM copies it into the audit request and `second.range` unchanged. Changed in the `audit` skill, the auditor role and the audit template.
+
 ## 0.3.2
 - Stable 2026-11-15 (same harness as rc.1).
 - The PM is the model in the conversation. The delegation block no longer names a PM model, roles without a model are done by that same model, and so is the audit when the auditor has no model (a fresh run, or another model the user chooses). `default` in `bindings.yaml` (and the personal file) is no longer read: files that hold it keep loading, `config` drops the key when it writes the file, and `config bindings --set default=…` is refused. `update` no longer carries a 0.2.0 `pm` role over.

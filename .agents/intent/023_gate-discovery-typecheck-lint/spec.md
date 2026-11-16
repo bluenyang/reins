@@ -134,7 +134,7 @@ summary_for_user: |
 - A-7 (2026-11-16, W-3) V-5 두 번째 독립 대조 FAIL 2건: 로드맵 양판 0.3.3 첫 항목에 "옵션이 붙은 명령은 치지 않음"이 빠짐, 두 CHANGELOG의 쉼표 → 보충 · `.loctx/reports/0.3.3/design-twin-comparison-2.md` · 2389ff7
 - A-8 (2026-11-16, W-4) 빈 그룹 `{}`이 화면에서 `off`가 아니라 `—`로 보이던 것(`groupLine`)을 같이 고침 · V-11이 드러냄 · 57a1732
 - A-9 (2026-11-17, W-4) W-4 리뷰(GPT-6.1 Sol) should-fix: 설계 양판 §5의 대체 설명이 "모델 없이 대체만 있는 개인 설정은 그 군을 끈다"로 남음 → `config`는 같은 파일에 모델이 있을 때만 적고, 손으로 적은 개인 대체는 팀 모델에 더해지며 팀 군에 모델이 없으면 아무 일도 하지 않는다로 고침(마지막 경우는 PM이 tsx로 확인) · `.loctx/reports/0.3.3/code-review-7.md` · 3db589b
-- A-10 (2026-11-17, W-4) V-5 4회차 FAIL 1(harness CHANGELOG에 "대체만 있으면 팀 모델에 더함"이 없음)과 관찰 넷: 두 CHANGELOG 항목을 맞춤, 설계 양판 "키 단위로 이김"을 mode·audit·도구로 좁힘, 개인 대체가 팀 군 대체를 대신함을 적음, 코드 주석 두 곳 · `.loctx/reports/0.3.3/design-twin-comparison-4.md` · (다음 커밋)
+- A-10 (2026-11-17, W-4) V-5 4회차 FAIL 1(harness CHANGELOG에 "대체만 있으면 팀 모델에 더함"이 없음)과 관찰 넷: 두 CHANGELOG 항목을 맞춤, 설계 양판 "키 단위로 이김"을 mode·audit·도구로 좁힘, 개인 대체가 팀 군 대체를 대신함을 적음, 코드 주석 두 곳, 5회차 관찰("as below"→"as above") · `.loctx/reports/0.3.3/design-twin-comparison-4.md`·`-5.md` · d75e970
 
 ## 우려
 1. **intent 밖에서 PM이 정한 것 — 모두 확인 필요.** ① S-15: `harness/roles/auditor.md`도 W-2에서 고침(intent의 영향 범위에 없음) — 확인 필요 ② S-7: `test` 판정은 그대로 — 확인 필요 ③ S-2.2: 직접 호출은 명령이 글자 그대로 같을 때만 부른 것으로 침(감싼 호출은 풀지 않음) — 확인 필요 ④ S-6: lint를 typecheck 앞에 — 확인 필요 ⑤ S-2.1 단서: 재귀·필터·태스크 러너 호출은 부른 것으로 치지 않음 — 확인 필요.

@@ -6,6 +6,7 @@ status: approved
 origin: user
 approvals:
   - { role: user, by: BlueNyang, at: 2026-11-16, words: "승인", rev: 231e4da }
+  - { role: user, by: BlueNyang, at: 2026-11-16, words: "개정 승인 및 진행", rev: aa3207d, kind: revision-1 }
 waivers: []
 supersedes: null
 ---

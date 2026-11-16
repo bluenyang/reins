@@ -1,7 +1,7 @@
 ---
 version: 0.0.0
 first: { range: "<base>..<head>", at: 0000-00-00, auditor: { vendor: —, model: —, independence: — } }
-second: { range: "<first head>..<last>", at: 0000-00-00, auditor: { vendor: —, model: —, independence: — } }
+second: { range: "<end SHA of first.range, or its default-branch SHA if the merge rewrote the commits>..<last>", at: 0000-00-00, auditor: { vendor: —, model: —, independence: — } }
 ---
 ## 1차 감사
 <!-- CI 뒤, 머지 전. 위험을 본다. 감사자의 답을 고치지 않고 쓴다. -->

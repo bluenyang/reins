@@ -549,4 +549,19 @@ describe('stage skills (019 S-9, design §3-1)', () => {
     for (const f of ['README.md', 'docs/README.ko.md'])
       expect(harness(f)).not.toMatch(/After the merge and before the rc|머지 뒤, rc 전/);
   });
+  it('the second audit starts at the end of first.range (023 S-11–S-15)', () => {
+    const f = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
+    const audit = read('audit');
+    expect(audit).toContain('`first.range`');
+    expect(audit).toContain('default-branch SHA');
+    expect(audit).toContain('copies that SHA into the audit request as it is');
+    const tpl = f('harness/templates/audit.md')
+      .split('\n')
+      .find((l) => l.startsWith('second: { range:'));
+    expect(tpl).toContain('first.range');
+    expect(f('harness/roles/auditor.md')).toContain('`first.range`');
+    for (const p of ['skills/audit/SKILL.md', 'harness/roles/auditor.md', 'docs/design.md'])
+      expect(f(p)).not.toContain("first audit's head");
+    expect(f('docs/design.ko.md')).not.toContain('1차 감사의 head');
+  });
 });

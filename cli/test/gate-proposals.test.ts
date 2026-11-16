@@ -261,8 +261,26 @@ describe('root typecheck and lint (023 S-1..S-9)', () => {
       names: ['check', 'lint'],
     },
     {
-      id: '11e npm run-script and options before the name (A-5)',
+      id: '11e npm run-script; an option before the name does not count (A-5, A-6)',
       scripts: { check: 'npm run-script lint && pnpm --silent typecheck', ...TC },
+      names: ['check', 'typecheck'],
+    },
+    {
+      id: '11f an option before the name may hold a value (A-6)',
+      scripts: {
+        check: 'npm run --script-shell lint typecheck && npm-run-all --npm-path lint typecheck',
+        ...TC,
+      },
+      names: ['check', 'lint', 'typecheck'],
+    },
+    {
+      id: '11g attached short option values point elsewhere (A-6)',
+      scripts: { check: 'pnpm -Fweb lint && pnpm -C./web typecheck', ...TC },
+      names: ['check', 'lint', 'typecheck'],
+    },
+    {
+      id: '11h quoted names, options after the name, value-free run-all flags (A-6)',
+      scripts: { check: 'pnpm run "lint" --quiet && npm-run-all -p \'typecheck\'', ...TC },
       names: ['check'],
     },
     {

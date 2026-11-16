@@ -119,22 +119,42 @@ const ELSEWHERE = new Set([
   '--prefix',
   '--cwd',
 ]);
-const elsewhere = (w: string) => ELSEWHERE.has(w) || ELSEWHERE.has(w.split('=')[0] ?? '');
+const elsewhere = (w: string) =>
+  ELSEWHERE.has(w) || ELSEWHERE.has(w.split('=')[0] ?? '') || /^-[FCw]\S/.test(w);
+/** run-s / run-p / npm-run-all options that take no value; any other option makes the command unclear. */
+const RUN_ALL_FLAGS = new Set([
+  '-p',
+  '--parallel',
+  '-s',
+  '--sequential',
+  '-c',
+  '--continue-on-error',
+  '-l',
+  '--print-label',
+  '-n',
+  '--print-name',
+  '--silent',
+]);
+const unquote = (w: string) => w.replace(/^(['"])(.*)\1$/, '$2');
 
 /**
- * Whether one command runs the root script `name` by name (023 S-2.1): `pnpm|yarn|bun [run] name`,
- * `npm run|run-script name`, or `run-s|run-p|npm-run-all … name …`, with no option that points at
- * other packages or another directory. Anything else (`echo lint`, `turbo run lint`) does not count.
+ * Whether one command runs the root script `name` by name (023 S-2.1, A-5, A-6): `pnpm|yarn|bun [run]
+ * name`, `npm run|run-script name`, or `run-s|run-p|npm-run-all … name …`. Options may follow the
+ * script name, not precede it (an option's value could be read as the name); an option that points at
+ * other packages or another directory anywhere makes it not count. When unsure, it does not count, so
+ * the check is kept. `echo lint` and `turbo run lint` do not count.
  */
 function runsByName(piece: string, name: string): boolean {
-  const words = piece.split(' ');
+  const words = piece.split(' ').map(unquote);
   if (words.some(elsewhere)) return false;
   const [tool, ...rest] = words;
-  const args = rest.filter((w) => !w.startsWith('-'));
-  if (tool === 'pnpm' || tool === 'yarn' || tool === 'bun')
-    return args[0] === 'run' ? args[1] === name : args[0] === name;
-  if (tool === 'npm') return (args[0] === 'run' || args[0] === 'run-script') && args[1] === name;
-  if (tool === 'run-s' || tool === 'run-p' || tool === 'npm-run-all') return args.includes(name);
+  if (tool === 'pnpm' || tool === 'yarn' || tool === 'bun') {
+    const at = rest[0] === 'run' ? 1 : 0;
+    return rest[at] === name;
+  }
+  if (tool === 'npm') return (rest[0] === 'run' || rest[0] === 'run-script') && rest[1] === name;
+  if (tool === 'run-s' || tool === 'run-p' || tool === 'npm-run-all')
+    return rest.every((w) => !w.startsWith('-') || RUN_ALL_FLAGS.has(w)) && rest.includes(name);
   return false;
 }
 

@@ -99,10 +99,12 @@ const unredirect = (s: string) => s.replace(/\d*>&\d+/g, '').replace(/\d*>\s*\S+
 /**
  * Quoted text that holds more than one word or a shell operator becomes one opaque word, so text inside
  * quotes is never split into commands (023 A-11); a quoted single word stays for `unquote`. null when a
- * quote is left open: the body is then unclear and nothing in it counts.
+ * quote is left open or a backslash appears: the body is then unclear and nothing in it counts.
  */
 const OPAQUE = '\u0000quoted\u0000';
 function maskQuotes(body: string): string | null {
+  // an escape may hide or fake a quote; a body with a backslash is unclear (A-11)
+  if (body.includes('\\')) return null;
   const out = body.replace(/(["'])(.*?)\1/g, (m: string, _q: string, inner: string) =>
     /^[\w:.-]+$/.test(inner) ? m : OPAQUE,
   );

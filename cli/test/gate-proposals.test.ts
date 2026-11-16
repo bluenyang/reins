@@ -160,3 +160,240 @@ describe('reins configure gates (spec S-7)', () => {
     expect(configureGates({ cwd: d, add: ['server-test-go'] }).code).toBe(1);
   });
 });
+
+describe('root typecheck and lint (023 S-1..S-9)', () => {
+  type Row = {
+    id: string;
+    scripts: Record<string, string>;
+    names: string[];
+    lock?: 'pnpm-lock.yaml' | 'package-lock.json' | 'yarn.lock';
+    excluded?: string[];
+    from?: Record<string, string>;
+  };
+  const S1 = { typecheck: 'tsc --noEmit', lint: 'oxlint .', test: 'vitest run', build: 'tsc' };
+  const TC = { typecheck: 'tsc --noEmit', lint: 'oxlint .' };
+  const rows: Row[] = [
+    { id: '1 repro 1', scripts: S1, names: ['lint', 'typecheck', 'test', 'build'] },
+    {
+      id: '2 repro 2',
+      scripts: { check: 'pnpm lint && pnpm test', ...S1 },
+      names: ['check', 'typecheck', 'build'],
+    },
+    {
+      id: '3 this repository',
+      scripts: {
+        build: 'tsc -p cli/tsconfig.json',
+        typecheck: 'tsc -p cli/tsconfig.json --noEmit',
+        lint: 'oxlint cli/src cli/test test',
+        fmt: 'oxfmt --write cli/src cli/test test',
+        'fmt:check': 'oxfmt --check cli/src cli/test test',
+        test: 'vitest run',
+        check: 'pnpm lint && pnpm fmt:check && pnpm typecheck && pnpm test',
+        version: 'pnpm -s build && node cli/dist/scripts/sync-version.js',
+        prepare: 'husky',
+      },
+      names: ['check', 'build'],
+      excluded: ['fmt'],
+    },
+    {
+      id: '4 direct, same command',
+      scripts: { check: 'oxlint . && tsc --noEmit && pnpm test', ...TC, test: 'vitest run' },
+      names: ['check'],
+    },
+    {
+      id: '5 direct, other command',
+      scripts: {
+        check: 'oxlint . && tsc -p . --noEmit && pnpm test',
+        lint: 'oxlint src',
+        typecheck: 'tsc --noEmit',
+      },
+      names: ['check', 'lint', 'typecheck'],
+    },
+    {
+      id: '6 redirect',
+      scripts: { check: 'tsc --noEmit 2>&1 && pnpm lint', ...TC },
+      names: ['check'],
+    },
+    {
+      id: '7 wrapped call',
+      scripts: { check: 'pnpm exec tsc --noEmit && pnpm lint', ...TC },
+      names: ['check', 'typecheck'],
+    },
+    {
+      id: '8 other names',
+      scripts: {
+        check: 'pnpm lint:check && pnpm fmt:check && pnpm typecheck:watch && pnpm test',
+        lint: 'oxlint .',
+        'lint:check': 'oxlint . --deny-warnings',
+        typecheck: 'tsc --noEmit',
+        'typecheck:watch': 'tsc --noEmit --watch',
+      },
+      names: ['check', 'lint', 'typecheck'],
+    },
+    {
+      id: '9 run-s',
+      scripts: { check: 'run-s lint typecheck test', ...S1 },
+      names: ['check', 'build'],
+    },
+    {
+      id: '10 recursive',
+      scripts: { check: 'pnpm -r lint && pnpm typecheck', ...TC },
+      names: ['check', 'lint'],
+    },
+    {
+      id: '11 filter',
+      scripts: { check: 'pnpm --filter ./cli lint && pnpm typecheck', ...TC },
+      names: ['check', 'lint'],
+    },
+    {
+      id: '12 task runner',
+      scripts: { check: 'turbo run lint typecheck', ...TC },
+      names: ['check', 'lint', 'typecheck'],
+    },
+    {
+      id: '13a lint:check bundle, same body',
+      scripts: { 'lint:check': 'eslint .', lint: 'eslint .', typecheck: 'tsc --noEmit' },
+      names: ['check', 'typecheck'],
+      from: { check: 'package.json#scripts.lint:check' },
+    },
+    {
+      id: '13b lint:check bundle, other body',
+      scripts: {
+        'lint:check': 'eslint .',
+        lint: 'eslint . --max-warnings 0',
+        typecheck: 'tsc --noEmit',
+      },
+      names: ['check', 'lint', 'typecheck'],
+      from: { check: 'package.json#scripts.lint:check' },
+    },
+    {
+      id: '14 ci bundle',
+      scripts: { ci: 'pnpm lint', ...TC },
+      names: ['check', 'typecheck'],
+      from: { check: 'package.json#scripts.ci' },
+    },
+    {
+      id: '15 verify bundle',
+      scripts: { verify: 'pnpm typecheck', ...TC },
+      names: ['check', 'lint'],
+      from: { check: 'package.json#scripts.verify' },
+    },
+    {
+      id: '16a mutating check',
+      scripts: {
+        check: 'eslint --fix . && pnpm typecheck',
+        lint: 'eslint .',
+        typecheck: 'tsc --noEmit',
+        test: 'vitest run',
+      },
+      names: ['lint', 'typecheck', 'test'],
+    },
+    {
+      id: '16b mutating check, next bundle',
+      scripts: {
+        check: 'eslint --fix . && pnpm typecheck',
+        verify: 'pnpm lint',
+        lint: 'eslint .',
+        typecheck: 'tsc --noEmit',
+        test: 'vitest run',
+      },
+      names: ['check', 'typecheck', 'test'],
+      from: { check: 'package.json#scripts.verify' },
+    },
+    {
+      id: '17 mutating lint',
+      scripts: { lint: 'eslint --fix .', typecheck: 'tsc --noEmit', test: 'vitest run' },
+      names: ['typecheck', 'test'],
+      excluded: ['lint'],
+    },
+    {
+      id: '18 mutating typecheck',
+      scripts: { typecheck: 'tsc --noEmit && oxfmt --write .', lint: 'oxlint .' },
+      names: ['lint'],
+      excluded: ['typecheck'],
+    },
+    { id: '19 lint only', scripts: { lint: 'oxlint .' }, names: ['lint'] },
+    { id: '20 neither', scripts: { test: 'vitest run', build: 'tsc' }, names: ['test', 'build'] },
+    {
+      id: '21 all six',
+      scripts: {
+        check: 'node scripts/verify.js',
+        lint: 'oxlint .',
+        typecheck: 'tsc --noEmit',
+        test: 'vitest run',
+        build: 'tsc',
+        e2e: 'playwright test',
+      },
+      names: ['check', 'lint', 'typecheck', 'test', 'build', 'e2e'],
+    },
+  ];
+
+  function repo(scripts: Record<string, string>, lock: string | null): string {
+    const d = mkdtempSync(join(tmpdir(), 'reins-gp-root-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    writeFileSync(join(d, 'package.json'), JSON.stringify({ scripts }));
+    if (lock) writeFileSync(join(d, lock), '');
+    return d;
+  }
+
+  it.each(rows)('row $id', (row) => {
+    const r = discoverGates(repo(row.scripts, row.lock ?? 'pnpm-lock.yaml'));
+    expect(r.gates.map((g) => g.name)).toEqual(row.names);
+    if (row.excluded) expect(r.excluded.map((e) => e.name)).toEqual(row.excluded);
+    for (const g of r.gates) {
+      expect(compound(g.cmd)).toBe(false);
+      if (g.name === 'lint' || g.name === 'typecheck') {
+        expect(g.cmd).toBe(`pnpm ${g.name}`);
+        expect(g.from).toBe(`package.json#scripts.${g.name}`);
+      }
+      if (row.from?.[g.name]) expect(g.from).toBe(row.from[g.name]);
+    }
+    const e2e = r.gates.find((g) => g.name === 'e2e');
+    if (e2e) expect(e2e.optional).toBe(true);
+  });
+
+  it('row 22 npm runner', () => {
+    const r = discoverGates(repo(S1, 'package-lock.json'));
+    const cmd = (n: string) => r.gates.find((g) => g.name === n)?.cmd;
+    expect(cmd('lint')).toBe('npm run lint');
+    expect(cmd('typecheck')).toBe('npm run typecheck');
+  });
+
+  it('row 23 yarn runner', () => {
+    const r = discoverGates(repo(S1, 'yarn.lock'));
+    const cmd = (n: string) => r.gates.find((g) => g.name === n)?.cmd;
+    expect(cmd('lint')).toBe('yarn lint');
+    expect(cmd('typecheck')).toBe('yarn typecheck');
+  });
+
+  it('row 24 a Makefile only: lint and typecheck targets are not candidates (S-10)', () => {
+    const d = mkdtempSync(join(tmpdir(), 'reins-gp-make-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    writeFileSync(
+      join(d, 'Makefile'),
+      'check:\n\ttrue\nlint:\n\ttrue\ntypecheck:\n\ttrue\ntest:\n\ttrue\n',
+    );
+    const r = discoverGates(d);
+    expect(r.gates.map((g) => [g.name, g.cmd])).toEqual([
+      ['check', 'make check'],
+      ['test', 'make test'],
+    ]);
+  });
+});
+
+describe('root typecheck and lint through install and refresh (023 S-8, V-3a)', () => {
+  it('install orders them, and a refresh straight after has nothing to show', async () => {
+    const d = mkdtempSync(join(tmpdir(), 'reins-gp-inst-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    writeFileSync(
+      join(d, 'package.json'),
+      JSON.stringify({
+        scripts: { typecheck: 'tsc --noEmit', lint: 'oxlint .', test: 'vitest run', build: 'tsc' },
+      }),
+    );
+    writeFileSync(join(d, 'pnpm-lock.yaml'), '');
+    await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: d });
+    expect(gatesOf(d).order).toEqual(['lint', 'typecheck', 'test', 'build']);
+    expect(configureGates({ cwd: d, refresh: true }).diff).toEqual([]);
+  });
+});

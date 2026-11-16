@@ -284,6 +284,11 @@ describe('root typecheck and lint (023 S-1..S-9)', () => {
       names: ['check'],
     },
     {
+      id: '11i help instead of a run (A-6)',
+      scripts: { check: 'npm run lint --help && pnpm typecheck -h', ...TC },
+      names: ['check', 'lint', 'typecheck'],
+    },
+    {
       id: '12 task runner',
       scripts: { check: 'turbo run lint typecheck', ...TC },
       names: ['check', 'lint', 'typecheck'],

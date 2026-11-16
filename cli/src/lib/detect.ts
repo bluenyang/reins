@@ -135,6 +135,8 @@ const RUN_ALL_FLAGS = new Set([
   '--print-name',
   '--silent',
 ]);
+/** Options that print help instead of running the script. */
+const HELP = new Set(['-h', '--help', '-?', '--usage']);
 const unquote = (w: string) => w.replace(/^(['"])(.*)\1$/, '$2');
 
 /**
@@ -146,7 +148,7 @@ const unquote = (w: string) => w.replace(/^(['"])(.*)\1$/, '$2');
  */
 function runsByName(piece: string, name: string): boolean {
   const words = piece.split(' ').map(unquote);
-  if (words.some(elsewhere)) return false;
+  if (words.some((w) => elsewhere(w) || HELP.has(w))) return false;
   const [tool, ...rest] = words;
   if (tool === 'pnpm' || tool === 'yarn' || tool === 'bun') {
     const at = rest[0] === 'run' ? 1 : 0;

@@ -202,7 +202,7 @@ export async function configureBindings(o: ConfigureBindingsOptions): Promise<Co
     if (!group) return refuse(`unknown group "${name}" — groups: ${GROUPS.join(', ')}`);
     next.groups = { ...next.groups };
     if (o.local) {
-      // an empty group in the personal file hides the team's (mergeLocal replaces a group as a whole)
+      // an empty group in the personal file switches the team's off for this person (mergeLocal, 023 S-20)
       if (JSON.stringify(next.groups[group]) !== '{}') {
         next.groups[group] = {};
         changed.push(group);

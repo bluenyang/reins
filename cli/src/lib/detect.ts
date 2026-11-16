@@ -71,7 +71,7 @@ export function runner(root: string): string | null {
 }
 
 export interface Gate {
-  name: 'check' | 'test' | 'build' | 'e2e';
+  name: 'check' | 'lint' | 'typecheck' | 'test' | 'build' | 'e2e';
   cmd: string;
   from: string;
   optional?: boolean;
@@ -93,6 +93,36 @@ export interface GateProposal {
 
 const MUTATING = /--fix\b|--write\b|\bfmt\b(?!:check)|(^|\s)format(\s|$)/;
 
+const tidy = (s: string) => s.trim().replace(/\s+/g, ' ');
+const unredirect = (s: string) => s.replace(/\d*>&\d+/g, '').replace(/\d*>\s*\S+/g, '');
+
+/** A bundle script's body split into its commands (023 S-2): redirects gone, split on && || ; | &. */
+function pieces(body: string): string[] {
+  return unredirect(body)
+    .split(/&&|\|\||[;|&]/)
+    .map(tidy)
+    .filter(Boolean);
+}
+
+const REACH = new Set(['-r', '--recursive', '-F', '--workspaces', '-ws', '--filter']);
+const RUNNERS = new Set(['turbo', 'nx', 'lerna']);
+
+/**
+ * Whether the bundle body already runs the root script `name` (023 S-2): by its name as a whole word,
+ * unless the piece is recursive, filtered or a task runner; or by the script's own body as a piece.
+ */
+function calls(bundle: string | null, name: string, scripts: Record<string, string>): boolean {
+  if (bundle === null) return false;
+  const named = new RegExp(`(?<![\\w:./-])${name}(?![\\w:.-])`);
+  const own = tidy(unredirect(scripts[name] ?? ''));
+  return pieces(bundle).some((piece) => {
+    const words = piece.split(' ');
+    const reaches =
+      RUNNERS.has(words[0] ?? '') || words.some((w) => REACH.has(w) || w.startsWith('--filter='));
+    return (named.test(piece) && !reaches) || (own !== '' && piece === own);
+  });
+}
+
 /**
  * The PM's discovery step 2–3 (design §5): read the project's scripts, drop mutating ones,
  * prefer the aggregate `check` the hooks and CI already call.
@@ -107,13 +137,19 @@ export function discoverGates(root: string): GateProposal {
       {};
     const cmd = (s: string) => (run === 'npm' ? `npm run ${s}` : `${run} ${s}`);
     for (const [name, body] of Object.entries(scripts))
-      if (MUTATING.test(body) && !/check/.test(name))
+      if (MUTATING.test(body) && (!/check/.test(name) || name === 'typecheck'))
         res.excluded.push({ name, cmd: body, why: 'mutates files (--fix/--write) — not a gate' });
     const pick = (names: string[]) =>
       names.find((n) => n in scripts && !MUTATING.test(scripts[n] ?? ''));
     const check = pick(['check', 'verify', 'ci', 'lint:check']) ?? null;
     if (check)
       res.gates.push({ name: 'check', cmd: cmd(check), from: `package.json#scripts.${check}` });
+    const bundle = check ? (scripts[check] ?? '') : null;
+    for (const n of ['lint', 'typecheck'] as const) {
+      const found = pick([n]);
+      if (found && !calls(bundle, n, scripts))
+        res.gates.push({ name: n, cmd: cmd(n), from: `package.json#scripts.${n}` });
+    }
     const test =
       check && /\btest\b/.test(scripts[check] ?? '') ? null : pick(['test', 'test:unit']);
     if (test)
@@ -141,7 +177,7 @@ export function discoverGates(root: string): GateProposal {
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'vendor', '.loctx', '.agents']);
 const MAX_DEPTH = 3;
 const SAFE_DIR = /^[\w@.+-]+(\/[\w@.+-]+)*$/;
-const ROOT_GATE_NAMES = ['check', 'test', 'build', 'e2e'];
+const ROOT_GATE_NAMES = ['check', 'lint', 'typecheck', 'test', 'build', 'e2e'];
 const NODE_SCRIPTS = ['check', 'verify', 'ci', 'typecheck', 'lint', 'test', 'build'];
 
 function dirRunner(root: string, dir: string, rootRunner: string | null): 'pnpm' | 'yarn' | 'npm' {

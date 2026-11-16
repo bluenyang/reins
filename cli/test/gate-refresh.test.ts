@@ -295,3 +295,28 @@ describe('the gates item of the config screen (021 S-25)', () => {
     expect(q.notes.join('\n')).toContain('gates: up to date');
   });
 });
+
+describe('a new root typecheck script (023 V-3b, V-3c)', () => {
+  it('is shown as new, written only by --apply, and goes once check calls it', async () => {
+    const d = await project();
+    pkg(d, { check: 'node -e 0', build: 'node -e 1', typecheck: 'tsc --noEmit' });
+    const before = [read(d, GATES), read(d, SCRIPT)];
+    const r = configureGates({ cwd: d, refresh: true });
+    expect(kinds(r.diff!)).toContain('new typecheck');
+    expect([read(d, GATES), read(d, SCRIPT)]).toEqual(before);
+
+    configureGates({ cwd: d, refresh: true, apply: ['typecheck'] });
+    expect(gates(d).order.at(-1)).toBe('typecheck');
+    expect(read(d, SCRIPT)).toContain("run 'npm run typecheck'");
+
+    pkg(d, {
+      check: 'npm run typecheck && node -e 0',
+      build: 'node -e 1',
+      typecheck: 'tsc --noEmit',
+    });
+    const again = configureGates({ cwd: d, refresh: true });
+    expect(kinds(again.diff!)).toContain('gone typecheck');
+    const gone = again.diff!.find((x) => x.kind === 'gone' && x.name === 'typecheck');
+    expect(gone && 'why' in gone && gone.why.startsWith('no longer proposed')).toBe(true);
+  });
+});

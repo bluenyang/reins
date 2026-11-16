@@ -294,6 +294,19 @@ describe('root typecheck and lint (023 S-1..S-9)', () => {
       names: ['check', 'lint', 'typecheck'],
     },
     {
+      id: '11k text inside quotes is not a command (A-11)',
+      scripts: {
+        check: 'echo "start && pnpm lint && end" && node -e \'1; tsc --noEmit\'',
+        ...TC,
+      },
+      names: ['check', 'lint', 'typecheck'],
+    },
+    {
+      id: '11l an open quote makes the bundle unclear (A-11)',
+      scripts: { check: 'pnpm lint && echo "oops && pnpm typecheck', ...TC },
+      names: ['check', 'lint', 'typecheck'],
+    },
+    {
       id: '12 task runner',
       scripts: { check: 'turbo run lint typecheck', ...TC },
       names: ['check', 'lint', 'typecheck'],

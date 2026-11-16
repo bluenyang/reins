@@ -65,7 +65,7 @@ summary_for_user: |
 - **되돌림.** W-1(코드·테스트·설계 §5)과 W-2(스킬·템플릿·역할·설계 §3-3)는 서로 다른 파일과 절이라 하나만 되돌려도 다른 쪽이 그대로 선다. W-3은 마지막에 오며, W-1이나 W-2를 되돌리면 W-3의 해당 줄도 함께 되돌린다(글만의 커밋).
 
 ## 작업 단위
-- [ ] W-1 루트 `typecheck`·`lint` 게이트 후보 (S-1~S-10, S-16의 §5) — `cli/src/lib/detect.ts`, `cli/test/gate-proposals.test.ts`(필요하면 `cli/test/gate-refresh.test.ts`), `docs/design.md`·`design.ko.md` §5
+- [x] W-1 (e8d58a8) 루트 `typecheck`·`lint` 게이트 후보 (S-1~S-10, S-16의 §5) — `cli/src/lib/detect.ts`, `cli/test/gate-proposals.test.ts`(필요하면 `cli/test/gate-refresh.test.ts`), `docs/design.md`·`design.ko.md` §5
 - [ ] W-2 2차 감사 범위의 시작점 (S-11~S-15, S-16의 §3-3) — `skills/audit/SKILL.md` L23(게이트 로그 "after the first audit's head")·L24(범위 "from the first audit's head"), `harness/templates/audit.md`, `harness/roles/auditor.md`, `docs/design.md`·`design.ko.md` §3-3, 구절 테스트(`cli/test/skills.test.ts`)
 - [ ] W-3 0.3.3 문서 (S-17, S-18) — `CHANGELOG.md`, `harness/CHANGELOG.md`, `docs/ROADMAP.md`·`ROADMAP.ko.md`
 

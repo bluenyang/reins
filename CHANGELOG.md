@@ -9,6 +9,16 @@ everything planned for it is done, later `rc.N` are stabilisation only (see
 This file is about the package. The harness that `reins update` re-applies to installed projects
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md).
 
+## [0.3.3] — unreleased
+
+Gate discovery now sees a root `typecheck` and `lint` script, and the second audit's range starts where the first audit's ended (intent 023). Origin: the maintainer's report of 2026-11-16 and the 0.3.2 retro (H1).
+
+### Fixed
+- Gate discovery (`reins install` and `reins config gates --refresh`) proposes the root `package.json` scripts `typecheck` and `lint` as gate candidates, unless the chosen bundle check (`check`, `verify` and the like) already calls them: by name, or by an identical command. A recursive, filtered or task-runner call (`pnpm -r`, `--filter`, `turbo`, `nx`, `lerna`) does not count as calling them. A script that rewrites files (`--fix`, `--write` and the like) is left out, as for the other gates. Candidates are ordered check, lint, typecheck, test, build, e2e. An existing `gates.yaml` is not changed; `reins config gates --refresh` shows the new candidates and applies only what is picked.
+
+### Changed
+- The second audit's range starts at the end SHA of the first audit record's `first.range` (the default branch's SHA when the merge rewrote commits), and the PM copies it into the audit request and `second.range` unchanged. The `audit` skill, the auditor role and the audit template say so; before, the start was "the first audit's head".
+
 ## [0.3.2] — 2026-11-15
 
 Stable: 2026-11-15 (the rc.1 commit, unchanged). rc.1: 2026-11-12 (intent 022). The flow between the approvals and the merge, two audits, where a loop ends,

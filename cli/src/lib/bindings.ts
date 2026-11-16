@@ -167,7 +167,7 @@ const same = (a: Binding, b: Binding): boolean => a.vendor === b.vendor && a.mod
 /**
  * What is wrong with the fallbacks of one file (team or personal), judged on that file alone: a fallback
  * needs a model beside it in the same place, and must be another model. A group with a fallback and no
- * model would switch the group off for that person (`mergeLocal` replaces a group as a whole).
+ * model is refused here; written by hand into a personal file, `mergeLocal` adds it to the team's model (023 S-20).
  */
 export function fallbackProblems(doc: Partial<BindingsV2>): string[] {
   const out: string[] = [];

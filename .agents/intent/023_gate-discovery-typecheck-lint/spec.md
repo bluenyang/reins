@@ -7,6 +7,7 @@ summary_for_user: |
   W-1 게이트 탐색: 루트 package.json의 `typecheck`·`lint`도 게이트 후보가 됩니다. 묶음 검사(`check`·`verify`·`ci`·`lint:check` 중 고른 것)가 그 스크립트를 이름으로 부르거나(`pnpm lint`, `run-s lint typecheck`) 같은 명령을 글자 그대로 담으면(`tsc --noEmit`) 넣지 않습니다. 이 판정은 `test`보다 엄격합니다: `\blint\b`로 보면 `lint:check`·`lint:fix`도 lint로 쳐 버리기 때문이고, `test`의 판정은 이미 설치된 저장소의 refresh 결과가 바뀌지 않도록 그대로 둡니다. `pnpm -r`·`--filter`·`turbo`·`nx`·`lerna`처럼 루트 스크립트가 아닌 것을 부를 수 있는 호출은 부른 것으로 치지 않습니다(틀리면 검사가 두 번 돌 뿐 빠지지 않음). 파일을 고치는 lint·typecheck는 빼고, 순서는 check → lint → typecheck → test → build → e2e입니다. 재현 두 모양, 이 저장소 모양(check + build 그대로), 실행기별 명령을 표 테스트로, refresh가 `new typecheck`만 보이고 `--apply` 없이 쓰지 않는 것도 테스트로 확인합니다.
   W-2 2차 감사 범위: 시작점은 1차 감사 기록 `first.range`의 끝 SHA(머지가 SHA를 바꿨으면 SHA 대응 표의 기본 브랜치 SHA)이고, PM은 그 값을 감사 요청에 그대로 옮깁니다. `audit` 스킬·감사 템플릿 4행·감사자 역할 파일·설계 양판 §3-3을 고칩니다. W-3: 두 CHANGELOG와 로드맵 양판에 0.3.3을 적습니다.
   확인 필요(intent에 없어 PM이 정함): ① `harness/roles/auditor.md`도 W-2에서 고침 ② `test` 판정은 그대로 ③ 직접 호출은 명령이 글자 그대로 같을 때만 부른 것으로 침 ④ lint를 typecheck 앞에 ⑤ 재귀·필터·태스크 러너 호출은 부른 것으로 치지 않음.
+  개정 1(2026-11-16, W-4 추가 — 진행/수정 대기): `reins config` 모델 화면이 scope와 상관없이 팀+개인을 합친 값을 보여 주고, 개인 파일의 그룹이 팀 그룹을 통째로 가리는 결함. 개인 설정은 적은 곳만 이깁니다 — 역할만 적으면 그 역할만, 그룹 모델을 적으면 그 그룹의 팀 모델과 팀의 역할별 모델을 덮어씀(개인이 적은 역할은 그 값), `{}`은 끔, 개인 파일의 대체(fallback)만 적으면 팀 모델에 대체만 더함. 화면은 project에서 팀 파일, local에서 합친 결과(개인 파일에서 온 값에 `(local)` 표시). 설계 양판 §5와 두 CHANGELOG·로드맵. 이 기계의 개인 위임 표는 고친 reins로 다시 쓰이면 PL 역할이 돌아옵니다. 검증 V-10~V-12: 병합 표 테스트, 화면 테스트, 개인 위임 표 재생성.
   검증 V-1~V-9: 고치기 전 실패 로그, 표 테스트, install·refresh 테스트, 스킬 구절 테스트, 양판 대조, `pnpm check`와 CI, rc 뒤 배포본 smoke, stable 뒤 자기 업데이트. 진행을 받으면 구현 → 리뷰 → 테스트 → PR → CI → 1차 감사까지 묻지 않고 가고 머지 지시를 기다리며 한 번 보고합니다.
 ---
 ## 요구 해석
@@ -57,6 +58,15 @@ summary_for_user: |
 - S-18 **로드맵.** `docs/ROADMAP.md`·`ROADMAP.ko.md`의 0.3 절, 0.3.2 다음에 `### 0.3.3`을 더한다: 두 항목(게이트 탐색 결함, H1)과 출처(사용자 2026-11-16, 0.3.2 회고 H1), H2는 다음 버전으로 남겼다는 한 줄. 상태 줄과 rc·stable 날짜는 `release` 스킬이 채운다. ← 영향 범위 "`docs/ROADMAP.md`·`ROADMAP.ko.md`", 하지 않을 것 H2
 - S-19 **설치된 사본.** 이 저장소의 `.agents/skills/`·`.claude/skills/`·`.agents/harness/`는 이 버전에서 손으로 고치지 않는다. stable 뒤 `reins update` 커밋 하나로 바뀐다(계획 3 "이 저장소 자기 업데이트"). ← 제약 "이 저장소의 `.agents/` 생성 파일은 `reins update`로만, 따로 커밋해 바꾼다"
 
+### 개인 설정의 병합과 모델 화면 (W-4, 개정 1)
+- S-20 **병합 규칙.** `mergeLocal`은 그룹마다 이렇게 합친다. 개인 그룹이 없으면 팀 그룹 그대로. 개인 그룹이 `{}`이면 꺼짐(지금 그대로). 그 밖에는 팀 그룹에서 시작해: ① 개인 그룹에 그룹 모델(`vendor`/`model` 또는 `models`)이 있으면 팀의 그룹 모델·`models`·그룹 대체·역할별 항목을 모두 버리고 개인의 그룹 모델을 쓴다 ② 개인의 `roles`는 역할마다 덮어쓴다(그 역할의 팀 항목 대신) ③ 개인 그룹의 `fallback`은 그룹 대체를 덮어쓴다. 팀 그룹이 없으면 개인 그룹 그대로. `mode`·`audit`·`tools`는 지금처럼 키 단위. ← "개인 설정은 적은 곳만 이긴다", 사용자 "말한 곳만 이김 (추천)"
+  - (PM 판단) ③: 지금은 개인 파일에 대체만 적으면 그 그룹이 꺼진다(테스트 `bindings-v2.test.ts:231`이 "would switch the group off"로 고정). 새 규칙에서는 팀 모델에 개인 대체가 붙는다 — "적은 곳만 이긴다"의 결과다. 그 테스트의 기대값을 바꾼다.
+  - (PM 판단) 개인 파일로 팀 그룹 안의 역할 하나만 끄는 방법은 만들지 않는다(지금도 없다).
+- S-21 **`config`가 개인 파일에 쓸 때.** 역할 하나(`--set pl.code-reviewer=…`, 화면의 "a model for one role")는 개인 파일에 그 역할만 적는다(지금 그대로). 결과가 S-20으로 바뀌므로 팀 그룹이 남는다. 개인 파일의 대체 설정(`--fallback`)이 "그 파일에 모델이 있는 곳만"을 요구하는 지금의 거부는 그대로 둔다(범위 밖, 우려 4).
+- S-22 **모델 화면.** `modelsScreen`은 scope가 project면 팀 파일(`readTeam`)의 그룹을, local이면 `effectiveBindings`(S-20 결과)를 보여 준다. local에서 개인 파일이 정한 그룹·역할은 줄 끝에 `(local)`을 단다(`groupLine`). 제목 줄에 scope를 적는다(`Models and roles (mode: …, showing: team file | your effective settings)`). 그룹 화면의 현재 값(`pickModel`의 초기값, 역할 목록의 hint)도 같은 문서에서 읽는다. ← "project=팀 파일, local=합친 결과 (추천)"
+- S-23 **개인 위임 표.** `syncLocalDelegation`은 S-20 결과로 계산하므로 코드 변경 없이 따라온다. 이 기계의 `.loctx/delegation.local.md`는 이 버전의 reins로 `config`나 `update`를 돌리면 다시 쓰이고 PL 역할(Sonnet)이 돌아온다(V-9에서 확인).
+- S-24 **설계 양판 §5.** "Inheritance: role > group > off. An empty group (`{}`) in the local file switches a team group off for that person only."에 S-20을 더한다: 개인 파일은 적은 곳만 이긴다(역할만 적으면 그 역할만, 그룹 모델은 그 그룹의 팀 모델과 역할별 모델을 대신함). §9(또는 `config` 설명 줄)의 모델 화면에 scope별 표시를 적는다. 두 CHANGELOG(Fixed)와 로드맵 양판 0.3.3에 한 항목.
+
 ## 설계
 - **W-1 코드.** `discoverGates`에서 `check`를 고른 뒤 `pieces(body)`(S-2의 조각 나누기)와 `calls(bundleBody, name, scripts)`(S-2의 두 판정; 묶음이 없으면 항상 false)를 두고, `lint`와 `typecheck`를 `pick([name])`으로 고른다. `excluded` 루프의 이름 예외에서 `typecheck`를 뺀다(S-5). `ROOT_GATE_NAMES`(L144)에 두 이름을 더하면 하위 디렉터리 제안 이름의 예약(L245 `taken`)에도 들어간다: 지금 하위 이름은 `<dir-slug>-<script>`라 `lint`·`typecheck`와 겹치지 않지만, 루트 이름 목록과 예약 목록이 같은 것을 말하게 둔다. `res.gates.push` 순서를 check → lint → typecheck → test → build → e2e로 한다(S-6). `test`의 줄(L119–120)은 손대지 않는다(S-7). 정규식의 `S`는 고정 문자열 `lint`·`typecheck`라 이스케이프가 필요 없다. `gateDiff`·install은 같은 함수를 부르므로 바꾸지 않는다.
 - **W-1 테스트.** `gate-proposals.test.ts`에 `describe('root typecheck and lint (023 S-1..S-9)')`와 `it.each` 표 하나: 행마다 `scripts`, 잠금 파일(pnpm), 기대 게이트 이름 목록(순서까지), 필요하면 기대 `excluded` 이름. 표의 행은 V-2에 적는다. install·refresh 동일성은 같은 파일 또는 `gate-refresh.test.ts`에(V-3). 기존 테스트 가운데 루트에 `typecheck`·`lint`가 있어 기대가 바뀌는 것이 있으면 기대를 고치고 그 이유를 조정 기록(A-n)에 적는다.
@@ -68,6 +78,7 @@ summary_for_user: |
 - [x] W-1 (e8d58a8) 루트 `typecheck`·`lint` 게이트 후보 (S-1~S-10, S-16의 §5) — `cli/src/lib/detect.ts`, `cli/test/gate-proposals.test.ts`(필요하면 `cli/test/gate-refresh.test.ts`), `docs/design.md`·`design.ko.md` §5
 - [x] W-2 (268676f) 2차 감사 범위의 시작점 (S-11~S-15, S-16의 §3-3) — `skills/audit/SKILL.md` L23(게이트 로그 "after the first audit's head")·L24(범위 "from the first audit's head"), `harness/templates/audit.md`, `harness/roles/auditor.md`, `docs/design.md`·`design.ko.md` §3-3, 구절 테스트(`cli/test/skills.test.ts`)
 - [x] W-3 (ed7bebf) 0.3.3 문서 (S-17, S-18) — `CHANGELOG.md`, `harness/CHANGELOG.md`, `docs/ROADMAP.md`·`ROADMAP.ko.md`
+- [ ] W-4 (개정 1) 개인 설정의 병합과 모델 화면 (S-20~S-24) — `cli/src/lib/bindings.ts`(`mergeLocal`), `cli/src/commands/config-models.ts`(`modelsScreen`·`groupLine`·그룹 화면), `cli/test/bindings-v2.test.ts`·`cli/test/config.test.ts`(필요하면 화면 테스트 파일), `docs/design.md`·`design.ko.md` §5(·§9), `CHANGELOG.md`, `harness/CHANGELOG.md`, `docs/ROADMAP.md`·`ROADMAP.ko.md`
 
 ## 검증 기준
 - V-1 (W-1; S-9) **고치기 전 실패.** W-1의 테스트를 먼저 쓰고 지금 코드에서 돌린다: 재현 ①행은 기대 `[lint, typecheck, test, build]`에 실제 `[test, build]`, ②행은 기대 `[check, typecheck, build]`에 실제 `[check, build]`로 실패한다. 출력 원본 `.loctx/reports/0.3.3/w1-before.log`. 두 행이 실패하지 않으면(지금 코드로 통과하면) 테스트가 결함을 잡지 못하는 것이라 실패로 본다.
@@ -106,6 +117,11 @@ summary_for_user: |
 - V-8 (rc 뒤; S-8·S-1) **배포본 smoke.** `.loctx/context/scripts/smoke-published-0.3.2.sh`를 고쳐 `smoke-published-0.3.3.sh`로: ⓐ 새 임시 저장소에 재현 ① 모양 → rc로 `install --mode auto` → `gates.yaml`의 `order`가 `lint, typecheck, test, build` ⓑ 재현 ② 모양을 0.3.2로 설치 → rc로 `update` → `gates.yaml` 바이트가 그대로 → `config gates --refresh`에 `new typecheck`, 파일 그대로 → `--apply typecheck`로 쓰임 ⓒ 기존 smoke 항목(0.3.2 smoke의 B·H·J)이 그대로 통과. 원본 `.loctx/reports/0.3.3/smoke-rc.log`, 실패 0.
 - V-9 (stable 뒤; S-19) 이 저장소에서 설치한 stable로 `reins update --dry-run` → 종료 0이고, 계획에 `.agents/skills/audit/SKILL.md`·`.claude/skills/audit/SKILL.md`(감사 스킬), `.agents/harness/roles/auditor.md`와 `.claude/agents/`의 감사자 정의가 있으면 그것(감사자 역할), `.agents/harness/templates/audit.md`(감사 템플릿)가 바뀌는 파일로 있고 `.agents/harness/gates.yaml`은 없다. 이어서 `reins update` 실행 → 종료 0, 설치된 감사 스킬에 "`first.range`"가 있고 "first audit's head"가 없으며 `gates.yaml`의 바이트가 그대로. 두 실행의 출력 원본 `.loctx/reports/0.3.3/self-update.log`.
 
+- V-10 (W-4; S-20) **병합 표 테스트** `bindings-v2.test.ts`: 팀 `pl = {sonnet, roles: {code-reviewer: sol}}` 위에 개인 ⓐ `pl: {roles: {plan-reviewer: terra}}` → 그룹 sonnet·code-reviewer sol·plan-reviewer terra ⓑ `pl: {vendor/model: terra}` → 그룹 terra, code-reviewer 항목 없음 ⓒ `pl: {terra, roles: {code-reviewer: fable}}` → 그룹 terra, code-reviewer fable ⓓ `pl: {}` → 꺼짐 ⓔ `pl: {fallback: terra}` → 그룹 sonnet + 대체 terra, code-reviewer sol ⓕ `advisor: {models: [a, b]}` 위에 팀 `{vendor/model}` → models만 ⓖ 팀에 없는 그룹 → 개인 그룹 그대로 ⓗ 이 기계의 두 파일 모양(팀 bindings.yaml과 bindings.local.yaml을 글자 그대로) → `resolveRoles`에 pl/plan-reviewer·pl/control이 sonnet으로 있다. 고치기 전 실패 로그 `.loctx/reports/0.3.3/w4-before.log`(ⓐ·ⓔ·ⓗ가 실패).
+- V-11 (W-4; S-22) **화면 테스트**(기존 config 화면 테스트의 가짜 prompter 방식): 팀 `planner` 켜짐, 개인 `planner: {}` → local에서 planner 줄이 `off` + `(local)`, scope를 project로 바꾸면 같은 줄이 팀 모델을 보인다. 제목 줄에 `showing: team file` / `showing: your effective settings`. 고치기 전에 실패.
+- V-12 (W-4; S-23) `configureBindings({local: true, set: ['pl.code-reviewer=openai:gpt-6.1-sol']})` 뒤 개인 위임 표에 `pl/plan-reviewer`가 팀 모델로 있다(지금은 없음).
+- V-2~V-6·V-7은 W-4 뒤에도 같다(`pnpm check`, 커밋별 게이트 로그). V-5 양판 대조는 §5의 S-24 문장과 CHANGELOG·로드맵의 W-4 항목을 포함해 다시 한다.
+
 ## 조정 기록
 <!-- - A-n (YYYY-MM-DD, W-n) 무엇을 · 왜 · 커밋 -->
 - A-1 (2026-11-16, W-1) V-2 표의 픽스처 해석: 4행은 `build` 없이 스크립트를 따로 적음, 9행(`run-s`)은 공용 픽스처의 `build`가 있어 `[check, build]`를 기대, 22~24행은 표가 아니라 별도 `it`로, V-3ⓒ는 npm 실행기 픽스처라 `check`를 `npm run typecheck && node -e 0`으로 · spec의 기대값이 공용 픽스처의 `build`를 적지 않았음, 판정 규칙은 그대로 · e8d58a8
@@ -123,6 +139,9 @@ summary_for_user: |
 4. **손으로 넣은 같은 게이트.** 사용자가 `from` 없이 `typecheck`를 이미 손으로 넣었으면 refresh는 그것을 "yours"로 두고 탐색의 것을 `new typecheck-2`로 보여 준다(지금의 `diffGates` 규칙). 고르지 않으면 쓰지 않으므로 해는 없지만 같은 명령이 두 번 보인다. 이 버전에서 바꾸지 않는다.
 5. **이미 설치된 저장소.** 0.3.2 이전 설치는 `update`만으로는 게이트가 늘지 않는다(제약). 결함이 있던 저장소(croffle·pipit-bot 같은 모양)는 `config gates --refresh`를 한 번 돌려야 한다 — S-17의 한 줄로 알린다.
 6. **자기 업데이트는 작업 단위가 아니다.** 결정대로 W-1~W-3만 두었다. stable 뒤 `reins update` 커밋은 intent 계획 3의 단계로 하고 V-9로 확인한다(022에서는 W-10이었다).
+
+4. (개정 1) 개인 파일의 `--fallback`은 지금 "그 파일에 모델이 있는 곳만" 받는다. S-20 뒤에는 팀 모델에 개인 대체를 붙일 수 있게 되지만(파일을 손으로 고치면), `config`의 그 거부는 이번에 고치지 않는다. 필요하면 다음 버전.
+5. (개정 1) S-20은 019 S-4의 구현(그룹 통째 교체)과 그 테스트를 바꾼다(사용자 2026-11-16 "말한 곳만 이김 (추천)"). 개인 파일에 그룹 모델을 적은 사람은 팀의 역할별 모델도 잃는다 — 지금과 같다.
 
 ## 범위 밖
 - H2(뒤처진 작업 브랜치의 갱신과 `--force-with-lease`): 다음 버전(사용자 2026-11-16 "결함 + H1").

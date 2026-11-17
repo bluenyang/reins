@@ -7,7 +7,8 @@ origin: user
 approvals:
   - { role: user, by: BlueNyang, at: 2026-11-16, words: "승인", rev: 231e4da }
   - { role: user, by: BlueNyang, at: 2026-11-16, words: "개정 승인 및 진행", rev: aa3207d, kind: revision-1 }
-waivers: []
+waivers:
+  - { step: "first audit re-run after A-11", words: "감사는 패스", at: 2026-11-17, scope: once }
 supersedes: null
 ---
 ## 문제

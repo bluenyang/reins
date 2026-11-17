@@ -53,8 +53,8 @@ the project can follow them. reins is never called while a project works.
 ## Conventions (this repository)
 
 - Branches: `type/topic` from a freshly pulled `master`, rebase onto `master`, rebase merge. Never commit on `master`.
-- Commit messages: `type(scope): title`, one-line summary, bullets, `Co-Authored-By` footer only. A commit that only
-  records something done (ticking a work unit, naming a SHA) may be the title and the footer alone.
+- Commit messages: `type(scope): title` and the `Co-Authored-By` footer. A summary line and bullets only when they say
+  something the title does not; a body is never required (maintainer, 2026-11-17).
 - PR bodies carry the raw check log's path and the last lines of its output.
 - Public documents: English by default with a Korean `.ko.md` twin, cross-linked (R67). Exception: `docs/conversation/` (the maintainer's design conversations) is written in Korean only, with no English twin (maintainer, 2026-11-11). Korean documents for the
   user may be polished with humanize-korean; English ones are not.

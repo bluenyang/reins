@@ -1,7 +1,8 @@
 ---
 id: 2026-11-15_commit-summary-line
 kind: accepted-finding
-status: active
+status: superseded
+superseded_at: { by: user, at: 2026-11-17, words: "필요하지 않으면 굳이 내용이 없어도 되거든. 관례를 낮추는 거로 하자." }
 supersedes: null
 topics: [commits, audit]
 decisions: [commit-summary-line]
@@ -10,7 +11,10 @@ applies_to: all
 source: ".agents/audit/0.3.1.md (첫 감사의 커밋 메시지 지적, 추가 감사 A6); .agents/audit/0.3.2.md (1차 감사 비판 9)"
 approved: { by: user, at: 2026-11-15, words: "K1 수용" }
 ---
-## 결정
+## 내린 이유 (2026-11-17)
+이 저장소의 커밋 관례에서 한 줄 요약과 불릿을 요구하지 않게 바꿨다(AGENTS.md Conventions). 지킬 관례가 없어져 이 수용도 필요 없다("바뀌면"에 적은 그대로).
+
+## 결정 (내리기 전)
 이 저장소의 커밋 메시지 관례(`type(scope): title`, 한 줄 요약, 불릿, footer)에서 **한 줄 요약만 빠진 일반 커밋**은 감사에서 위반이 아니라 "알려진 수용"으로 적는다.
 ## 이유
 같은 지적이 세 번 나왔고 세 번 모두 수용됐다. 0.3.1의 첫 감사(커밋 메시지 본문, 사용자 "수용"), 0.3.1 추가 감사 A6(사용자 "수용."), 0.3.2 1차 감사 비판 9(사용자 "흠. 일단 수용."). 제목과 불릿이 있으면 커밋을 찾고 되돌리는 데 지장이 없었다.

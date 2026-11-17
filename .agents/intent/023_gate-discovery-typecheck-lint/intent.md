@@ -2,7 +2,7 @@
 id: "023"
 slug: gate-discovery-typecheck-lint
 version: "0.3.3"
-status: approved
+status: released
 origin: user
 approvals:
   - { role: user, by: BlueNyang, at: 2026-11-16, words: "승인", rev: 231e4da }

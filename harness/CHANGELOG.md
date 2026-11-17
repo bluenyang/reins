@@ -3,6 +3,7 @@
 Read by `reins update`: it lists the entries newer than a project's pinned version.
 
 ## 0.3.3
+- Stable 2026-11-17 (same harness as rc.1).
 - Gate discovery: the root `typecheck` and `lint` scripts become gate candidates in `reins install` and `reins config gates --refresh`, unless the chosen bundle check already calls them (by name, or an identical command). Only a command that runs the script counts; recursive, filtered, other-directory and task-runner calls (`pnpm -r`, `--filter`, `--dir`, `turbo`, `nx`, `lerna`), a command with any option and a mere mention (`echo lint`) do not; a script that rewrites files is left out. Order: check, lint, typecheck, test, build, e2e.
 - Already installed repositories: `reins update` does not change `gates.yaml`. Run `reins config gates --refresh` once to see the new candidates and apply the ones you want.
 - Personal settings: a group in `.loctx/bindings.local.yaml` wins only where it speaks (a role alone keeps the team's group and its other roles; a group model replaces the team's; a fallback alone is added to the team's model instead of switching the group off; `{}` switches it off), and the `config` models screen shows the file of the chosen scope. `reins config` or `reins update` rewrites `.loctx/delegation.local.md` accordingly.

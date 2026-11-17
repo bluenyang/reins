@@ -9,9 +9,9 @@ everything planned for it is done, later `rc.N` are stabilisation only (see
 This file is about the package. The harness that `reins update` re-applies to installed projects
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md).
 
-## [0.3.3] — unreleased
+## [0.3.3] — 2026-11-17
 
-rc.1: 2026-11-17 (intent 023). Gate discovery now sees a root `typecheck` and `lint` script, the second audit's range starts where the first audit's ended, and the `config` models screen follows its scope while a personal group wins only where it speaks. Origin: the maintainer's reports of 2026-11-16 and the 0.3.2 retro (H1).
+Stable: 2026-11-17 (the rc.1 commit, unchanged). rc.1: 2026-11-17 (intent 023). Gate discovery now sees a root `typecheck` and `lint` script, the second audit's range starts where the first audit's ended, and the `config` models screen follows its scope while a personal group wins only where it speaks. Origin: the maintainer's reports of 2026-11-16 and the 0.3.2 retro (H1).
 
 ### Fixed
 - Gate discovery (`reins install` and `reins config gates --refresh`) proposes the root `package.json` scripts `typecheck` and `lint` as gate candidates, unless the chosen bundle check (`check`, `verify` and the like) already calls them: by name, or by an identical command. Only a command that runs the script (`pnpm lint`, `npm run typecheck`, `run-s lint typecheck`) counts; a recursive, filtered, other-directory or task-runner call (`pnpm -r`, `--filter`, `--dir`, `turbo`, `nx`, `lerna`), a command with any option, or a mere mention (`echo lint`) does not, so a check may run twice but is never dropped. A script that rewrites files (`--fix`, `--write` and the like) is left out, as for the other gates. Candidates are ordered check, lint, typecheck, test, build, e2e. An existing `gates.yaml` is not changed; `reins config gates --refresh` shows the new candidates and applies only what is picked.

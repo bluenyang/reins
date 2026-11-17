@@ -84,9 +84,9 @@ Fills the gaps in the flow that building 0.3.1 showed (maintainer, 2026-11-11; b
 - **Harness problems met here are fixed in the harness.** What concerns function and the control of agents moves from this repository's own conventions into the skills: the PM judges which PR a merge instruction means (what it proposed, or the PR just mentioned) and asks when it cannot tell; a merged branch is deleted at the merge; records name the default branch's SHAs when a merge rewrites them. What differs by project (document languages, commit message format) stays out.
 - **Two small fixes from the 0.3.1 retro.** The `review` skill has a unit that changed tests only reviewed, or recorded as not reviewed. The `update` report no longer marks an existing generated file it rewrote as a new file.
 
-### 0.3.3 — planned
+### 0.3.3 — rc.1
 
-State: **0.3.3 planned** (in work; intent 023). Origin: the maintainer's report of 2026-11-16 and the 0.3.2 retro (H1).
+State: 0.3.3-rc.1 (2026-11-17, intent 023); stable on the maintainer's instruction. Origin: the maintainer's report of 2026-11-16 and the 0.3.2 retro (H1).
 
 - **Gate discovery sees the root `typecheck` and `lint`.** Install and `config gates --refresh` propose them as gate candidates unless the chosen bundle check already calls them; recursive, filtered, other-directory and task-runner calls, a command with any option, and a mere mention do not count. Already installed repositories run `reins config gates --refresh` once to see the new candidates (`update` leaves `gates.yaml` alone).
 - **The second audit's range.** It starts at the end of the first audit record's `first.range` (the default branch's SHA when the merge rewrote commits), not at "the first audit's head" (0.3.2 retro, H1).

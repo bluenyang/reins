@@ -136,6 +136,7 @@ summary_for_user: |
 - A-9 (2026-11-17, W-4) W-4 리뷰(GPT-6.1 Sol) should-fix: 설계 양판 §5의 대체 설명이 "모델 없이 대체만 있는 개인 설정은 그 군을 끈다"로 남음 → `config`는 같은 파일에 모델이 있을 때만 적고, 손으로 적은 개인 대체는 팀 모델에 더해지며 팀 군에 모델이 없으면 아무 일도 하지 않는다로 고침(마지막 경우는 PM이 tsx로 확인) · `.loctx/reports/0.3.3/code-review-7.md` · 3db589b
 - A-10 (2026-11-17, W-4) V-5 4회차 FAIL 1(harness CHANGELOG에 "대체만 있으면 팀 모델에 더함"이 없음)과 관찰 넷: 두 CHANGELOG 항목을 맞춤, 설계 양판 "키 단위로 이김"을 mode·audit·도구로 좁힘, 개인 대체가 팀 군 대체를 대신함을 적음, 코드 주석 두 곳, 5회차 관찰("as below"→"as above") · `.loctx/reports/0.3.3/design-twin-comparison-4.md`·`-5.md` · d75e970
 - A-11 (2026-11-17, W-1) 1차 감사 재실행의 비판 1에 따른 전체 재리뷰(GPT-6.1 Sol, 모든 소스 포함) must-fix 1: 따옴표 안의 글(`echo "… && pnpm lint && …"`)이 조각으로 나뉘어 루트 게이트를 지움 → 따옴표 글을 가린 뒤 나눔, 닫히지 않은 따옴표면 아무것도 치지 않음, 행 11k·11l; should-fix 1: S-2.1 본문이 옛 정규식 규칙을 그대로 남김 → 지금 규칙으로 바꿔 씀; note 1: fixture가 이 저장소의 두 파일과 글자 그대로 같은지 → `cmp` 기록 `.loctx/reports/0.3.3/fixture-cmp.log` · `.loctx/reports/0.3.3/code-review-9.md` · 7cadb35; 이어서 그 수정의 리뷰(code-review-10.md) must-fix 1: 이스케이프된 따옴표(`\"`)가 따옴표를 닫은 것으로 읽힘 → 역슬래시가 든 묶음은 분명하지 않은 것으로 봄, 행 11m · bdafdef
+- A-12 (2026-11-17, W-3) 머지 뒤 spec의 체크와 조정 기록의 SHA는 브랜치 SHA다. 기본 브랜치 SHA는 `.agents/audit/0.3.3.md` `### SHA 대응`(2차 감사 기록과 함께)과 `.loctx/reports/0.3.3/sha-map.md`에 있다 · rc.1 릴리스 문서 PR
 
 ## 우려
 1. **intent 밖에서 PM이 정한 것 — 모두 확인 필요.** ① S-15: `harness/roles/auditor.md`도 W-2에서 고침(intent의 영향 범위에 없음) — 확인 필요 ② S-7: `test` 판정은 그대로 — 확인 필요 ③ S-2.2: 직접 호출은 명령이 글자 그대로 같을 때만 부른 것으로 침(감싼 호출은 풀지 않음) — 확인 필요 ④ S-6: lint를 typecheck 앞에 — 확인 필요 ⑤ S-2.1 단서: 재귀·필터·태스크 러너 호출은 부른 것으로 치지 않음 — 확인 필요.

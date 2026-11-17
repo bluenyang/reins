@@ -76,10 +76,10 @@ summary_for_user: |
 - **되돌림.** W-1(코드·테스트·설계 §5)과 W-2(스킬·템플릿·역할·설계 §3-3)는 서로 다른 파일과 절이라 하나만 되돌려도 다른 쪽이 그대로 선다. W-3은 마지막에 오며, W-1이나 W-2를 되돌리면 W-3의 해당 줄도 함께 되돌린다(글만의 커밋).
 
 ## 작업 단위
-- [x] W-1 (e8d58a8) 루트 `typecheck`·`lint` 게이트 후보 (S-1~S-10, S-16의 §5) — `cli/src/lib/detect.ts`, `cli/test/gate-proposals.test.ts`(필요하면 `cli/test/gate-refresh.test.ts`), `docs/design.md`·`design.ko.md` §5
-- [x] W-2 (268676f) 2차 감사 범위의 시작점 (S-11~S-15, S-16의 §3-3) — `skills/audit/SKILL.md` L23(게이트 로그 "after the first audit's head")·L24(범위 "from the first audit's head"), `harness/templates/audit.md`, `harness/roles/auditor.md`, `docs/design.md`·`design.ko.md` §3-3, 구절 테스트(`cli/test/skills.test.ts`)
-- [x] W-3 (ed7bebf) 0.3.3 문서 (S-17, S-18) — `CHANGELOG.md`, `harness/CHANGELOG.md`, `docs/ROADMAP.md`·`ROADMAP.ko.md`
-- [x] W-4 (57a1732; 개정 1) 개인 설정의 병합과 모델 화면 (S-20~S-24) — `cli/src/lib/bindings.ts`(`mergeLocal`), `cli/src/commands/config-models.ts`(`modelsScreen`·`groupLine`·그룹 화면), `cli/test/bindings-v2.test.ts`·`cli/test/config.test.ts`(필요하면 화면 테스트 파일), `docs/design.md`·`design.ko.md` §5(·§9), `CHANGELOG.md`, `harness/CHANGELOG.md`, `docs/ROADMAP.md`·`ROADMAP.ko.md`
+- [x] W-1 (1cda46f; 브랜치 e8d58a8) 루트 `typecheck`·`lint` 게이트 후보 (S-1~S-10, S-16의 §5) — `cli/src/lib/detect.ts`, `cli/test/gate-proposals.test.ts`(필요하면 `cli/test/gate-refresh.test.ts`), `docs/design.md`·`design.ko.md` §5
+- [x] W-2 (29fa84b; 브랜치 268676f) 2차 감사 범위의 시작점 (S-11~S-15, S-16의 §3-3) — `skills/audit/SKILL.md` L23(게이트 로그 "after the first audit's head")·L24(범위 "from the first audit's head"), `harness/templates/audit.md`, `harness/roles/auditor.md`, `docs/design.md`·`design.ko.md` §3-3, 구절 테스트(`cli/test/skills.test.ts`)
+- [x] W-3 (9d0457e; 브랜치 ed7bebf) 0.3.3 문서 (S-17, S-18) — `CHANGELOG.md`, `harness/CHANGELOG.md`, `docs/ROADMAP.md`·`ROADMAP.ko.md`
+- [x] W-4 (a341e41; 브랜치 57a1732; 개정 1) 개인 설정의 병합과 모델 화면 (S-20~S-24) — `cli/src/lib/bindings.ts`(`mergeLocal`), `cli/src/commands/config-models.ts`(`modelsScreen`·`groupLine`·그룹 화면), `cli/test/bindings-v2.test.ts`·`cli/test/config.test.ts`(필요하면 화면 테스트 파일), `docs/design.md`·`design.ko.md` §5(·§9), `CHANGELOG.md`, `harness/CHANGELOG.md`, `docs/ROADMAP.md`·`ROADMAP.ko.md`
 
 ## 검증 기준
 - V-1 (W-1; S-9) **고치기 전 실패.** W-1의 테스트를 먼저 쓰고 지금 코드에서 돌린다: 재현 ①행은 기대 `[lint, typecheck, test, build]`에 실제 `[test, build]`, ②행은 기대 `[check, typecheck, build]`에 실제 `[check, build]`로 실패한다. 출력 원본 `.loctx/reports/0.3.3/w1-before.log`. 두 행이 실패하지 않으면(지금 코드로 통과하면) 테스트가 결함을 잡지 못하는 것이라 실패로 본다.
@@ -136,7 +136,7 @@ summary_for_user: |
 - A-9 (2026-11-17, W-4) W-4 리뷰(GPT-6.1 Sol) should-fix: 설계 양판 §5의 대체 설명이 "모델 없이 대체만 있는 개인 설정은 그 군을 끈다"로 남음 → `config`는 같은 파일에 모델이 있을 때만 적고, 손으로 적은 개인 대체는 팀 모델에 더해지며 팀 군에 모델이 없으면 아무 일도 하지 않는다로 고침(마지막 경우는 PM이 tsx로 확인) · `.loctx/reports/0.3.3/code-review-7.md` · 3db589b
 - A-10 (2026-11-17, W-4) V-5 4회차 FAIL 1(harness CHANGELOG에 "대체만 있으면 팀 모델에 더함"이 없음)과 관찰 넷: 두 CHANGELOG 항목을 맞춤, 설계 양판 "키 단위로 이김"을 mode·audit·도구로 좁힘, 개인 대체가 팀 군 대체를 대신함을 적음, 코드 주석 두 곳, 5회차 관찰("as below"→"as above") · `.loctx/reports/0.3.3/design-twin-comparison-4.md`·`-5.md` · d75e970
 - A-11 (2026-11-17, W-1) 1차 감사 재실행의 비판 1에 따른 전체 재리뷰(GPT-6.1 Sol, 모든 소스 포함) must-fix 1: 따옴표 안의 글(`echo "… && pnpm lint && …"`)이 조각으로 나뉘어 루트 게이트를 지움 → 따옴표 글을 가린 뒤 나눔, 닫히지 않은 따옴표면 아무것도 치지 않음, 행 11k·11l; should-fix 1: S-2.1 본문이 옛 정규식 규칙을 그대로 남김 → 지금 규칙으로 바꿔 씀; note 1: fixture가 이 저장소의 두 파일과 글자 그대로 같은지 → `cmp` 기록 `.loctx/reports/0.3.3/fixture-cmp.log` · `.loctx/reports/0.3.3/code-review-9.md` · 7cadb35; 이어서 그 수정의 리뷰(code-review-10.md) must-fix 1: 이스케이프된 따옴표(`\"`)가 따옴표를 닫은 것으로 읽힘 → 역슬래시가 든 묶음은 분명하지 않은 것으로 봄, 행 11m · bdafdef
-- A-12 (2026-11-17, W-3) 머지 뒤 spec의 체크와 조정 기록의 SHA는 브랜치 SHA다. 기본 브랜치 SHA는 `.agents/audit/0.3.3.md` `### SHA 대응`(2차 감사 기록과 함께)과 `.loctx/reports/0.3.3/sha-map.md`에 있다 · rc.1 릴리스 문서 PR
+- A-12 (2026-11-17, W-3) 머지가 SHA를 바꿈(rebase): 작업 단위의 체크는 기본 브랜치 SHA로 고치고 브랜치 SHA를 옆에 둠. 조정 기록(A-n)의 SHA는 브랜치 SHA 그대로이고, 대응은 `.agents/audit/0.3.3.md` `### SHA 대응`(2차 감사 기록과 함께)과 `.loctx/reports/0.3.3/sha-map.md` · rc.1 릴리스 문서 PR
 
 ## 우려
 1. **intent 밖에서 PM이 정한 것 — 모두 확인 필요.** ① S-15: `harness/roles/auditor.md`도 W-2에서 고침(intent의 영향 범위에 없음) — 확인 필요 ② S-7: `test` 판정은 그대로 — 확인 필요 ③ S-2.2: 직접 호출은 명령이 글자 그대로 같을 때만 부른 것으로 침(감싼 호출은 풀지 않음) — 확인 필요 ④ S-6: lint를 typecheck 앞에 — 확인 필요 ⑤ S-2.1 단서: 재귀·필터·태스크 러너 호출은 부른 것으로 치지 않음 — 확인 필요.

@@ -1,7 +1,7 @@
 # version pin and install settings (R25) — read by reins update
 schema: reins/install@1
-version: 0.3.2
-cli: 0.3.2
+version: 0.3.3
+cli: 0.3.3
 mode: manual
 language: ko
 release:

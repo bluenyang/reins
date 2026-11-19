@@ -1,0 +1,14 @@
+{
+  "name": "pipit-music",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:dev": "node --env-file=.env.development.local dist/index.js",
+    "dev": "yarn build && yarn start:dev",
+    "typecheck": "tsc --noEmit",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint --fix .",
+    "lint:check": "oxlint ."
+  }
+}

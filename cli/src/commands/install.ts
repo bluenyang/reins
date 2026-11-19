@@ -276,6 +276,8 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   }
   if (!hasGates) {
     const proposal = discoverGates(root);
+    const reasonsOf = (name: string) =>
+      proposal.candidates.find((c) => c.name === name)?.reasons ?? [];
     const gateList = proposal.gates.map((g) => `${g.name}=${g.cmd}`).join(', ') || 'none found';
     const gateQ = `gates found: ${gateList} — use them?`;
     const gateAns = await (screens ?? line).confirm({ message: gateQ, initial: true });
@@ -288,8 +290,12 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
         let names: Set<string>;
         if (screens) {
           const picked = await screens.multiselect<string>({
-            message: 'Subdirectory gates to add',
-            options: proposal.proposals.map((g) => ({ value: g.name, label: g.name, hint: g.cmd })),
+            message: 'Other gate candidates to add (not chosen by default)',
+            options: proposal.proposals.map((g) => ({
+              value: g.name,
+              label: g.name,
+              hint: [g.cmd, ...reasonsOf(g.name)].join(' — '),
+            })),
             initial: [],
           });
           if (isNav(picked)) return cancelled();
@@ -319,6 +325,9 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
         );
     }
     for (const x of proposal.excluded) notes.push(`excluded from gates: ${x.name} (${x.why})`);
+    // what another script or gate already runs is shown, never chosen (024 S-9, S-10)
+    for (const c of proposal.candidates.filter((x) => x.status === 'covered'))
+      notes.push(`not a gate of its own: ${c.name} — ${c.reasons.join('; ')}`);
     add(
       '.agents/harness/gates.yaml',
       buildGates(root, [...(gateAns ? proposal.gates : []), ...chosen]),

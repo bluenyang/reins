@@ -1,0 +1,18 @@
+{
+  "name": "@croffledev/desktop",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.node.json --composite false && vue-tsc --noEmit -p tsconfig.web.json --composite false",
+    "test": "node --test --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON test/**/*.test.ts",
+    "start": "electron-vite preview",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "postinstall": "electron-builder install-app-deps",
+    "build:unpack": "pnpm build && electron-builder --dir",
+    "build:win": "pnpm build && electron-builder --win",
+    "build:mac": "pnpm build && electron-builder --mac",
+    "build:linux": "pnpm build && electron-builder --linux",
+    "build:appimage": "pnpm build && electron-builder --linux appimage",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio"
+  }
+}

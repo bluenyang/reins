@@ -1,0 +1,56 @@
+on:
+  push:
+    branches: [master]
+  pull_request:
+jobs:
+  checks:
+    steps:
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Scope
+        run: |
+          echo "paths=." >> "$GITHUB_OUTPUT"
+      - name: Lint
+        run: pnpm exec oxlint ${{ steps.scope.outputs.paths }}
+      - name: Format
+        run: pnpm exec oxfmt --check ${{ steps.scope.outputs.paths }}
+      - name: Typecheck
+        run: pnpm ${{ steps.scope.outputs.filters }} run typecheck
+      - name: Test
+        run: pnpm ${{ steps.scope.outputs.filters }} run --if-present test
+  desktop:
+    steps:
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm --filter @croffledev/desktop build
+  cli:
+    steps:
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm --filter @croffledev/croffle-cli build
+  server:
+    steps:
+      - name: Format check (gofmt)
+        working-directory: apps/server
+        run: |
+          out="$(gofmt -l .)"
+          test -z "$out"
+      - name: Vet
+        working-directory: apps/server
+        run: go vet ./...
+      - name: Build
+        working-directory: apps/server
+        run: go build ./...
+      - name: Test
+        working-directory: apps/server
+        run: go test ./...
+  web:
+    steps:
+      - name: Install
+        working-directory: apps/server/web
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        working-directory: apps/server/web
+        run: pnpm build

@@ -1,0 +1,9 @@
+{
+  "name": "@croffledev/croffle-cli",
+  "scripts": {
+    "build": "tsup src/cli.ts --format esm",
+    "dev": "tsup src/cli.ts --format esm --watch",
+    "start": "node dist/cli.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

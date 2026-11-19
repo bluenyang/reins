@@ -1,0 +1,22 @@
+{
+  "name": "@croffledev/croffle",
+  "scripts": {
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "prepare": "husky",
+    "typecheck": "pnpm -r --parallel run typecheck",
+    "typecheck:desktop": "pnpm --filter @croffledev/desktop typecheck",
+    "dev": "pnpm --filter @croffledev/desktop dev",
+    "start": "pnpm --filter @croffledev/desktop start",
+    "build": "pnpm --filter @croffledev/desktop build",
+    "build:unpack": "pnpm --filter @croffledev/desktop build:unpack",
+    "build:win": "pnpm --filter @croffledev/desktop build:win",
+    "build:mac": "pnpm --filter @croffledev/desktop build:mac",
+    "build:linux": "pnpm --filter @croffledev/desktop build:linux",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm --filter @croffledev/croffle-cli build && node scripts/stage-packages.mjs"
+  }
+}

@@ -1,0 +1,16 @@
+on:
+  push:
+  pull_request:
+jobs:
+  check:
+    steps:
+      - name: Corepack
+        run: corepack enable
+      - name: Install
+        run: yarn install --immutable
+      - name: Typecheck
+        run: yarn typecheck
+      - name: Lint
+        run: yarn lint:check
+      - name: Format
+        run: yarn format:check

@@ -30,7 +30,10 @@ function fixture(): string {
   writeFileSync(join(d, 'package.json'), JSON.stringify({ scripts: { build: 'tsc' } }));
   writeFileSync(join(d, 'pnpm-lock.yaml'), '');
   writeFileSync(join(d, 'server/go.mod'), 'module x\n');
-  writeFileSync(join(d, 'server/Makefile'), 'check: vet\ntest:\n\tgo test ./...\n');
+  writeFileSync(
+    join(d, 'server/Makefile'),
+    'check: vet\ntest:\n\tsh ./t.sh\n' /* 024 S-6: a recipe with go test would cover go -C server test */,
+  );
   return d;
 }
 

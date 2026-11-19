@@ -386,6 +386,7 @@ summary_for_user: |
 - A-12 (2026-11-19, W-2·W-3) 문서 대조(pl/doc-reviewer, `.loctx/reports/0.3.4/twin-1.md`)의 보정 3건: 플랫폼 낱말에 `windows`·`macos`, `remove:<name>`은 "어느 상태의 게이트든", 없는 이름이면 `gates.yaml`만 그대로(목록은 씀) · 코드와 문서가 어긋남 · `4a26b96`
 - A-13 (2026-11-19, W-8·W-4·W-2·W-3) 코드 리뷰 1(`review-1-answer.md`)의 7건: 다른 인자 뒤의 `--no-verify`·`commit -n`도 막음, 브랜치 없이 `upstream`만 적은 푸시도 막음, refresh 짝짓기를 모든 게이트에 대해 명령부터(같은 출처는 이름·스크립트로 가림), pnpm `-r`·npm `--workspaces`는 필터가 좁힘, 공백·식이 든 `working-directory`는 뺌, 게이트가 없을 때의 `gates: {}`·`order: []`를 읽음, `gates:` 절이 없는 파일은 exit 2 · 실패 입력이 재현됨 · `65838cd`, `e0e7922`, `cba1ff5`, `0c2bdd6`. 다시 리뷰(`review-2-answer.md`): 6건 고쳐짐, 1건 부분(아래 우려 2), 새 결함 1건(`order: []`가 order 없음으로 읽힘)
 - A-14 (2026-11-19, W-4) 리뷰 2의 새 결함: 비어 있어도 `order`가 있으면 그것을 따름(`order: []`는 아무것도 돌리지 않음) · `7236466`. 다시 리뷰(`review-3-answer.md`): 고쳐짐, 새 결함 없음
+- A-15 (2026-11-19, W-2) fixture 목록 테스트가 Windows의 역슬래시 경로를 `/`로 바꿔 비교한다 · PR #51의 Windows CI에서만 실패 · `689c29f`. 리뷰(`review-4-answer.md`): 맞음, 가리는 것 없음
 
 ## 우려
 1. **awk로 YAML 읽기.** 사람이나 에이전트가 `gates.yaml`을 흐름 표기 등으로 고치면 스크립트가 exit 2로 멈춘다. 검사가 조용히 빠지지 않고 멈추는 쪽이라 안전하지만 불편할 수 있다. 메시지에 줄 번호와 이유를 적어 고치기 쉽게 한다.

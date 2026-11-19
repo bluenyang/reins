@@ -1,9 +1,15 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { applicable, formatGateDiff } from '../lib/gate-refresh.js';
+import { actionsOf, formatGateRow } from '../lib/gate-refresh.js';
 import { GATE_SCRIPT } from '../lib/gate-script.js';
 import { BACK, EXIT, type Prompter } from '../lib/prompter.js';
-import { configureGates, fileGates, gateDiff } from './configure.js';
+import {
+  configureGates,
+  fileGates,
+  gateRows,
+  REFRESH_LIST,
+  writeRefreshList,
+} from './configure.js';
 import { hookTool } from './install.js';
 
 const GATES = '.agents/harness/gates.yaml';
@@ -28,25 +34,28 @@ export function formatGates(root: string): string {
 }
 
 /**
- * Run the discovery again and let the user pick which differences to apply (design §9). Nothing is
- * written unless something is picked. Returns `exit` when the user left with Ctrl-C.
+ * Run the discovery again, show every gate and candidate with its state (024 S-11), leave the same list in
+ * `.loctx/gates-refresh.md`, and let the user pick what to add, remove or replace (S-13). Nothing is written
+ * to gates.yaml unless something is picked. Returns `exit` when the user left with Ctrl-C.
  */
 export async function refreshGates(root: string, prompter: Prompter): Promise<'done' | 'exit'> {
-  const diff = gateDiff(root);
-  if (!diff) {
+  const rows = gateRows(root);
+  if (!rows) {
     prompter.note('no gates.yaml — run `reins install`');
     return 'done';
   }
-  const can = applicable(diff);
-  const yours = diff.filter((d) => d.kind === 'yours');
-  if (yours.length) prompter.note(yours.map(formatGateDiff).join('\n'));
-  if (can.length === 0) {
-    prompter.note('gates: up to date — the discovery finds what gates.yaml holds');
-    return 'done';
-  }
+  writeRefreshList(root, rows);
+  prompter.note([...rows.map(formatGateRow), `(the same list: ${REFRESH_LIST})`].join('\n'));
+  const options = rows.flatMap((r) =>
+    actionsOf(r).map((a) => ({
+      value: `${a}:${r.name}`,
+      label: `${a} ${r.name}`,
+      hint: a === 'replace' ? `${r.cmd} → ${r.found!.cmd}` : r.cmd,
+    })),
+  );
   const picked = await prompter.multiselect<string>({
-    message: 'Differences to apply to gates.yaml (nothing is changed unless picked)',
-    options: can.map((d) => ({ value: d.name, label: formatGateDiff(d) })),
+    message: 'What to apply to gates.yaml (nothing is changed unless picked)',
+    options,
     initial: [],
   });
   if (picked === EXIT) return 'exit';
@@ -54,11 +63,17 @@ export async function refreshGates(root: string, prompter: Prompter): Promise<'d
     prompter.note('gates: nothing changed');
     return 'done';
   }
-  const r = configureGates({ cwd: root, refresh: true, apply: picked });
+  // remove and replace of one gate together: the removal wins
+  const names = new Map<string, string>();
+  for (const p of picked) {
+    const name = p.slice(p.indexOf(':') + 1);
+    if (!names.has(name) || p.startsWith('remove:')) names.set(name, p);
+  }
+  const r = configureGates({ cwd: root, refresh: true, apply: [...names.values()] });
   prompter.note(
     r.refused
       ? `not changed: ${r.refused}`
-      : `gates: applied ${r.applied?.join(', ')} — gates.yaml and ${GATE_SCRIPT} written; commit them (the hook line stays as it is)`,
+      : `gates: ${r.applied?.join(', ')} — gates.yaml written; commit it (the gate script reads it, the hook line stays)`,
   );
   return 'done';
 }
@@ -71,7 +86,11 @@ export async function gatesScreen(root: string, prompter: Prompter): Promise<'ba
       message: 'Gates',
       options: [
         { value: 'back', label: '< Configuration' },
-        { value: 'refresh', label: 'refresh', hint: 'find the gates again and pick what to apply' },
+        {
+          value: 'refresh',
+          label: 'refresh',
+          hint: 'find the gates again, see each state, pick what to apply',
+        },
         { value: 'add', label: 'add subdirectory proposals' },
       ],
     });

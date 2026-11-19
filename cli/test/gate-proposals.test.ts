@@ -469,6 +469,12 @@ describe('root typecheck and lint through install and refresh (023 S-8, V-3a)', 
     writeFileSync(join(d, 'pnpm-lock.yaml'), '');
     await runInstall({ mode: 'auto', asker: defaultsAsker, cwd: d });
     expect(gatesOf(d).order).toEqual(['lint', 'typecheck', 'test', 'build']);
-    expect(configureGates({ cwd: d, refresh: true }).diff).toEqual([]);
+    // 024 S-11: a refresh straight after shows every gate applied and nothing else
+    expect(configureGates({ cwd: d, refresh: true }).rows!.map((r) => r.state)).toEqual([
+      'applied',
+      'applied',
+      'applied',
+      'applied',
+    ]);
   });
 });

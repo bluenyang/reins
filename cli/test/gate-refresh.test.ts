@@ -1,22 +1,24 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { runConfig } from '../src/commands/config.js';
 import { formatGates, refreshGates } from '../src/commands/config-gates.js';
-import { configureGates, fileGates, gateDiff } from '../src/commands/configure.js';
+import { configureGates, fileGates, gateRows, REFRESH_LIST } from '../src/commands/configure.js';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker } from '../src/lib/ask.js';
+import { detectCandidates, REASON } from '../src/lib/detect.js';
 import { renderGateScript, requiredGates } from '../src/lib/gate-script.js';
-import { diffGates, formatGateDiff, type GateDiff } from '../src/lib/gate-refresh.js';
+import { gateStatus, type StatusRow } from '../src/lib/gate-refresh.js';
 import { BACK, scriptedPrompter } from '../src/lib/prompter.js';
 
-/** Spec 021 V-10: `config gates --refresh` — what differs from the discovery, and applying what was picked. */
+/** Spec 024 V-5 (and 021 V-10): `config gates --refresh` — every gate and candidate with its state. */
 
 const GATES = '.agents/harness/gates.yaml';
 const SCRIPT = '.agents/harness/run-gates.sh';
+const FIX = join(process.cwd(), 'cli/test/fixtures/gates');
 const detect = () => [{ name: 'claude' as const, cli: 'claude', detected: true }];
 
 /** A project with a root `check` and `build`, installed (so gates.yaml holds both), with husky hooks. */
@@ -44,77 +46,127 @@ const gates = (d: string) =>
     gates: Record<string, { cmd: string; from?: string; optional?: boolean }>;
     order: string[];
   };
-const kinds = (diff: GateDiff[]) => diff.map((x) => `${x.kind} ${x.name}`);
+const states = (rows: StatusRow[]) => rows.map((r) => `${r.state}: ${r.name}`);
 
-describe('how gates.yaml differs from the discovery (021 S-22)', () => {
-  const ROOT = mkdtempSync(join(tmpdir(), 'reins-refresh-src-'));
-  writeFileSync(join(ROOT, 'package.json'), '{}');
-
-  it('(a) the same source and command is the same gate, whatever it is called', () => {
-    // two go gates share one source; a subdirectory name that came out differently this time
+describe('the state of each gate and candidate (024 S-11)', () => {
+  it('shows all six states, and never says a gate is gone', () => {
+    const d = mkdtempSync(join(tmpdir(), 'reins-state-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    writeFileSync(join(d, 'pnpm-lock.yaml'), '');
+    writeFileSync(join(d, 'pnpm-workspace.yaml'), "packages:\n  - 'pk/*'\n");
+    pkg(d, { lint: 'eslint .', build: 'tsc', typecheck: 'tsc --noEmit' });
+    pkg(d, { test: 'vitest' }, 'pk/a');
+    mkdirSync(join(d, 'srv'));
+    writeFileSync(join(d, 'srv/Makefile'), 'check:\n\ttrue\n');
     const file = [
-      { name: 'srv-test', cmd: 'go -C srv test ./...', from: 'srv/go.mod' },
-      { name: 'srv-vet', cmd: 'go -C srv vet ./...', from: 'srv/go.mod' },
-      {
-        name: 'web-check-old-name',
-        cmd: 'pnpm --dir web check',
-        from: 'web/package.json#scripts.check',
-      },
+      { name: 'lint', cmd: 'pnpm lint', from: 'package.json#scripts.lint' },
+      { name: 'smoke', cmd: './smoke.sh' },
+      { name: 'gone-script', cmd: 'pnpm old', from: 'package.json#scripts.old' },
+      { name: 'gone-target', cmd: 'make -C srv old', from: 'srv/Makefile:old' },
+      { name: 'gone-go', cmd: 'go -C x test ./...', from: 'x/go.mod' },
+      { name: 'gone-ci', cmd: 'node ci.js', from: '.github/workflows/nope.yml' },
+      { name: 'odd', cmd: 'node odd.js', from: 'somewhere/else.toml' },
+      { name: 'build', cmd: 'pnpm run build', from: 'package.json#scripts.build' },
+      { name: 'srv', cmd: 'make -C srv check', from: 'srv/Makefile#check' },
+      { name: 'tests', cmd: 'pnpm -r test' },
     ];
-    const found = [
-      { name: 'srv-test', cmd: 'go -C srv test ./...', from: 'srv/go.mod' },
-      { name: 'srv-vet', cmd: 'go -C srv vet ./...', from: 'srv/go.mod' },
-      { name: 'web-check', cmd: 'pnpm --dir web check', from: 'web/package.json#scripts.check' },
-    ];
-    expect(diffGates(ROOT, file, found)).toEqual([]);
-  });
-
-  it('(a) the root check pointing at another script is one change, not a new and a gone gate', () => {
-    const diff = diffGates(
-      ROOT,
-      [{ name: 'check', cmd: 'pnpm verify', from: 'package.json#scripts.verify' }],
-      [{ name: 'check', cmd: 'pnpm check', from: 'package.json#scripts.check' }],
-    );
-    expect(diff).toEqual([
-      {
-        kind: 'changed',
-        name: 'check',
-        cmd: 'pnpm check',
-        from: 'package.json#scripts.check',
-        was: { cmd: 'pnpm verify', from: 'package.json#scripts.verify' },
-      },
+    const rows = gateStatus(d, file, detectCandidates(d));
+    expect(states(rows)).toEqual([
+      'applied: lint',
+      'applied, written by hand: smoke',
+      'applied, source not found: gone-script',
+      'applied, source not found: gone-target',
+      'applied, source not found: gone-go',
+      'applied, source not found: gone-ci',
+      'applied: odd', // a source reins cannot read reads as there
+      'applied, another command: build',
+      'applied: srv', // the old `Makefile#check` is `Makefile:check`
+      'applied, written by hand: tests',
+      'not applied: typecheck',
+      'not applied, already runs: pk-a-test',
     ]);
-    expect(formatGateDiff(diff[0]!)).toBe(
-      'changed check  pnpm verify → pnpm check   (package.json#scripts.verify → package.json#scripts.check)',
-    );
+    expect(rows.find((r) => r.name === 'build')!.found).toEqual({
+      cmd: 'pnpm build',
+      from: 'package.json#scripts.build',
+    });
+    expect(rows.find((r) => r.name === 'pk-a-test')!.reasons).toEqual([
+      REASON.runs('tests', 'pnpm -r test'),
+    ]);
   });
 
-  it('(a) a gate the discovery stops proposing is gone, with the reason; a gate by hand is only shown', () => {
-    const diff = diffGates(
-      ROOT,
+  it('pairs the same command whatever its source, then the same source, then the same name', () => {
+    const d = mkdtempSync(join(tmpdir(), 'reins-pair-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    pkg(d, { verify: 'node -e 0', build: 'tsc' });
+    const rows = gateStatus(
+      d,
       [
-        { name: 'check', cmd: 'pnpm check', from: 'package.json#scripts.check' },
-        // check now runs the tests, so discovery no longer proposes `test`; its source is still there
-        { name: 'test', cmd: 'pnpm test', from: 'package.json#scripts.test' },
-        { name: 'api-test', cmd: 'make -C api test', from: 'api/Makefile:test' },
-        { name: 'mine', cmd: './scripts/smoke.sh' },
+        { name: 'b', cmd: 'npm run build', from: 'elsewhere' },
+        { name: 'check', cmd: 'npm run check', from: 'package.json#scripts.check' },
       ],
-      [
-        { name: 'check', cmd: 'pnpm check', from: 'package.json#scripts.check' },
-        // discovery proposes a gate under the name the hand-written one has
-        { name: 'mine', cmd: 'pnpm --dir mine check', from: 'mine/package.json#scripts.check' },
-      ],
+      detectCandidates(d),
     );
-    expect(kinds(diff)).toEqual(['gone test', 'gone api-test', 'new mine-2', 'yours mine']);
-    const why = (n: string) => (diff.find((x) => x.name === n) as { why: string }).why;
-    expect(why('test')).toMatch(/^no longer proposed/);
-    expect(why('api-test')).toBe('its source is gone (api/Makefile)');
-    expect(formatGateDiff(diff.at(-1)!)).toContain('written by hand — left alone');
+    // `b` pairs with build by its command; the root check now points at verify: another command
+    expect(states(rows)).toEqual(['applied: b', 'applied, another command: check']);
+    expect(rows[1]!.found!.cmd).toBe('npm run verify');
+  });
+
+  it('croffle with the gates of a 0.3.3 install (fixture B): nothing reads as gone (024 V-4)', () => {
+    const root = join(FIX, 'croffle');
+    const rows = gateStatus(
+      root,
+      fileGates(read(FIX, 'croffle/gates-b.yaml')),
+      detectCandidates(root),
+    );
+    expect(states(rows)).toEqual([
+      'applied: typecheck',
+      'applied: lint',
+      'applied: format',
+      'applied, written by hand: test',
+      'applied: build',
+      'applied, written by hand: build-cli',
+      'applied, written by hand: server-web',
+      'applied: server',
+      'not applied: typecheck-desktop',
+      'not applied: build-unpack',
+      'not applied, already runs: apps-desktop-build',
+      'not applied, already runs: apps-desktop-build-unpack',
+      'not applied, already runs: apps-desktop-test',
+      'not applied, already runs: apps-desktop-typecheck',
+      'not applied: apps-server-build',
+      'not applied, already runs: apps-server-test',
+      'not applied, already runs: apps-server-vet',
+      'not applied, already runs: apps-server-test-go',
+      'not applied, already runs: apps-server-vet-go',
+      'not applied, already runs: apps-server-web-typecheck',
+      'not applied, already runs: packages-cli-build',
+      'not applied, already runs: packages-cli-typecheck',
+      'not applied, already runs: packages-types-typecheck',
+      'not applied: ci-go-build',
+    ]);
+    expect(rows.find((r) => r.name === 'build-cli')!.reasons).toEqual([
+      REASON.ci('.github/workflows/ci.yml'),
+    ]);
+    expect(rows.find((r) => r.name === 'apps-desktop-test')!.reasons).toEqual([
+      REASON.runs('test', 'pnpm -r test'),
+    ]);
+    // fixture A, every gate by hand: the same rows, the gates all "written by hand"
+    const a = gateStatus(
+      root,
+      fileGates(read(FIX, 'croffle/gates-a.yaml')),
+      detectCandidates(root),
+    );
+    expect(a.filter((r) => r.state.startsWith('applied')).map((r) => r.state)).toEqual(
+      Array(8).fill('applied, written by hand'),
+    );
+    expect(a.filter((r) => r.state.startsWith('not')).map((r) => r.name)).toEqual(
+      rows.filter((r) => r.state.startsWith('not')).map((r) => r.name),
+    );
   });
 });
 
-describe('reins config gates --refresh (021 S-22..S-24)', () => {
-  /** After install: the check script changes, build goes away, a test script and a subproject appear, one gate is by hand. */
+describe('reins config gates --refresh (024 S-12, S-13, V-5)', () => {
+  /** After install: the check script moves to verify, build goes away, a test script and a subproject appear, one gate is by hand. */
   async function drifted(): Promise<string> {
     const d = await project();
     const text = read(d, GATES)
@@ -131,155 +183,155 @@ describe('reins config gates --refresh (021 S-22..S-24)', () => {
     return d;
   }
 
-  it('(b) --refresh alone reports and writes nothing', async () => {
+  it('--refresh alone writes .loctx/gates-refresh.md and nothing else; a second run replaces it', async () => {
     const d = await drifted();
     const before = [read(d, GATES), read(d, SCRIPT)];
     const r = configureGates({ cwd: d, refresh: true });
     expect(r.refused).toBeUndefined();
-    expect(kinds(r.diff!)).toEqual([
-      'changed check',
-      'gone build',
-      'new test',
-      'new web-check',
-      'yours mine',
+    expect(states(r.rows!)).toEqual([
+      'applied, written by hand: mine', // the order of gates.yaml
+      'applied, another command: check',
+      'applied, source not found: build',
+      'not applied: test',
+      'not applied: web-check',
     ]);
     expect(r.applied).toEqual([]);
     expect([read(d, GATES), read(d, SCRIPT)]).toEqual(before);
+    const list = read(d, REFRESH_LIST);
+    expect(list).toMatch(
+      /^# gates refresh\n\n- made: \d{4}-\d\d-\d\dT[\d:.]+Z\n- gates.yaml: sha256 [0-9a-f]{16}\n/,
+    );
+    expect(list).toContain(
+      'an agent applies the picks to `.agents/harness/gates.yaml` in a commit of its own',
+    );
+    expect(list).toContain('The agent does not run reins.');
+    for (const row of r.rows!) expect(list).toContain(row.name);
+    writeFileSync(join(d, REFRESH_LIST), 'old\n');
+    configureGates({ cwd: d, refresh: true });
+    expect(read(d, REFRESH_LIST)).not.toContain('old');
   });
 
-  it('(c, e, f) --apply writes only what was picked; comments, other keys and the order stay; the script follows', async () => {
+  it('--apply all only adds what is not applied: no removal, no replacement', async () => {
     const d = await drifted();
-    const hook = read(d, '.husky/pre-commit');
-    const r = configureGates({ cwd: d, refresh: true, apply: ['check', 'web-check'] });
-    expect(r.applied).toEqual(['check', 'web-check']);
+    const r = configureGates({ cwd: d, refresh: true, apply: ['all'] });
+    expect(r.applied).toEqual(['add test', 'add web-check']);
+    const g = gates(d);
+    expect(g.gates['check']!.cmd).toBe('npm run check'); // not replaced
+    expect(g.gates['build']).toBeDefined(); // not removed
+    expect(g.order).toEqual(['mine', 'check', 'build', 'test', 'web-check']);
+    // what is left is not "applied"-able by all
+    expect(configureGates({ cwd: d, refresh: true, apply: ['all'] }).applied).toEqual([]);
+  });
+
+  it('by name: replace, remove, remove:<name>; comments, other keys and the order stay; the script stays', async () => {
+    const d = await drifted();
+    const r = configureGates({ cwd: d, refresh: true, apply: ['check', 'build', 'web-check'] });
+    expect(r.applied).toEqual(['replace check', 'remove build', 'add web-check']);
     const g = gates(d);
     expect(g.gates['check']).toEqual({
       cmd: 'npm run verify',
       from: 'package.json#scripts.verify',
     });
-    expect(g.gates['web-check']).toEqual({
-      cmd: 'npm --prefix web run check',
-      from: 'web/package.json#scripts.check',
-    });
-    expect(g.gates['build']).toBeDefined(); // gone, but not picked
-    expect(g.gates['test']).toBeUndefined(); // new, but not picked
+    expect(g.gates['build']).toBeUndefined();
     expect(g.gates['mine']).toEqual({ cmd: './smoke.sh' });
-    expect(g.order).toEqual(['mine', 'check', 'build', 'web-check']);
+    expect(g.order).toEqual(['mine', 'check', 'web-check']);
     const text = read(d, GATES);
     expect(text).toContain('# discovered by reins install');
-    expect(text).toContain('# keep this comment');
     expect(text).toContain('gates_note: kept');
-    // the script reads the file when it runs (024 S-15): it stays as it was, and so does the hook line
-    expect(requiredGates(read(d, GATES))).toEqual([
+    expect(requiredGates(text)).toEqual([
       './smoke.sh',
       'npm run verify',
-      'npm run build',
       'npm --prefix web run check',
     ]);
     expect(read(d, SCRIPT)).toBe(renderGateScript());
-    expect(read(d, '.husky/pre-commit')).toBe(hook);
-    // what is left is still reported
-    expect(kinds(gateDiff(d)!)).toEqual(['gone build', 'new test', 'yours mine']);
-  });
-
-  it('(d, g) --apply all leaves nothing to apply; a second refresh says up to date and writes nothing', async () => {
-    const d = await drifted();
-    expect(configureGates({ cwd: d, apply: ['all'] }).applied).toEqual([
-      'check',
-      'build',
-      'test',
-      'web-check',
+    // a gate by hand is removed only when named, and remove: works for any applied row
+    expect(configureGates({ cwd: d, refresh: true, apply: ['remove:check'] }).applied).toEqual([
+      'remove check',
     ]);
-    const g = gates(d);
-    expect(Object.keys(g.gates).toSorted()).toEqual(['check', 'mine', 'test', 'web-check']);
-    expect(g.order).toEqual(['mine', 'check', 'test', 'web-check']);
-    const after = [read(d, GATES), read(d, SCRIPT)];
-    const again = configureGates({ cwd: d, refresh: true, apply: ['all'] });
-    expect(again.applied).toEqual([]);
-    expect(kinds(again.diff!)).toEqual(['yours mine']);
-    expect([read(d, GATES), read(d, SCRIPT)]).toEqual(after);
+    expect(configureGates({ cwd: d, refresh: true, apply: ['mine'] }).applied).toEqual([
+      'remove mine',
+    ]);
+    expect(gates(d).order).toEqual(['web-check']);
   });
 
-  it('(h) a name that is not a difference — or a gate by hand — refuses the whole call', async () => {
-    const d = await drifted();
+  it('a name taken in gates.yaml gets -2; an unknown name refuses the whole call and writes nothing', async () => {
+    const d = await project();
+    writeFileSync(
+      join(d, GATES),
+      read(d, GATES).replace('  build:', '  test:\n    cmd: ./t.sh\n  build:'),
+    );
+    pkg(d, { check: 'node -e 0', build: 'node -e 1', test: 'node -e 2' });
+    expect(states(gateRows(d)!)).toContain('not applied: test-2');
     const before = read(d, GATES);
-    for (const apply of [['check', 'nope'], ['mine']]) {
+    for (const apply of [['nope'], ['all', 'nope'], ['replace:test-2']]) {
       const r = configureGates({ cwd: d, refresh: true, apply });
       expect(r.code).toBe(1);
-      expect(r.refused).toMatch(/^nothing to apply under: /);
+      expect(r.refused).toContain('nothing to apply under');
       expect(read(d, GATES)).toBe(before);
     }
   });
 
-  it('(review) an unknown name beside `all` refuses the call too', async () => {
-    const d = await drifted();
-    const before = [read(d, GATES), read(d, SCRIPT)];
-    const r = configureGates({ cwd: d, refresh: true, apply: ['all', 'nope'] });
-    expect(r.code).toBe(1);
-    expect(r.refused).toMatch(/^nothing to apply under: nope/);
-    expect([read(d, GATES), read(d, SCRIPT)]).toEqual(before);
-  });
-
-  it('(review) a file without `order` gets one that starts from the gates it has', async () => {
-    for (const how of ['refresh', 'add'] as const) {
-      const d = await project();
-      pkg(d, { check: 'node -e 3' }, 'web');
-      writeFileSync(join(d, GATES), read(d, GATES).replace(/order:\n( {2}- .*\n)+/, ''));
-      expect(gates(d).order).toBeUndefined();
-      if (how === 'refresh') configureGates({ cwd: d, apply: ['web-check'] });
-      else configureGates({ cwd: d, add: ['web-check'] });
-      expect(gates(d).order).toEqual(['check', 'build', 'web-check']);
-      expect(requiredGates(read(d, GATES))).toHaveLength(3);
-    }
-  });
-
-  it('(review) a gone gate leaves `order` wherever it was listed, flow style included', async () => {
+  it('a removed gate leaves `order` wherever it was listed, flow style included', async () => {
     const d = await project();
     writeFileSync(
       join(d, GATES),
       read(d, GATES).replace(/order:\n( {2}- .*\n)+/, 'order: [build, check, build] # mine\n'),
     );
-    pkg(d, { check: 'node -e 0' });
-    expect(configureGates({ cwd: d, apply: ['build'] }).applied).toEqual(['build']);
+    expect(configureGates({ cwd: d, refresh: true, apply: ['build'] }).applied).toEqual([
+      'remove build',
+    ]);
     expect(gates(d).order).toEqual(['check']);
-    expect(gates(d).gates['build']).toBeUndefined();
     expect(read(d, GATES)).toContain('# mine');
   });
 
-  it('removing the last required gate leaves the script, which then runs nothing (024 S-17)', async () => {
-    const d = await project();
-    rmSync(join(d, 'package.json'));
-    writeFileSync(join(d, 'README.md'), 'no scripts any more\n');
-    const r = configureGates({ cwd: d, apply: ['all'] });
-    expect(r.applied).toEqual(['check', 'build']);
-    expect(fileGates(read(d, GATES))).toEqual([]);
-    expect(read(d, SCRIPT)).toBe(renderGateScript());
+  it('a file without `order` gets one that starts from the gates it has', async () => {
+    for (const how of ['refresh', 'add'] as const) {
+      const d = await project();
+      pkg(d, { check: 'node -e 3' }, 'web');
+      writeFileSync(join(d, GATES), read(d, GATES).replace(/order:\n( {2}- .*\n)+/, ''));
+      expect(gates(d).order).toBeUndefined();
+      if (how === 'refresh') configureGates({ cwd: d, refresh: true, apply: ['web-check'] });
+      else configureGates({ cwd: d, add: ['web-check'] });
+      expect(gates(d).order).toEqual(['check', 'build', 'web-check']);
+    }
   });
 });
 
-describe('the gates item of the config screen (021 S-25)', () => {
-  it('(i) shows the gates, the hook tool and the script; refresh applies what is picked', async () => {
+describe('the gates item of the config screen (024 S-13, V-5)', () => {
+  it('shows the gates; refresh shows every state and applies add, remove and replace as picked', async () => {
     const d = await project();
-    pkg(d, { check: 'node -e 0', build: 'node -e 1', test: 'node -e 2' });
     rmSync(join(d, 'package.json'));
-    pkg(d, { verify: 'node -e 0', build: 'node -e 1' });
+    pkg(d, { verify: 'node -e 0', test: 'node -e 2' });
     expect(formatGates(d)).toContain(
       'check              npm run check   (package.json#scripts.check)',
     );
     expect(formatGates(d)).toContain('hook tool: husky');
     expect(formatGates(d)).toContain(`gate script: ${SCRIPT}`);
-    const p = scriptedPrompter(['gates', 'refresh', ['check'], 'back', 'exit']);
+    const p = scriptedPrompter([
+      'gates',
+      'refresh',
+      ['replace:check', 'remove:build', 'add:test'],
+      'back',
+      'exit',
+    ]);
     expect(await runConfig({ cwd: d, interactive: true, prompter: p, detectVendors: detect })).toBe(
       0,
     );
     expect(p.remaining()).toBe(0);
-    expect(gates(d).gates['check']?.cmd).toBe('npm run verify');
-    expect(p.notes.join('\n')).toContain('gates: applied check');
+    const g = gates(d);
+    expect(g.gates['check']?.cmd).toBe('npm run verify');
+    expect(g.gates['build']).toBeUndefined();
+    expect(g.gates['test']?.cmd).toBe('npm run test');
+    const shown = p.notes.join('\n');
+    expect(shown).toContain('applied, another command    check  npm run check → npm run verify');
+    expect(shown).toContain(`(the same list: ${REFRESH_LIST})`);
+    expect(shown).toContain('gates: replace check, remove build, add test');
     const picker = p.asked.find((q) => q.kind === 'multiselect')!;
-    expect(picker.labels?.join('\n')).toContain('changed check  npm run check → npm run verify');
+    expect(picker.labels).toEqual(['replace check', 'remove check', 'remove build', 'add test']);
+    expect(existsSync(join(d, REFRESH_LIST))).toBe(true);
   });
 
-  it('(i) picking nothing, or leaving, changes nothing', async () => {
+  it('picking nothing, or leaving, changes nothing', async () => {
     const d = await project();
     pkg(d, { verify: 'node -e 0' });
     const before = [read(d, GATES), read(d, SCRIPT)];
@@ -289,36 +341,5 @@ describe('the gates item of the config screen (021 S-25)', () => {
       expect(p.notes.join('\n')).toContain('gates: nothing changed');
     }
     expect([read(d, GATES), read(d, SCRIPT)]).toEqual(before);
-    // and when nothing differs it says so without asking
-    const same = await project();
-    const q = scriptedPrompter([]);
-    await refreshGates(same, q);
-    expect(q.asked).toEqual([]);
-    expect(q.notes.join('\n')).toContain('gates: up to date');
-  });
-});
-
-describe('a new root typecheck script (023 V-3b, V-3c)', () => {
-  it('is shown as new, written only by --apply, and goes once check calls it', async () => {
-    const d = await project();
-    pkg(d, { check: 'node -e 0', build: 'node -e 1', typecheck: 'tsc --noEmit' });
-    const before = [read(d, GATES), read(d, SCRIPT)];
-    const r = configureGates({ cwd: d, refresh: true });
-    expect(kinds(r.diff!)).toContain('new typecheck');
-    expect([read(d, GATES), read(d, SCRIPT)]).toEqual(before);
-
-    configureGates({ cwd: d, refresh: true, apply: ['typecheck'] });
-    expect(gates(d).order.at(-1)).toBe('typecheck');
-    expect(requiredGates(read(d, GATES))).toContain('npm run typecheck');
-
-    pkg(d, {
-      check: 'npm run typecheck && node -e 0',
-      build: 'node -e 1',
-      typecheck: 'tsc --noEmit',
-    });
-    const again = configureGates({ cwd: d, refresh: true });
-    expect(kinds(again.diff!)).toContain('gone typecheck');
-    const gone = again.diff!.find((x) => x.kind === 'gone' && x.name === 'typecheck');
-    expect(gone && 'why' in gone && gone.why.startsWith('no longer proposed')).toBe(true);
   });
 });

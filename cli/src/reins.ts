@@ -4,9 +4,14 @@ import { Command } from 'commander';
 import { runInstall } from './commands/install.js';
 import { runMigrate } from './commands/migrate.js';
 import { formatUpdate, runUpdate } from './commands/update.js';
-import { configureBindings, configureGates, formatGenerated } from './commands/configure.js';
+import {
+  configureBindings,
+  configureGates,
+  formatGenerated,
+  REFRESH_LIST,
+} from './commands/configure.js';
 import { refreshGates } from './commands/config-gates.js';
-import { applicable, formatGateDiff } from './lib/gate-refresh.js';
+import { formatGateRow } from './lib/gate-refresh.js';
 import { NotARepository, repoRoot } from './lib/git.js';
 import { LOCAL_DELEGATION_NOTE } from './lib/local-delegation.js';
 import { formatBindings, runConfig } from './commands/config.js';
@@ -256,11 +261,14 @@ config
 config
   .command('gates')
   .description(
-    'the project gates: --add <name>… appends subdirectory proposals; --refresh finds the gates again and shows what differs from gates.yaml',
+    'the project gates: --add <name>… appends offered candidates; --refresh finds the gates again and shows each gate and candidate with its state',
   )
   .option('--add <names...>', 'proposal names to append after the existing gates')
   .option('--refresh', 'run the discovery of installation again and show the differences')
-  .option('--apply <names...>', 'with --refresh: the differences to apply, by name, or `all`')
+  .option(
+    '--apply <names...>',
+    'with --refresh: rows to act on by name (a candidate is added, a gate with another command gets it, a gate is removed), remove:<name>, or `all` (adds every candidate not applied)',
+  )
   .option('--json')
   .action(async (o: { add?: string[]; refresh?: boolean; apply?: string[]; json?: boolean }) => {
     const refresh = !!o.refresh || !!o.apply;
@@ -279,16 +287,13 @@ config
       process.exit(r.code ?? 2);
     }
     if (refresh) {
-      const diff = r.diff ?? [];
-      for (const d of diff) process.stdout.write(`${formatGateDiff(d)}\n`);
-      if (applicable(diff).length === 0) process.stdout.write('up to date\n');
-      else if (r.applied?.length)
-        process.stdout.write(
-          `applied: ${r.applied.join(', ')} — gates.yaml and the gate script were written\n`,
-        );
+      for (const row of r.rows ?? []) process.stdout.write(`${formatGateRow(row)}\n`);
+      process.stdout.write(`(the same list: ${REFRESH_LIST})\n`);
+      if (r.applied?.length)
+        process.stdout.write(`applied: ${r.applied.join(', ')} — gates.yaml was written\n`);
       else
         process.stdout.write(
-          'nothing written — apply with: reins config gates --refresh --apply <name…|all>\n',
+          'nothing written — apply with: reins config gates --refresh --apply <name…|all|remove:name>\n',
         );
       return;
     }

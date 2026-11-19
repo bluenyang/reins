@@ -222,12 +222,21 @@ describe('stage skills (019 S-9, design §3-1)', () => {
       expect(t).toContain('fallback: { vendor: openai, model: gpt-6.1-terra }');
     }
   });
-  it('the design and the READMEs describe the gate refresh in both editions (021 S-26)', () => {
+  it('the design and the READMEs describe the gate refresh in both editions (021 S-26, 024 S-11)', () => {
     const doc = (f: string) => readFileSync(join(process.cwd(), f), 'utf8');
     for (const f of ['docs/design.md', 'docs/design.ko.md']) {
       expect(doc(f)).toContain('`config gates --refresh [--apply <');
-      for (const k of ['**changed**', '**new**', '**gone**', '"yours"'])
+      for (const k of [
+        '**applied**',
+        '**applied, written by hand**',
+        '**applied, source not found**',
+        '**applied, another command**',
+        '**not applied**',
+        '**not applied, already runs**',
+        '.loctx/gates-refresh.md',
+      ])
         expect(doc(f)).toContain(k);
+      expect(doc(f)).not.toContain('**gone**');
     }
     for (const f of ['README.md', 'docs/README.ko.md'])
       expect(doc(f)).toContain('`config gates --refresh`');

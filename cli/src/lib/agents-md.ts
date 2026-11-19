@@ -83,7 +83,7 @@ export function renderDelegation(
   const lines = ['## Delegation', ''];
   if (!local)
     lines.push(
-      `If \`${LOCAL_DELEGATION}\` exists, follow it instead of this section (your personal settings; \`reins config --local\` writes it).`,
+      `If \`${LOCAL_DELEGATION}\` exists, follow it instead of this section (your personal settings; \`reins config --local\` writes it): open it before anything else and use its table.`,
       '',
     );
   if (doc.mode !== 'multi') {

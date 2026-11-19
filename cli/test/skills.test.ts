@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { validateSkillFile } from '../src/lib/skills.js';
+import { renderDelegation } from '../src/lib/agents-md.js';
+import type { BindingsV2 } from '../src/lib/bindings.js';
 
 function skill(dir: string, name: string, fm: string, body = '# x\n'): string {
   const d = join(dir, name);
@@ -475,6 +477,40 @@ describe('stage skills (019 S-9, design §3-1)', () => {
     expect(read('merge')).not.toMatch(/- Never force-push, /);
     expect(read('release')).toContain('force-pushing the default branch or a tag');
     expect(block('stops')).toContain('force push to the default branch or a tag');
+  });
+
+  it('the 0.3.3 retro sentences are in the skills (024 S-20–S-25, V-9)', () => {
+    const table: [string[], string][] = [
+      [['intent', 'implement'], 'open it before anything else and use its table'],
+      [['review'], 'git diff --stat <base>..<head>'],
+      [['review'], 'the files of the diff it received match that list'],
+      [
+        [
+          'intent',
+          'spec',
+          'review',
+          'test',
+          'merge',
+          'audit',
+          'release',
+          'retro',
+          'implement',
+          'roadmap',
+          'onboard',
+        ],
+        'keep the request sent to another model and its final answer in .loctx/reports/<version>/ as they came',
+      ],
+      [['review', 'test'], 'compare the two language editions again after the last change'],
+      [['spec'], 'read both roadmaps and the review records of the version being revised'],
+      [['audit'], "rate each violation's severity"],
+      [['audit'], 'opinions given without seeing each other'],
+    ];
+    for (const [skills, phrase] of table)
+      for (const s of skills) expect(read(s), `${s}: ${phrase}`).toContain(phrase);
+    // the delegation block's first line says the same (S-20)
+    expect(renderDelegation({ mode: 'single' } as BindingsV2)).toContain(
+      'open it before anything else and use its table',
+    );
   });
 
   it('the next skills follow the flow', () => {

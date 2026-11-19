@@ -361,6 +361,7 @@ describe('the rules, row by row (024 V-3)', () => {
       ['pnpm -F b test', ['offer', 'covered']],
       ['pnpm -r --parallel --if-present test', ['covered', 'covered']],
       ['pnpm -r --no-bail test', ['offer', 'offer']], // a flag outside the table: unclear
+      ['pnpm -r --filter @x/a test', ['covered', 'offer']], // a filter narrows -r (review 1)
       ['pnpm --filter "@x/*" test', ['offer', 'offer']], // a glob: unclear
       ['turbo run test', ['covered', 'covered']],
       ['nx run-many -t test', ['covered', 'covered']],
@@ -377,6 +378,7 @@ describe('the rules, row by row (024 V-3)', () => {
       ['npm run test --workspaces', ['covered', 'covered']],
       ['npm run test -ws', ['covered', 'covered']],
       ['npm run test -w b', ['offer', 'covered']],
+      ['npm run test --workspaces -w b', ['offer', 'covered']], // -w narrows --workspaces
       ['npm run test --workspace=@x/a', ['covered', 'offer']],
       ['yarn workspaces run test', ['covered', 'covered']],
       ['yarn workspace b test', ['offer', 'covered']],
@@ -443,6 +445,13 @@ describe('the rules, row by row (024 V-3)', () => {
           step('pnpm exec eslint --fix .'),
           step('vite --watch'),
         ].join(''),
+      );
+      expect(ciNames(d)).toEqual([]);
+    });
+    it('leaves out a working-directory with a space or an expression (review 1)', () => {
+      const d = wf(
+        'pull_request',
+        [step('pnpm lint', 'packages/web app'), step('pnpm lint', '${{ matrix.dir }}')].join(''),
       );
       expect(ciNames(d)).toEqual([]);
     });

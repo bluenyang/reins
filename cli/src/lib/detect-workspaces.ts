@@ -166,7 +166,8 @@ export function forwards(words: string[], pkgs: WorkspacePackage[]): Forward {
     if (!all && !picked) return null;
     const s = scriptAt(rest);
     if (!s) return { unclear: 'pnpm: not one script' };
-    return { scripts: [s], pkgs: all ? pkgs : picked! };
+    // a filter narrows -r: pnpm runs the filtered packages only (review 1)
+    return { scripts: [s], pkgs: picked ?? pkgs };
   }
   if (tool === 'npm') {
     let all = false;
@@ -188,7 +189,7 @@ export function forwards(words: string[], pkgs: WorkspacePackage[]): Forward {
     if (rest[0] !== 'run' && rest[0] !== 'run-script') return { unclear: 'npm: not run' };
     const s = scriptAt(rest.slice(1));
     if (!s) return { unclear: 'npm: not one script' };
-    return { scripts: [s], pkgs: all ? pkgs : picked! };
+    return { scripts: [s], pkgs: picked ?? pkgs };
   }
   if (tool === 'yarn') {
     if (a[0] === 'workspaces' && a[1] === 'run') {

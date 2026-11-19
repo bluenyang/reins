@@ -76,6 +76,8 @@ export function ciRuns(
           typeof s['working-directory'] === 'string'
             ? s['working-directory'].replace(/^\.\//, '').replace(/\/$/, '')
             : '';
+        // a directory with a space, an expression or other characters would not read back as one word
+        if (wd && !/^[\w@.+/-]+$/.test(wd)) continue;
         const cmd = fromDir(raw, wd);
         if (cmd) out.push({ file: `.github/workflows/${f}`, cmd, dir: wd === '.' ? '' : wd, raw });
       }

@@ -93,6 +93,17 @@ State: **0.3.3 published** (2026-11-17, stable from the rc.1 commit; intent 023)
 - **`config` and personal settings.** Switching the scope on the models screen changes what it shows (the team file, or what applies to you, marked `(local)`), and a personal group wins only where it speaks instead of hiding the team's whole group (the maintainer, 2026-11-16).
 - Left for the next version: how a branch is updated after a rebase, which the harness forbids by force push today (0.3.2 retro, H2).
 
+### 0.3.4 — in progress
+
+State: **in progress** (intent 024). Origin: the maintainer's reports of 2026-11-17 and 2026-11-18, the 0.3.3 retro and the 0.3.2 retro (H2).
+
+- **Gate discovery and refresh fit real projects.** Candidates by name and body, workspaces and pull-request CI, each with a state and its reasons; refresh shows every gate and candidate as applied or not, never "gone", and leaves the list in `.loctx/gates-refresh.md` so a person picks and an agent edits `gates.yaml`.
+- **The gate script reads `gates.yaml`.** Editing `gates.yaml` is enough; a shape the script cannot read, or no `gates.yaml`, stops the run.
+- **`update` lists the changelog under version headings.**
+- **husky** is not proposed a gate line it already has.
+- **Force push for a named work branch** (0.3.2 retro, H2): `git push --force-with-lease origin <branch>` is open; the default branch and tags stay closed.
+- **Skill sentences from the 0.3.3 retro** (H-1, H-2, H-3, H-5, H-7, H-10). H-4 and H-6 wait for 0.4, which reshapes the audit's inputs.
+
 ## 0.4 — agent hooks and the loop
 
 State: **planned**. Work starts after 0.3 is stabilised (maintainer, 2026-11-19). Why: [the design conversation of 2026-11-19](conversation/2026-11-19_agent-hooks.md) (Korean).

@@ -43,7 +43,8 @@ the project can follow them. reins is never called while a project works.
 
 - Never read `.env`, `.env.*.local`, `secrets/**`, `*.properties`, `*.key`, `*.pem`. `*.example*` is fine.
 - Files reins writes (`.agents/harness/`, `.agents/skills/`, `.claude/skills/`, `.claude/agents/`, the `reins:`
-  blocks) change only through `reins update` or `reins config`, each in its own commit.
+  blocks) change only through `reins update` or `reins config`, each in its own commit. `.agents/harness/gates.yaml`
+  is the exception: it is the project's file, and a person or an agent may edit it in a commit of its own (intent 024).
 - What ships (the CLI, generators and build output) is TypeScript and never needs Python (R65). Development, test,
   verification and editing scripts may use Python; do not block Python itself — target repositories may be Python
   projects.

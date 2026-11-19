@@ -9,6 +9,22 @@ everything planned for it is done, later `rc.N` are stabilisation only (see
 This file is about the package. The harness that `reins update` re-applies to installed projects
 has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md).
 
+## [0.3.4] — unreleased
+
+Intent 024. Gate discovery and refresh fitted to real projects (croffle, allot, pipit-hub), the gate script reading `gates.yaml`, `update`'s changelog under version headings, force push open for a named work branch, and the skill sentences of the 0.3.3 retro. Origin: the maintainer's reports of 2026-11-17 and 2026-11-18, the 0.3.3 retro (H-1, H-2, H-3, H-5, H-7, H-9, H-10) and the 0.3.2 retro (H2).
+
+### Fixed
+- `reins update` lists the harness changelog under a heading per version, newest first, so a "Stable …" line reads as its own version's (before, the entries of several versions ran together). `--json` keeps `changes` and adds `changesByVersion`.
+- `reins config gates --refresh` no longer reports healthy gates as gone (a source reins did not write, the old `Makefile#check` notation, a different command) or offers subdirectory gates a root script already runs. It shows every gate and candidate with its state and reasons and never removes a gate by itself.
+- `reins install` with husky no longer proposes, or adds with `--hooks`, the gate line a hook file already has outside a reins block.
+
+### Changed
+- Gate discovery: candidates by name pattern and body below the root, workspace packages (pnpm, npm, yarn, bun, turbo, nx, lerna) a root script already runs, Makefile dependencies and recipes, and the one-line `run:` commands of pull-request workflows, each with a state and its reasons. `lint:check` is no bundle check any more; `format:check`, `lint:check` and `type-check` are picked at install; `check:*`, CI and subdirectory candidates are offered, not picked.
+- `config gates --refresh`: the rows (`applied`, `applied, written by hand`, `applied, source not found`, `applied, another command`, `not applied`, `not applied, already runs`) replace new/changed/gone/yours, in the report, the screen (add, remove, replace) and `--json` (`rows` instead of `diff`). The same list is written to `.loctx/gates-refresh.md`. `--apply all` only adds; a name removes or replaces, and `remove:<name>` removes whatever the state.
+- `.agents/harness/run-gates.sh` holds no command: it reads `gates.yaml` with POSIX `awk` when it runs, stops with exit 2 on a shape it cannot read or a missing `gates.yaml`, and is written even without a required gate. `config gates` no longer rewrites it; `update` replaces a 0.3.3 script.
+- The generated deny rules allow `git push --force-with-lease origin <work branch>` and keep the default branch, tags and the other forms denied; the `merge`, `release` and stop-block texts say the same.
+- Skills: the delegation table first, `git diff --stat` in review requests, call records kept as they came, the twin check after the last change, roadmaps and review records on a spec revision, severity and independent opinions in the first audit.
+
 ## [0.3.3] — 2026-11-17
 
 Stable: 2026-11-17 (the rc.1 commit, unchanged). rc.1: 2026-11-17 (intent 023). Gate discovery now sees a root `typecheck` and `lint` script, the second audit's range starts where the first audit's ended, and the `config` models screen follows its scope while a personal group wins only where it speaks. Origin: the maintainer's reports of 2026-11-16 and the 0.3.2 retro (H1).

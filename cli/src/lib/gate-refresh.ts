@@ -1,5 +1,7 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { REASON, type Candidate } from './detect.js';
+import { forwards, workspacePackages } from './detect-workspaces.js';
 
 /** A gate as `gates.yaml` holds it. A gate without `from` was written by hand. */
 export interface FileGate {
@@ -9,110 +11,150 @@ export interface FileGate {
   optional?: boolean;
 }
 
-/** A gate the discovery of installation finds now (root gates and subdirectory proposals). */
-export interface FoundGate {
+/**
+ * One row of `config gates --refresh` (024 S-11): a gate of `gates.yaml` or a candidate of the discovery,
+ * with its state. reins never says a gate is gone; it only says what it found and where.
+ */
+export type GateState =
+  | 'applied'
+  | 'applied, written by hand'
+  | 'applied, source not found'
+  | 'applied, another command'
+  | 'not applied'
+  | 'not applied, already runs';
+
+export interface StatusRow {
+  state: GateState;
+  /** the gate's name in gates.yaml, or a free name for a candidate not applied */
   name: string;
   cmd: string;
-  from: string;
+  from?: string;
+  /** the command the discovery finds now (`applied, another command`) */
+  found?: { cmd: string; from: string };
   optional?: boolean;
+  reasons: string[];
 }
 
-/**
- * One difference between `gates.yaml` and what discovery finds now (design §9, `config gates --refresh`).
- * `name` is what the user picks it by: the file's name for `changed`, `gone` and `yours`, a free name for `new`.
- */
-export type GateDiff =
-  | { kind: 'new'; name: string; cmd: string; from: string; optional?: boolean }
-  | { kind: 'changed'; name: string; cmd: string; from: string; was: { cmd: string; from: string } }
-  | { kind: 'gone'; name: string; cmd: string; from: string; why: string }
-  | { kind: 'yours'; name: string; cmd: string };
+/** What picking a row does (024 S-13): add a candidate, remove a gate, or give a gate the command found now. */
+export type GateAction = 'add' | 'remove' | 'replace';
 
-/** The file a `from` points into: `a/package.json#scripts.x`, `a/Makefile:test`, `a/go.mod`. */
-const sourceFile = (from: string): string => from.split('#')[0]!.replace(/:[^/:]*$/, '');
+/** `<path>#x` and `<path>:x` are one source (the old notation, 024 S-11). */
+const normal = (from: string) => from.replace(/#(?!scripts\.)/, ':');
 
 /**
- * Compare the file with the discovery, in this order: same source and command → the same gate, no
- * difference; same source and name → `changed`; same name → `changed` (the root `check` now points at
- * another script); what is left of the discovery is `new`, and of the file `gone`. A gate without `from`
- * is the user's own: it is listed and never paired, changed or removed.
+ * Whether the script or target a `from` points at is really there (024 S-11): a package.json script,
+ * a Makefile target, a go.mod, a workflow file. A source of another kind reads as there.
  */
-export function diffGates(root: string, file: FileGate[], found: FoundGate[]): GateDiff[] {
-  const out: GateDiff[] = [];
-  let mine = file.filter((g) => g.from);
-  let theirs = [...found];
-  const pair = (
-    match: (f: FileGate, d: FoundGate) => boolean,
-    emit?: (f: FileGate, d: FoundGate) => void,
-  ) => {
-    const left: FileGate[] = [];
-    for (const f of mine) {
-      const i = theirs.findIndex((d) => match(f, d));
-      if (i < 0) {
-        left.push(f);
-        continue;
-      }
-      emit?.(f, theirs[i]!);
-      theirs = theirs.filter((_, k) => k !== i);
+export function sourceThere(root: string, from: string): boolean {
+  const f = normal(from);
+  const pkg = /^(.*package\.json)#scripts\.(.+)$/.exec(f);
+  if (pkg) {
+    try {
+      const s = (JSON.parse(readFileSync(join(root, pkg[1]!), 'utf8')) as { scripts?: object })
+        .scripts;
+      return !!s && pkg[2]! in s;
+    } catch {
+      return false;
     }
-    mine = left;
-  };
-  const changed = (f: FileGate, d: FoundGate) =>
-    out.push({
-      kind: 'changed',
-      name: f.name,
-      cmd: d.cmd,
-      from: d.from,
-      was: { cmd: f.cmd, from: f.from! },
-    });
-  pair((f, d) => f.from === d.from && f.cmd === d.cmd);
-  pair((f, d) => f.from === d.from && f.name === d.name, changed);
-  pair((f, d) => f.name === d.name, changed);
-
-  const taken = new Set(file.map((g) => g.name));
-  for (const d of theirs) {
-    let name = d.name;
-    for (let i = 2; taken.has(name); i++) name = `${d.name}-${i}`;
-    taken.add(name);
-    out.push({
-      kind: 'new',
-      name,
-      cmd: d.cmd,
-      from: d.from,
-      ...(d.optional ? { optional: true } : {}),
-    });
   }
-  for (const f of mine)
-    out.push({
-      kind: 'gone',
-      name: f.name,
-      cmd: f.cmd,
-      from: f.from!,
-      why: existsSync(join(root, sourceFile(f.from!)))
-        ? 'no longer proposed: its script or target is gone, or another gate now covers it'
-        : `its source is gone (${sourceFile(f.from!)})`,
-    });
-  for (const g of file.filter((x) => !x.from))
-    out.push({ kind: 'yours', name: g.name, cmd: g.cmd });
-
-  const order = { changed: 0, gone: 1, new: 2, yours: 3 } as const;
-  return out.toSorted((a, b) => order[a.kind] - order[b.kind]);
+  const mk = /^(.*Makefile):(.+)$/.exec(f);
+  if (mk) {
+    try {
+      return new RegExp(`^${mk[2]!.replace(/[.+?^${}()|[\]\\]/g, '\\$&')}\\s*:(?!=)`, 'm').test(
+        readFileSync(join(root, mk[1]!), 'utf8'),
+      );
+    } catch {
+      return false;
+    }
+  }
+  if (/(^|\/)go\.mod$/.test(f) || f.startsWith('.github/workflows/'))
+    return existsSync(join(root, f));
+  return true;
 }
 
-/** The differences the user can apply (`yours` is only shown). */
-export const applicable = (diff: GateDiff[]): Exclude<GateDiff, { kind: 'yours' }>[] =>
-  diff.filter((d): d is Exclude<GateDiff, { kind: 'yours' }> => d.kind !== 'yours');
+const pieceWords = (cmd: string) => cmd.trim().split(/\s+/);
 
-/** One line per difference, for the report and the screen. */
-export function formatGateDiff(d: GateDiff): string {
-  const tag = d.kind.padEnd(8);
-  switch (d.kind) {
-    case 'new':
-      return `${tag}${d.name}  ${d.cmd}   (${d.from})${d.optional ? '  optional' : ''}`;
-    case 'changed':
-      return `${tag}${d.name}  ${d.was.cmd} → ${d.cmd}   (${d.was.from === d.from ? d.from : `${d.was.from} → ${d.from}`})`;
-    case 'gone':
-      return `${tag}${d.name}  ${d.cmd}   (${d.from}) — ${d.why}`;
-    default:
-      return `${tag}${d.name}  ${d.cmd}   (written by hand — left alone)`;
+/**
+ * Pair the gates of the file with the candidates (024 S-11): the same command is the same gate whatever
+ * the source; then the same source. A gate's own command may run candidates through the workspace
+ * (`pnpm -r test`): those read `not applied, already runs`. Excluded candidates are not listed.
+ */
+export function gateStatus(root: string, file: FileGate[], candidates: Candidate[]): StatusRow[] {
+  let left = candidates.filter((c) => c.status !== 'excluded');
+  const take = (match: (c: Candidate) => boolean) => {
+    const c = left.find(match);
+    if (c) left = left.filter((x) => x !== c);
+    return c;
+  };
+  const rows: StatusRow[] = [];
+  for (const g of file) {
+    // the same command, then the same source, then (with a source) the same name: the root `check`
+    // that now points at another script (021, 024 A-n)
+    const c =
+      take((x) => x.cmd === g.cmd) ??
+      (g.from
+        ? (take((x) => normal(x.from) === normal(g.from!)) ?? take((x) => x.name === g.name))
+        : undefined);
+    const base = {
+      name: g.name,
+      cmd: g.cmd,
+      ...(g.from ? { from: g.from } : {}),
+      ...(g.optional ? { optional: true } : {}),
+      reasons: c ? c.reasons.filter((r) => !r.startsWith('unclear')) : [],
+    };
+    if (!g.from) rows.push({ ...base, state: 'applied, written by hand' });
+    else if (c && c.cmd !== g.cmd)
+      rows.push({
+        ...base,
+        state: 'applied, another command',
+        found: { cmd: c.cmd, from: c.from },
+      });
+    else if (!c && !sourceThere(root, g.from))
+      rows.push({ ...base, state: 'applied, source not found' });
+    else rows.push({ ...base, state: 'applied' });
   }
+  // a gate that runs workspace packages already runs their candidates
+  const pkgs = workspacePackages(root);
+  const by = new Map<Candidate, string[]>();
+  if (pkgs.length)
+    for (const g of file) {
+      const f = forwards(pieceWords(g.cmd), pkgs);
+      if (!f || 'unclear' in f) continue;
+      for (const c of left)
+        if (
+          c.source === 'npm' &&
+          f.pkgs.some((p) => p.dir === c.dir) &&
+          f.scripts.includes(c.script)
+        )
+          by.set(c, [...(by.get(c) ?? []), REASON.runs(g.name, g.cmd)]);
+    }
+  const taken = new Set(file.map((g) => g.name));
+  for (const c of left) {
+    let name = c.name;
+    for (let i = 2; taken.has(name); i++) name = `${c.name}-${i}`;
+    taken.add(name);
+    const extra = by.get(c) ?? [];
+    rows.push({
+      state: c.status === 'covered' || extra.length ? 'not applied, already runs' : 'not applied',
+      name,
+      cmd: c.cmd,
+      from: c.from,
+      ...(c.optional ? { optional: true } : {}),
+      reasons: [...c.reasons, ...extra.filter((r) => !c.reasons.includes(r))],
+    });
+  }
+  return rows;
+}
+
+/** The actions a row offers (024 S-13): add for a candidate, remove for a gate, replace for another command. */
+export function actionsOf(row: StatusRow): GateAction[] {
+  if (row.state.startsWith('not applied')) return ['add'];
+  return row.state === 'applied, another command' ? ['replace', 'remove'] : ['remove'];
+}
+
+/** One line per row, for the report, the screen and `.loctx/gates-refresh.md`. */
+export function formatGateRow(r: StatusRow): string {
+  const cmd = r.found ? `${r.cmd} → ${r.found.cmd}` : r.cmd;
+  const why = r.reasons.length ? ` — ${r.reasons.join('; ')}` : '';
+  return `${r.state.padEnd(27)} ${r.name}  ${cmd}${r.from ? `   (${r.from})` : ''}${r.optional ? '  optional' : ''}${why}`;
 }

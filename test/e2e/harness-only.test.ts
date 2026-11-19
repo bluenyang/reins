@@ -131,12 +131,14 @@ describe('reins config gates --refresh from the command line (021 V-10)', () => 
   it('reports, applies what is named, and refuses an unknown name with exit 1', () => {
     const d = repo();
     reins(d, 'install', '--mode', 'auto');
-    expect(reins(d, 'config', 'gates', '--refresh')).toContain('up to date');
+    // 024 S-11: every gate with its state, and the same list in .loctx
+    expect(reins(d, 'config', 'gates', '--refresh')).toMatch(/^applied\s+check  npm run check/m);
+    expect(existsSync(join(d, '.loctx/gates-refresh.md'))).toBe(true);
     writeFileSync(join(d, 'package.json'), JSON.stringify({ scripts: { verify: 'node -e 0' } }));
     const gates = () => readFileSync(join(d, '.agents/harness/gates.yaml'), 'utf8');
     const before = gates();
     const report = reins(d, 'config', 'gates', '--refresh');
-    expect(report).toContain('changed check  npm run check → npm run verify');
+    expect(report).toMatch(/applied, another command\s+check  npm run check → npm run verify/);
     expect(report).toContain('nothing written — apply with: reins config gates --refresh --apply');
     expect(gates()).toBe(before);
     const bad = spawnSync(
@@ -150,16 +152,20 @@ describe('reins config gates --refresh from the command line (021 V-10)', () => 
     expect(bad.status).toBe(1);
     expect(bad.stderr).toContain('nothing to apply under: nope');
     expect(gates()).toBe(before);
-    expect(reins(d, 'config', 'gates', '--refresh', '--apply', 'all')).toContain('applied: check');
+    // `all` only adds; replacing the check is asked for by name (024 S-13)
+    expect(reins(d, 'config', 'gates', '--refresh', '--apply', 'all')).toContain('nothing written');
+    expect(reins(d, 'config', 'gates', '--refresh', '--apply', 'check')).toContain(
+      'applied: replace check',
+    );
     expect(gates()).toContain('npm run verify');
     // the script is not rewritten: it reads gates.yaml when it runs (024 S-17)
     expect(readFileSync(join(d, '.agents/harness/run-gates.sh'), 'utf8')).not.toContain(
       'npm run verify',
     );
     const json = JSON.parse(reins(d, 'config', 'gates', '--refresh', '--json')) as {
-      diff: unknown[];
+      rows: { state: string; name: string }[];
     };
-    expect(json.diff).toEqual([]);
+    expect(json.rows).toEqual([expect.objectContaining({ state: 'applied', name: 'check' })]);
   });
 });
 

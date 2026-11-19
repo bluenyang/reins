@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isScalar, isSeq, parse, parseDocument, type Document } from 'yaml';
 import {
@@ -9,7 +10,14 @@ import {
   type SubdirGate,
   type Vendor,
 } from '../lib/detect.js';
-import { applicable, diffGates, type FileGate, type GateDiff } from '../lib/gate-refresh.js';
+import {
+  actionsOf,
+  formatGateRow,
+  gateStatus,
+  type FileGate,
+  type GateAction,
+  type StatusRow,
+} from '../lib/gate-refresh.js';
 import {
   GROUP_ROLES,
   GROUPS,
@@ -325,7 +333,11 @@ export interface ConfigureGatesOptions {
   add?: string[];
   /** run the discovery of installation again and report how gates.yaml differs from it */
   refresh?: boolean;
-  /** with `refresh`: the differences to apply, by the name the report shows, or `all` */
+  /**
+   * with `refresh`: rows to act on, by the name the report shows (024 S-13) — a candidate is added, a gate
+   * with another command found gets it, any other gate is removed; `remove:<name>` removes a gate whatever
+   * its state; `all` adds every candidate not applied, and never removes or replaces.
+   */
   apply?: string[];
 }
 
@@ -336,9 +348,9 @@ export interface ConfigureGatesResult {
   /** proposals not yet in gates.yaml */
   available: SubdirGate[];
   added: string[];
-  /** `refresh`: every difference found (before applying) */
-  diff?: GateDiff[];
-  /** `refresh`: the names applied */
+  /** `refresh`: every row, before applying (024 S-11) */
+  rows?: StatusRow[];
+  /** `refresh`: what was applied, as `<action> <name>` */
   applied?: string[];
 }
 
@@ -375,15 +387,46 @@ function appendOrder(doc: Document, name: string): void {
   doc.set('order', doc.createNode([...Object.keys(gates).filter((n) => n !== name), name]));
 }
 
-/** How gates.yaml differs from what the discovery of installation finds now (design §9). */
-export function gateDiff(root: string): GateDiff[] | null {
+/** The refresh rows of gates.yaml against the discovery (024 S-11), or null without gates.yaml. */
+export function gateRows(root: string): StatusRow[] | null {
   const path = join(root, GATES);
   if (!existsSync(path)) return null;
-  const found = discoverGates(root);
-  return diffGates(root, fileGates(readFileSync(path, 'utf8')), [
-    ...found.gates,
-    ...found.proposals,
-  ]);
+  return gateStatus(root, fileGates(readFileSync(path, 'utf8')), discoverGates(root).candidates);
+}
+
+/** Where a refresh leaves its rows for the agent who applies the user's picks (024 S-12). */
+export const REFRESH_LIST = '.loctx/gates-refresh.md';
+
+/** Write the rows to `.loctx/gates-refresh.md`, replacing the last list (024 S-12). */
+export function writeRefreshList(root: string, rows: StatusRow[]): void {
+  const text = readFileSync(join(root, GATES), 'utf8');
+  const body = [
+    '# gates refresh',
+    '',
+    `- made: ${new Date().toISOString()}`,
+    `- gates.yaml: sha256 ${createHash('sha256').update(text).digest('hex').slice(0, 16)}`,
+    '- The user picks from this list; an agent applies the picks to `.agents/harness/gates.yaml` in a commit of its own. The agent does not run reins.',
+    '',
+    ...rows.map((r) => `- ${formatGateRow(r)}`),
+    '',
+  ].join('\n');
+  mkdirSync(join(root, '.loctx'), { recursive: true });
+  writeFileSync(join(root, REFRESH_LIST), body);
+}
+
+/** The action a name passed to `--apply` asks for, or null when no row has it (024 S-13). */
+function actionFor(
+  rows: StatusRow[],
+  asked: string,
+): { action: GateAction; row: StatusRow } | null {
+  const [verb, name] = asked.includes(':')
+    ? (asked.split(/:(.*)/s) as [string, string])
+    : ['', asked];
+  const row = rows.find((r) => r.name === name);
+  if (!row) return null;
+  const can = actionsOf(row);
+  if (verb === '') return { action: can[0]!, row };
+  return (can as string[]).includes(verb) ? { action: verb as GateAction, row } : null;
 }
 
 /**
@@ -403,51 +446,59 @@ export function configureGates(o: ConfigureGatesOptions = {}): ConfigureGatesRes
   );
   const available = subdirProposals(root).filter((g) => !have.has(g.name));
   if (o.refresh || o.apply) {
-    const diff = gateDiff(root) ?? [];
-    const can = applicable(diff);
+    const rows = gateRows(root) ?? [];
+    writeRefreshList(root, rows);
     // every name is checked, `all` beside others too: one unknown name refuses the whole call
     const asked = [...new Set(o.apply ?? [])];
-    const unknown = asked.filter((n) => n !== 'all' && !can.some((d) => d.name === n));
-    const names = asked.includes('all') ? can.map((d) => d.name) : asked;
+    const unknown = asked.filter((n) => n !== 'all' && !actionFor(rows, n));
     if (unknown.length)
       return {
-        refused: `nothing to apply under: ${unknown.join(', ')} — names: ${can.map((d) => d.name).join(', ') || 'none'}`,
+        refused: `nothing to apply under: ${unknown.join(', ')} — names: ${rows.map((r) => r.name).join(', ') || 'none'}`,
         code: 1,
         available,
         added: [],
-        diff,
+        rows,
         applied: [],
       };
-    for (const n of names) {
-      const d = can.find((x) => x.name === n)!;
-      if (d.kind === 'gone') {
-        doc.deleteIn(['gates', d.name]);
+    const picks: { action: GateAction; row: StatusRow }[] = asked.includes('all')
+      ? rows
+          .filter((r) => r.state === 'not applied')
+          .map((row) => ({ action: 'add' as const, row }))
+      : [];
+    for (const n of asked.filter((x) => x !== 'all')) {
+      const p = actionFor(rows, n)!;
+      if (!picks.some((x) => x.row === p.row)) picks.push(p);
+    }
+    const applied: string[] = [];
+    for (const { action, row } of picks) {
+      if (action === 'remove') {
+        doc.deleteIn(['gates', row.name]);
         // every occurrence: a name left in `order` without its gate would dangle
         const order = doc.get('order');
         if (isSeq(order))
           for (let i = order.items.length - 1; i >= 0; i--) {
             const x = order.items[i];
-            if ((isScalar(x) ? x.value : x) === d.name) order.delete(i);
+            if ((isScalar(x) ? x.value : x) === row.name) order.delete(i);
           }
-      } else if (d.kind === 'changed') {
-        doc.setIn(['gates', d.name, 'cmd'], d.cmd);
-        doc.setIn(['gates', d.name, 'from'], d.from);
+      } else if (action === 'replace') {
+        doc.setIn(['gates', row.name, 'cmd'], row.found!.cmd);
+        doc.setIn(['gates', row.name, 'from'], row.found!.from);
       } else {
         doc.setIn(
-          ['gates', d.name],
-          doc.createNode({ cmd: d.cmd, from: d.from, ...(d.optional ? { optional: true } : {}) }),
+          ['gates', row.name],
+          doc.createNode({
+            cmd: row.cmd,
+            from: row.from,
+            ...(row.optional ? { optional: true } : {}),
+          }),
         );
-        appendOrder(doc, d.name);
+        appendOrder(doc, row.name);
       }
+      applied.push(`${action} ${row.name}`);
     }
     // the gate script reads gates.yaml when it runs, so only the file changes (024 S-17)
-    if (names.length) writeFileSync(path, doc.toString({ lineWidth: 0 }));
-    return {
-      available: available.filter((g) => !names.includes(g.name)),
-      added: [],
-      diff,
-      applied: names,
-    };
+    if (applied.length) writeFileSync(path, doc.toString({ lineWidth: 0 }));
+    return { available, added: [], rows, applied };
   }
   const names = o.add ?? [];
   const unknown = names.filter((n) => !available.some((g) => g.name === n));

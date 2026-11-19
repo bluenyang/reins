@@ -1,0 +1,6 @@
+{
+  "name": "@croffledev/croffle-types",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json --composite false"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "croffle-server-web",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "typecheck": "vue-tsc --noEmit"
+  }
+}

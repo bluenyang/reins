@@ -1,0 +1,34 @@
+schema: reins/gates@1
+gates:
+  typecheck:
+    cmd: pnpm typecheck
+    from: package.json#scripts.typecheck
+  lint:
+    cmd: pnpm lint
+    from: package.json#scripts.lint
+  format:
+    cmd: pnpm format:check
+    from: package.json#scripts.format:check
+  test:
+    cmd: pnpm -r test
+  build:
+    cmd: pnpm build
+    from: package.json#scripts.build
+  build-cli:
+    cmd: pnpm --filter @croffledev/croffle-cli build
+  server:
+    cmd: make -C apps/server check
+    from: apps/server/Makefile#check
+  server-web:
+    cmd: pnpm --dir apps/server/web build
+order:
+  - typecheck
+  - lint
+  - format
+  - test
+  - build
+  - build-cli
+  - server-web
+  - server
+mutating_forbidden: true
+evidence: raw

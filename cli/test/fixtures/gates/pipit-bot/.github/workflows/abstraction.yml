@@ -1,0 +1,10 @@
+on:
+  push:
+    branches:
+      - master
+jobs:
+  abstraction:
+    steps:
+      - name: Check
+        run: |
+          node scripts/check-abstraction.mjs

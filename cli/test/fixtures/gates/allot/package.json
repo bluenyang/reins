@@ -1,0 +1,23 @@
+{
+  "name": "allot",
+  "scripts": {
+    "dev": "vite",
+    "dev:api": "tsx watch server/index.ts",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit && tsc -p tsconfig.server.json",
+    "review:mark": "node scripts/guard-review.mjs --mark",
+    "prepare": "node scripts/prepare.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx server/db/migrate-cli.ts",
+    "db:admin": "tsx server/db/admin-cli.ts",
+    "db:seed": "tsx server/db/seed.ts",
+    "keys:rotate": "tsx server/index.ts keys:rotate",
+    "keys:forget-lost": "tsx server/index.ts keys:forget-lost",
+    "e2e": "playwright test",
+    "check:migrations": "sh scripts/check-migrations.sh",
+    "check:logs": "node scripts/check-logs.mjs",
+    "test:unit": "tsx --test tests/unit/*.test.ts",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --format=esm --target=node26 --packages=external --outfile=dist-server/index.mjs"
+  }
+}

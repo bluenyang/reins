@@ -1,6 +1,13 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { ciRuns } from './detect-ci.js';
+import {
+  forwards,
+  ownProjectFile,
+  workspaceGlobs,
+  workspacePackages,
+} from './detect-workspaces.js';
 
 /** Generation of an existing harness (design §7). First match wins, from the most specific. */
 export type Generation = 'reins' | 'gen4' | 'gen3' | 'gen2' | 'gen1' | 'none';
@@ -71,24 +78,46 @@ export function runner(root: string): string | null {
 }
 
 export interface Gate {
-  name: 'check' | 'lint' | 'typecheck' | 'test' | 'build' | 'e2e';
+  name: string;
   cmd: string;
   from: string;
   optional?: boolean;
 }
 
-/** A gate found in a subdirectory (spec S-5): named `<dir-slug>-<script>`, run from the repo root. */
+/** A gate found below the root, in CI or not chosen by default: named `<dir-slug>-<script>`, run from the repo root. */
 export interface SubdirGate {
   name: string;
   cmd: string;
   from: string;
 }
 
+/**
+ * One gate candidate (024 S-4–S-10). `pick`: chosen by default at install; `offer`: shown, not chosen;
+ * `covered`: another script or gate already runs it; `excluded`: never a gate. `reasons` say why.
+ */
+export interface Candidate {
+  name: string;
+  cmd: string;
+  from: string;
+  /** the directory from the root ('' for the root) */
+  dir: string;
+  /** the script, target or CI command it comes from */
+  script: string;
+  source: 'npm' | 'make' | 'go' | 'ci';
+  status: 'pick' | 'offer' | 'covered' | 'excluded';
+  reasons: string[];
+  optional?: boolean;
+  /** the script's own body (npm) */
+  body?: string;
+}
+
 export interface GateProposal {
   gates: Gate[];
   excluded: { name: string; cmd: string; why: string }[];
-  /** subdirectory candidates; never part of `gates` */
+  /** candidates offered but not chosen (below the root, in CI, other root scripts); never part of `gates` */
   proposals: SubdirGate[];
+  /** every candidate, with its status and reasons (024 S-9) */
+  candidates: Candidate[];
 }
 
 const MUTATING = /--fix\b|--write\b|\bfmt\b(?!:check)|(^|\s)format(\s|$)/;
@@ -97,7 +126,7 @@ const tidy = (s: string) => s.trim().replace(/\s+/g, ' ');
 const unredirect = (s: string) => s.replace(/\d*>&\d+/g, '').replace(/\d*>\s*\S+/g, '');
 
 /**
- * Quoted text that holds more than one word or a shell operator becomes one opaque word, so text inside
+ * Quoted text that is not one plain word (letters, digits, `_`, `:`, `.`, `-`) becomes one opaque word, so text inside
  * quotes is never split into commands (023 A-11); a quoted single word stays for `unquote`. null when a
  * quote is left open or a backslash appears: the body is then unclear and nothing in it counts.
  */
@@ -167,62 +196,316 @@ function calls(bundle: string | null, name: string, scripts: Record<string, stri
   return pieces(bundle).some((piece) => runsByName(piece, name) || (own !== '' && piece === own));
 }
 
-/**
- * The PM's discovery step 2–3 (design §5): read the project's scripts, drop mutating ones,
- * prefer the aggregate `check` the hooks and CI already call.
- */
-export function discoverGates(root: string): GateProposal {
-  const res: GateProposal = { gates: [], excluded: [], proposals: subdirProposals(root) };
-  const run = runner(root);
-  const pkgPath = join(root, 'package.json');
-  if (run && run !== 'make' && existsSync(pkgPath)) {
-    const scripts =
-      (JSON.parse(readFileSync(pkgPath, 'utf8')) as { scripts?: Record<string, string> }).scripts ??
-      {};
-    const cmd = (s: string) => (run === 'npm' ? `npm run ${s}` : `${run} ${s}`);
-    for (const [name, body] of Object.entries(scripts))
-      if (MUTATING.test(body) && (!/check/.test(name) || name === 'typecheck'))
-        res.excluded.push({ name, cmd: body, why: 'mutates files (--fix/--write) — not a gate' });
-    const pick = (names: string[]) =>
-      names.find((n) => n in scripts && !MUTATING.test(scripts[n] ?? ''));
-    const check = pick(['check', 'verify', 'ci', 'lint:check']) ?? null;
-    if (check)
-      res.gates.push({ name: 'check', cmd: cmd(check), from: `package.json#scripts.${check}` });
-    const bundle = check ? (scripts[check] ?? '') : null;
-    for (const n of ['lint', 'typecheck'] as const) {
-      const found = pick([n]);
-      if (found && !calls(bundle, n, scripts))
-        res.gates.push({ name: n, cmd: cmd(n), from: `package.json#scripts.${n}` });
-    }
-    const test =
-      check && /\btest\b/.test(scripts[check] ?? '') ? null : pick(['test', 'test:unit']);
-    if (test)
-      res.gates.push({ name: 'test', cmd: cmd(test), from: `package.json#scripts.${test}` });
-    const build = pick(['build']);
-    if (build)
-      res.gates.push({ name: 'build', cmd: cmd(build), from: 'package.json#scripts.build' });
-    const e2e = pick(['test:e2e', 'e2e']);
-    if (e2e)
-      res.gates.push({
-        name: 'e2e',
-        cmd: cmd(e2e),
-        from: `package.json#scripts.${e2e}`,
-        optional: true,
-      });
-  } else if (run === 'make') {
-    const mk = readFileSync(join(root, 'Makefile'), 'utf8');
-    for (const t of ['check', 'test', 'build'] as const)
-      if (new RegExp(`^${t}:`, 'm').test(mk))
-        res.gates.push({ name: t, cmd: `make ${t}`, from: `Makefile:${t}` });
+/** The reasons a candidate carries (024 S-9); tests assert these texts. */
+export const REASON = {
+  ci: (file: string) => `also in CI (${file})`,
+  runs: (by: string, piece: string) => `${by} already runs it (${piece})`,
+  calls: (bundle: string) => `${bundle} already calls it`,
+  dependsOn: (target: string) => `Makefile ${target} depends on it`,
+  holds: (by: string) => `the body of ${by} holds it`,
+  mutates: 'rewrites files',
+  neverEnds: 'never ends',
+  install: 'install step',
+  platform: 'platform packaging',
+  outside: (file: string) => `outside the workspace (${file})`,
+  unclear: (why: string) => `unclear (${why})`,
+} as const;
+
+const KEYWORDS = new Set(['check', 'lint', 'test', 'typecheck', 'build', 'e2e', 'verify', 'ci']);
+const NEVER_ENDS = new Set(['dev', 'start', 'watch', 'serve', 'preview']);
+const INSTALL_STEPS = new Set(['prepare', 'preinstall', 'install', 'postinstall']);
+const PLATFORM = new Set([
+  'win',
+  'windows',
+  'mac',
+  'macos',
+  'darwin',
+  'linux',
+  'dmg',
+  'exe',
+  'msi',
+  'appimage',
+  'deb',
+  'rpm',
+  'snap',
+  'pkg',
+]);
+const words = (name: string) => name.split(/[:_-]/);
+const bodyWords = (body: string) => body.split(/\s+/);
+
+/** Whether a script name is a gate candidate by its name (024 S-4): a keyword as one of its words. */
+export function keywordName(name: string): boolean {
+  return name === 'type-check' || words(name).some((w) => KEYWORDS.has(w));
+}
+
+/** Why a script is never a gate (024 S-4), or null. A check-named script that rewrites files is only passed over. */
+export function exclusion(name: string, body: string): string | null {
+  if (INSTALL_STEPS.has(name)) return REASON.install;
+  if (
+    words(name).some((w) => NEVER_ENDS.has(w)) ||
+    bodyWords(body).some((w) => NEVER_ENDS.has(w) || w === '--watch')
+  )
+    return REASON.neverEnds;
+  if (words(name).some((w) => PLATFORM.has(w.toLowerCase()))) return REASON.platform;
+  if (MUTATING.test(body)) return REASON.mutates;
+  return null;
+}
+
+/** A `pre<x>`/`post<x>` script of another script `x`: an npm lifecycle hook, not a gate. */
+const lifecycle = (name: string, scripts: Record<string, string>) => {
+  const m = /^(?:pre|post)(.+)$/.exec(name);
+  return !!m && m[1]! in scripts;
+};
+
+/** A gate name from a script name: `:` cannot stand in a gates.yaml key the gate script reads (024 A-3). */
+const gateName = (s: string) => s.replace(/:/g, '-');
+
+const readScripts = (p: string): Record<string, string> => {
+  try {
+    const s = (JSON.parse(readFileSync(p, 'utf8')) as { scripts?: Record<string, unknown> })
+      .scripts;
+    return Object.fromEntries(
+      Object.entries(s ?? {}).filter((e): e is [string, string] => typeof e[1] === 'string'),
+    );
+  } catch {
+    return {};
   }
-  return res;
+};
+
+/** The Makefile's targets with their prerequisites and recipe lines. */
+function makeTargets(text: string): Map<string, { deps: string[]; recipe: string[] }> {
+  const out = new Map<string, { deps: string[]; recipe: string[] }>();
+  let cur: { deps: string[]; recipe: string[] } | null = null;
+  for (const line of text.split(/\r?\n/)) {
+    const m = /^([A-Za-z0-9_.-]+)\s*:(?!=)\s*(.*)$/.exec(line);
+    if (m && !m[1]!.startsWith('.')) {
+      cur = { deps: m[2]!.replace(/#.*/, '').trim().split(/\s+/).filter(Boolean), recipe: [] };
+      out.set(m[1]!, cur);
+    } else if (line.startsWith('\t') && cur) cur.recipe.push(line.trim());
+    else if (line.trim() && !line.startsWith('#')) cur = null;
+  }
+  return out;
+}
+
+const MAKE_TARGETS = ['check', 'lint', 'test', 'build', 'vet', 'verify'];
+
+/** The pieces of a body split into words, quoted words unquoted (for the workspace forms). */
+const pieceWords = (piece: string) => piece.split(' ').map(unquote);
+
+/**
+ * Every gate candidate of the repository (024 S-4–S-10): the root package.json (or the root Makefile),
+ * package.json scripts, Makefile targets and go.mod below the root to depth 3, and the one-line `run:`
+ * commands of pull-request workflows, each with its status and reasons.
+ */
+export function detectCandidates(root: string): Candidate[] {
+  const out: Candidate[] = [];
+  const run = runner(root);
+  const pkgs = workspacePackages(root);
+  const covered = (c: Candidate, why: string) => {
+    if (c.status === 'excluded') return;
+    if (c.status !== 'covered') c.status = 'covered';
+    if (!c.reasons.includes(why)) c.reasons.push(why);
+  };
+
+  // the root
+  const rootScripts: Record<string, string> =
+    run && run !== 'make' && existsSync(join(root, 'package.json'))
+      ? readScripts(join(root, 'package.json'))
+      : {};
+  if (run && run !== 'make' && existsSync(join(root, 'package.json'))) {
+    const cmd = (s: string) => (run === 'npm' ? `npm run ${s}` : `${run} ${s}`);
+    const bundle =
+      ['check', 'verify', 'ci'].find(
+        (n) => n in rootScripts && !MUTATING.test(rootScripts[n] ?? ''),
+      ) ?? null;
+    const has = (n: string) => n in rootScripts && !exclusion(n, rootScripts[n] ?? '');
+    const test = has('test') ? 'test' : has('test:unit') ? 'test:unit' : null;
+    const e2e = has('test:e2e') ? 'test:e2e' : has('e2e') ? 'e2e' : null;
+    const picks = new Set(
+      [
+        bundle,
+        'lint',
+        'typecheck',
+        test,
+        'build',
+        e2e,
+        'lint:check',
+        'format:check',
+        'type-check',
+      ].filter((n): n is string => !!n),
+    );
+    for (const [name, body] of Object.entries(rootScripts)) {
+      if (!/^[\w:.-]+$/.test(name) || lifecycle(name, rootScripts)) continue;
+      const why = exclusion(name, body);
+      if (why) {
+        if (why === REASON.mutates && /check/.test(name) && name !== 'typecheck') continue;
+        out.push({
+          name,
+          cmd: body,
+          from: `package.json#scripts.${name}`,
+          dir: '',
+          script: name,
+          source: 'npm',
+          status: 'excluded',
+          reasons: [why],
+          body,
+        });
+        continue;
+      }
+      if (!keywordName(name)) continue;
+      const g =
+        name === bundle ? 'check' : name === test ? 'test' : name === e2e ? 'e2e' : gateName(name);
+      out.push({
+        name: g,
+        cmd: cmd(name),
+        from: `package.json#scripts.${name}`,
+        dir: '',
+        script: name,
+        source: 'npm',
+        status: picks.has(name) ? 'pick' : 'offer',
+        reasons: [],
+        body,
+        ...(name === e2e ? { optional: true } : {}),
+      });
+    }
+    // what the bundle already calls (023 S-2, now for every candidate)
+    if (bundle)
+      for (const c of out)
+        if (
+          c.dir === '' &&
+          c.script !== bundle &&
+          calls(rootScripts[bundle] ?? '', c.script, rootScripts)
+        )
+          covered(c, REASON.calls(bundle));
+  } else if (run === 'make') {
+    const t = makeTargets(readFileSync(join(root, 'Makefile'), 'utf8'));
+    for (const name of MAKE_TARGETS)
+      if (t.has(name))
+        out.push({
+          name,
+          cmd: `make ${name}`,
+          from: `Makefile:${name}`,
+          dir: '',
+          script: name,
+          source: 'make',
+          status: ['check', 'test', 'build'].includes(name) ? 'pick' : 'offer',
+          reasons: [],
+        });
+  }
+
+  // below the root (spec 019 S-5): package.json, Makefile, go.mod
+  out.push(...subdirCandidates(root, run));
+
+  // a body that holds another candidate's body in the same directory (S-6)
+  for (const c of out) {
+    if (c.status === 'excluded' || !c.body) continue;
+    const own = c.body.trim().replace(/\s+/g, ' ');
+    for (const by of out)
+      if (
+        by !== c &&
+        by.dir === c.dir &&
+        by.body &&
+        by.status !== 'excluded' &&
+        by.script !== c.script
+      ) {
+        const ps = pieces(by.body);
+        if (ps.length > 1 && ps.includes(own)) covered(c, REASON.holds(by.script));
+      }
+  }
+
+  // Makefiles: a target another one depends on or calls; go test/vet a recipe already runs (S-6)
+  const dirs = new Set(out.filter((c) => c.source === 'make').map((c) => c.dir));
+  for (const d of dirs) {
+    const t = makeTargets(readFileSync(join(root, d, 'Makefile'), 'utf8'));
+    for (const c of out.filter((x) => x.dir === d && x.source === 'make'))
+      for (const [target, { deps, recipe }] of t)
+        if (
+          target !== c.script &&
+          MAKE_TARGETS.includes(target) &&
+          (deps.includes(c.script) ||
+            recipe.some((r) => new RegExp(`(?:\\$\\(MAKE\\)|\\bmake)\\s+${c.script}\\b`).test(r)))
+        )
+          covered(c, REASON.dependsOn(target));
+    const recipes = [...t.values()].flatMap((x) => x.recipe);
+    for (const c of out.filter((x) => x.dir === d && x.source === 'go'))
+      if (recipes.some((r) => new RegExp(`\\bgo ${c.script}\\b`).test(r)))
+        covered(c, REASON.holds(`Makefile ${c.script}`));
+  }
+
+  // workspace packages a root script already runs (S-7)
+  if (pkgs.length)
+    for (const [name, body] of Object.entries(rootScripts)) {
+      if (exclusion(name, body)) continue;
+      for (const piece of pieces(body)) {
+        const f = forwards(pieceWords(piece), pkgs);
+        if (!f || 'unclear' in f) continue;
+        for (const c of out)
+          if (
+            c.source === 'npm' &&
+            f.pkgs.some((p) => p.dir === c.dir) &&
+            f.scripts.includes(c.script)
+          )
+            covered(c, REASON.runs(name, piece));
+      }
+    }
+  // a directory with a project file of its own is outside the root workspace
+  if (pkgs.length || workspaceGlobs(root))
+    for (const c of out) {
+      const own = ownProjectFile(root, c.dir);
+      if (own && c.source === 'npm' && !c.reasons.includes(REASON.outside(own)))
+        c.reasons.push(REASON.outside(own));
+    }
+
+  // pull-request workflows (S-8)
+  const skip = (cmd: string) => exclusion('', cmd) !== null;
+  for (const r of ciRuns(root, compound, skip)) {
+    const same =
+      out.find((c) => c.status !== 'excluded' && c.cmd === r.cmd) ??
+      out.find(
+        (c) =>
+          c.status !== 'excluded' &&
+          c.dir === r.dir &&
+          c.body !== undefined &&
+          c.body.trim().replace(/\s+/g, ' ') === r.raw,
+      );
+    if (same) {
+      if (!same.reasons.includes(REASON.ci(r.file))) same.reasons.push(REASON.ci(r.file));
+      continue;
+    }
+    const slug = r.cmd
+      .split(' ')
+      .filter((w) => !w.startsWith('-') && !w.startsWith('.') && w !== r.dir)
+      .map((w) => w.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+      .filter(Boolean)
+      .join('-');
+    out.push({
+      name: `ci-${slug}`,
+      cmd: r.cmd,
+      from: r.file,
+      dir: r.dir,
+      script: r.raw,
+      source: 'ci',
+      status: 'offer',
+      reasons: [REASON.ci(r.file)],
+    });
+  }
+
+  // one name each: a later candidate with a taken name gets -2, -3 …
+  const taken = new Set<string>();
+  for (const c of out) {
+    if (c.status === 'excluded') continue;
+    let n = c.name;
+    for (let i = 2; taken.has(n); i++) n = `${c.name}-${i}`;
+    c.name = n;
+    taken.add(n);
+  }
+  return out;
 }
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'vendor', '.loctx', '.agents']);
 const MAX_DEPTH = 3;
 const SAFE_DIR = /^[\w@.+-]+(\/[\w@.+-]+)*$/;
 const ROOT_GATE_NAMES = ['check', 'lint', 'typecheck', 'test', 'build', 'e2e'];
-const NODE_SCRIPTS = ['check', 'verify', 'ci', 'typecheck', 'lint', 'test', 'build'];
 
 function dirRunner(root: string, dir: string, rootRunner: string | null): 'pnpm' | 'yarn' | 'npm' {
   if (existsSync(join(root, dir, 'pnpm-lock.yaml'))) return 'pnpm';
@@ -233,21 +516,13 @@ function dirRunner(root: string, dir: string, rootRunner: string | null): 'pnpm'
 
 const SOURCE_ORDER = ['npm', 'make', 'go'] as const;
 type Source = (typeof SOURCE_ORDER)[number];
-interface Candidate {
-  rel: string;
-  source: Source;
-  script: string;
-  cmd: string;
-  from: string;
-}
 
 /**
- * Gate candidates below the root (spec S-5): package.json scripts, Makefile targets and go.mod,
- * to depth 3. One command each, using the tool's own directory option. The caller chooses.
+ * Candidates below the root (019 S-5, 024 S-4): package.json scripts named by the pattern, Makefile
+ * targets and go.mod, to depth 3, one command each with the tool's own directory option.
  */
-export function subdirProposals(root: string): SubdirGate[] {
-  const cands: Candidate[] = [];
-  const rootRunner = runner(root);
+function subdirCandidates(root: string, rootRunner: string | null): Candidate[] {
+  const cands: (Candidate & { source: Source })[] = [];
   const walk = (dir: string, depth: number) => {
     let entries;
     try {
@@ -261,79 +536,133 @@ export function subdirProposals(root: string): SubdirGate[] {
       if (!SAFE_DIR.test(rel)) continue;
       const pkg = join(root, rel, 'package.json');
       if (existsSync(pkg)) {
-        let scripts: Record<string, string> = {};
-        try {
-          scripts =
-            (JSON.parse(readFileSync(pkg, 'utf8')) as { scripts?: Record<string, string> })
-              .scripts ?? {};
-        } catch {
-          // unreadable package.json: no proposals from it
-        }
+        const scripts = readScripts(pkg);
         const run = dirRunner(root, rel, rootRunner);
-        for (const sc of NODE_SCRIPTS)
-          if (sc in scripts && !MUTATING.test(scripts[sc] ?? '') && /^[\w:.-]+$/.test(sc)) {
-            const cmd =
-              run === 'npm'
-                ? `npm --prefix ${rel} run ${sc}`
-                : run === 'yarn'
-                  ? `yarn --cwd ${rel} ${sc}`
-                  : `pnpm --dir ${rel} ${sc}`;
+        for (const [sc, body] of Object.entries(scripts))
+          if (
+            /^[\w:.-]+$/.test(sc) &&
+            keywordName(sc) &&
+            !lifecycle(sc, scripts) &&
+            !exclusion(sc, body)
+          )
             cands.push({
-              rel,
-              source: 'npm',
-              script: sc,
-              cmd,
+              name: '',
+              cmd:
+                run === 'npm'
+                  ? `npm --prefix ${rel} run ${sc}`
+                  : run === 'yarn'
+                    ? `yarn --cwd ${rel} ${sc}`
+                    : `pnpm --dir ${rel} ${sc}`,
               from: `${rel}/package.json#scripts.${sc}`,
+              dir: rel,
+              script: sc,
+              source: 'npm',
+              status: 'offer',
+              reasons: [],
+              body,
             });
-          }
       }
       const mk = join(root, rel, 'Makefile');
       if (existsSync(mk)) {
-        const text = readFileSync(mk, 'utf8');
-        for (const t of ['check', 'test', 'build'])
-          if (new RegExp(`^${t}:`, 'm').test(text))
+        const t = makeTargets(readFileSync(mk, 'utf8'));
+        for (const name of MAKE_TARGETS)
+          if (t.has(name))
             cands.push({
-              rel,
+              name: '',
+              cmd: `make -C ${rel} ${name}`,
+              from: `${rel}/Makefile:${name}`,
+              dir: rel,
+              script: name,
               source: 'make',
-              script: t,
-              cmd: `make -C ${rel} ${t}`,
-              from: `${rel}/Makefile:${t}`,
+              status: 'offer',
+              reasons: [],
             });
       }
       if (existsSync(join(root, rel, 'go.mod')))
         for (const t of ['test', 'vet'])
           cands.push({
-            rel,
-            source: 'go',
-            script: t,
+            name: '',
             cmd: `go -C ${rel} ${t} ./...`,
             from: `${rel}/go.mod`,
+            dir: rel,
+            script: t,
+            source: 'go',
+            status: 'offer',
+            reasons: [],
           });
       if (depth < MAX_DEPTH) walk(rel, depth + 1);
     }
   };
   walk('', 1);
 
-  // Every candidate is kept. Names are settled in a fixed order (path, source, script): the first
-  // keeps `<dir-slug>-<script>`, a later one takes a source suffix, then -2, -3 … until free.
+  // Names are settled in a fixed order (path, source, script): the first keeps `<dir-slug>-<script>`,
+  // a later one takes a source suffix, then -2, -3 … until free.
   cands.sort(
     (a, b) =>
-      (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0) ||
+      (a.dir < b.dir ? -1 : a.dir > b.dir ? 1 : 0) ||
       SOURCE_ORDER.indexOf(a.source) - SOURCE_ORDER.indexOf(b.source) ||
       (a.script < b.script ? -1 : a.script > b.script ? 1 : 0),
   );
   const taken = new Set(ROOT_GATE_NAMES);
-  const out: SubdirGate[] = [];
+  const out: Candidate[] = [];
   for (const c of cands) {
     if (compound(c.cmd)) continue;
-    const base = `${c.rel.replace(/\//g, '-')}-${c.script}`;
+    const base = `${c.dir.replace(/\//g, '-')}-${gateName(c.script)}`;
     let name = base;
     if (taken.has(name)) name = `${base}-${c.source}`;
     for (let i = 2; taken.has(name); i++) name = `${base}-${c.source}-${i}`;
     taken.add(name);
-    out.push({ name, cmd: c.cmd, from: c.from });
+    out.push({ ...c, name });
   }
   return out;
+}
+
+/** The order of the gates install writes: check, lint, typecheck, test, build, e2e (023), the 024 ones beside their kin. */
+const PICK_ORDER = [
+  'check',
+  'lint',
+  'lint-check',
+  'format-check',
+  'typecheck',
+  'type-check',
+  'test',
+  'build',
+  'e2e',
+];
+const pickRank = (c: Candidate) => {
+  const i = PICK_ORDER.indexOf(c.name);
+  return i < 0 ? PICK_ORDER.length : i;
+};
+
+/**
+ * The discovery of installation (design §5, 024 S-10): the candidates chosen by default become `gates`,
+ * the excluded ones are listed, and the ones only offered are `proposals`.
+ */
+export function discoverGates(root: string): GateProposal {
+  const candidates = detectCandidates(root);
+  return {
+    gates: candidates
+      .filter((c) => c.status === 'pick')
+      .toSorted((a, b) => pickRank(a) - pickRank(b))
+      .map((c) => ({
+        name: c.name,
+        cmd: c.cmd,
+        from: c.from,
+        ...(c.optional ? { optional: true } : {}),
+      })),
+    excluded: candidates
+      .filter((c) => c.status === 'excluded')
+      .map((c) => ({ name: c.script, cmd: c.cmd, why: c.reasons[0] ?? '' })),
+    proposals: candidates
+      .filter((c) => c.status === 'offer')
+      .map((c) => ({ name: c.name, cmd: c.cmd, from: c.from })),
+    candidates,
+  };
+}
+
+/** The candidates offered and not chosen by default (`config gates --add`). */
+export function subdirProposals(root: string): SubdirGate[] {
+  return discoverGates(root).proposals;
 }
 
 /** Vendor of a model ID by prefix, in order: gpt, gemini, cursor-, else claude (spec S-2). */

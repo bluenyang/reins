@@ -26,7 +26,10 @@ function fixture(): string {
     }),
   );
   w('server/go.mod', 'module x\n');
-  w('server/Makefile', 'check: vet\ntest:\n\tgo test ./...\n');
+  w(
+    'server/Makefile',
+    'check: vet\ntest:\n\tsh ./t.sh\n' /* 024 S-6: a recipe with go test would cover go -C server test */,
+  );
   w('node_modules/x/package.json', JSON.stringify({ scripts: { test: 'x' } }));
   w('a/b/c/d/package.json', JSON.stringify({ scripts: { test: 'x' } })); // depth 4
   return d;
@@ -191,7 +194,7 @@ describe('root typecheck and lint (023 S-1..S-9)', () => {
         prepare: 'husky',
       },
       names: ['check', 'build'],
-      excluded: ['fmt'],
+      excluded: ['fmt', 'prepare'], // 024 S-4: prepare is an install step
     },
     {
       id: '4 direct, same command',
@@ -315,20 +318,22 @@ describe('root typecheck and lint (023 S-1..S-9)', () => {
       names: ['check', 'lint', 'typecheck'],
     },
     {
-      id: '13a lint:check bundle, same body',
+      // 024 S-5: intended change — lint:check is no bundle any more, it is a gate of its own name
+      id: '13a lint:check is its own gate, same body',
       scripts: { 'lint:check': 'eslint .', lint: 'eslint .', typecheck: 'tsc --noEmit' },
-      names: ['check', 'typecheck'],
-      from: { check: 'package.json#scripts.lint:check' },
+      names: ['lint', 'lint-check', 'typecheck'],
+      from: { 'lint-check': 'package.json#scripts.lint:check' },
     },
     {
-      id: '13b lint:check bundle, other body',
+      // 024 S-5: intended change — lint:check is no bundle any more
+      id: '13b lint:check is its own gate, other body',
       scripts: {
         'lint:check': 'eslint .',
         lint: 'eslint . --max-warnings 0',
         typecheck: 'tsc --noEmit',
       },
-      names: ['check', 'lint', 'typecheck'],
-      from: { check: 'package.json#scripts.lint:check' },
+      names: ['lint', 'lint-check', 'typecheck'],
+      from: { 'lint-check': 'package.json#scripts.lint:check' },
     },
     {
       id: '14 ci bundle',

@@ -1,0 +1,22 @@
+schema: reins/gates@1
+gates:
+  typecheck:
+    cmd: pnpm typecheck
+    from: package.json#scripts.typecheck
+  build:
+    cmd: pnpm build
+    from: package.json#scripts.build
+  test:
+    cmd: pnpm test:unit
+    from: package.json#scripts.test:unit
+  e2e:
+    cmd: pnpm e2e
+    from: package.json#scripts.e2e
+    optional: true
+order:
+  - typecheck
+  - build
+  - test
+  - e2e
+mutating_forbidden: true
+evidence: raw

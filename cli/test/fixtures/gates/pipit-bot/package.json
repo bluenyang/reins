@@ -1,0 +1,27 @@
+{
+  "name": "pipit-bot",
+  "workspaces": [
+    "dashboard"
+  ],
+  "scripts": {
+    "sapphire": "sapphire",
+    "generate": "sapphire generate",
+    "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint --fix .",
+    "lint:check": "oxlint .",
+    "check:abstraction": "node scripts/check-abstraction.mjs",
+    "prepare": "husky",
+    "postinstall": "node node_modules/ffmpeg-static/install.js",
+    "typecheck": "tsc --noEmit",
+    "watch": "tsc -w",
+    "start": "node dist/index.js",
+    "start:dev": "node --env-file=.env.development.local dist/index.js",
+    "dev": "yarn build && yarn start:dev",
+    "watch:start": "tsc-watch --onSuccess \"yarn start:dev\"",
+    "dashboard:dev": "yarn workspace dashboard dev",
+    "dashboard:build": "yarn workspace dashboard build",
+    "db:generate": "node scripts/db-generate.mjs"
+  }
+}

@@ -361,6 +361,12 @@ describe('the script reads gates.yaml when it runs (024 S-15–S-17, V-6)', () =
     expect(text).toContain('no required gate');
     const flow = runOn('gates: {}\norder: []\n');
     expect(flow.r.status).toBe(0);
+    // an empty order present runs nothing, as requiredGates reads it (review 2)
+    const none = runOn(`gates:\n  a:\n    cmd: ${say('SHOULD_NOT_RUN')}\norder: []\n`);
+    expect(none.r.status).toBe(0);
+    expect(ran(none.text)).toEqual([]);
+    expect(none.text).toContain('no required gate');
+    expect(requiredGates(`gates:\n  a:\n    cmd: x\norder: []\n`)).toEqual([]);
   });
 
   it('without gates.yaml it stops with exit 2; with no required gate it says so and passes', () => {

@@ -83,6 +83,7 @@ function word(v) { sub(/^ +/, "", v); sub(/ +#.*$/, "", v); sub(/ +$/, "", v); r
 /^[^ ]/ {
   sec = $0; sub(/:.*/, "", sec)
   if (sec == "gates") hasGates = 1
+  if (sec == "order") hasOrder = 1
   if (sec == "gates" || sec == "order") {
     t = $0; sub(/^[^:]*:/, "", t); t = word(t)
     # the empty collections written for no gate (gates: {}, order: []) are read; other flow style is not
@@ -116,7 +117,8 @@ END {
   # an empty or unrelated file is no gates.yaml: it must not pass without checks
   if (!hasGates) { print "line " NR ": no gates section"; exit 3 }
   for (k = 1; k <= count; k++) if (!(names[k] in cmd)) { print "the gate " names[k] " has no cmd"; exit 3 }
-  if (ocount) { for (k = 1; k <= ocount; k++) if ((order[k] in seen) && !(order[k] in opt)) print cmd[order[k]] }
+  # order present, even empty, decides: order: [] runs nothing
+  if (hasOrder) { for (k = 1; k <= ocount; k++) if ((order[k] in seen) && !(order[k] in opt)) print cmd[order[k]] }
   else for (k = 1; k <= count; k++) if (!(names[k] in opt)) print cmd[names[k]]
 }
 `;

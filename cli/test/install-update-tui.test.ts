@@ -206,6 +206,7 @@ describe('update confirmation (spec S-9)', () => {
         cliFrom: '0.2.0',
         cliTo: '0.3.0',
         changes: [],
+        changesByVersion: [],
         overrides: [],
         converted: ['role pl → pl (openai gpt-6.1-sol)'],
         removed: ['.agents/skills/reins-loop'],

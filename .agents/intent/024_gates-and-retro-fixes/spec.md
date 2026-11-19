@@ -387,6 +387,10 @@ summary_for_user: |
 - A-13 (2026-11-19, W-8·W-4·W-2·W-3) 코드 리뷰 1(`review-1-answer.md`)의 7건: 다른 인자 뒤의 `--no-verify`·`commit -n`도 막음, 브랜치 없이 `upstream`만 적은 푸시도 막음, refresh 짝짓기를 모든 게이트에 대해 명령부터(같은 출처는 이름·스크립트로 가림), pnpm `-r`·npm `--workspaces`는 필터가 좁힘, 공백·식이 든 `working-directory`는 뺌, 게이트가 없을 때의 `gates: {}`·`order: []`를 읽음, `gates:` 절이 없는 파일은 exit 2 · 실패 입력이 재현됨 · `65838cd`, `e0e7922`, `cba1ff5`, `0c2bdd6`. 다시 리뷰(`review-2-answer.md`): 6건 고쳐짐, 1건 부분(아래 우려 2), 새 결함 1건(`order: []`가 order 없음으로 읽힘)
 - A-14 (2026-11-19, W-4) 리뷰 2의 새 결함: 비어 있어도 `order`가 있으면 그것을 따름(`order: []`는 아무것도 돌리지 않음) · `7236466`. 다시 리뷰(`review-3-answer.md`): 고쳐짐, 새 결함 없음
 - A-15 (2026-11-19, W-2) fixture 목록 테스트가 Windows의 역슬래시 경로를 `/`로 바꿔 비교한다 · PR #51의 Windows CI에서만 실패 · `689c29f`. 리뷰(`review-4-answer.md`): 맞음, 가리는 것 없음
+- A-16 (2026-11-20, W-8·W-6) 작업 단위의 파일 목록을 실제와 맞춘다: W-8의 기본 브랜치 결정은 `install.ts`·`update.ts`가 아니라 `git.ts`(`defaultBranches`)와 `generate.ts`, W-6/S-20의 위임 블록 첫 줄은 템플릿이 아니라 `cli/src/lib/agents-md.ts`(renderDelegation)에서 바꿨다 · 보완 리뷰(`review-5-answer.md`) 3번 · `7653957`, `6e6cab7`
+- A-17 (2026-11-20, W-2) 이름에 check가 든(`typecheck` 말고) 고치는 스크립트는 `excluded`에 남기지 않고 건너뛴다(S-4의 예외) · 0.3.3에서 이어진 동작(설계 §5 "a check-named one is only passed over") · 보완 리뷰 4번 · `5064da0`
+- A-18 (2026-11-20, W-3·W-7) CHANGELOG의 `remove:<name>`을 "a gate, whatever its state"로, `configureGates` 주석과 `--refresh` 도움말을 상태 표에 맞췄다 · 보완 리뷰 2·5번 · `86a4c15`
+- 기록 유실(2026-11-20, 1차 감사 비판 4, 사용자 "ㅇㅋ"): spec 계획 검토(pl/plan-reviewer)와 검증 계획 검토(pl/qa-plan-reviewer)의 요청·답, 첫 문서 대조의 요청 원문은 `.loctx`에 남기지 않았고 `twin-1.md`는 PM이 요약한 것이다. 되살리지 않는다. 이후 호출은 요청과 답을 원문 그대로 남겼다(`review-5-*`, `committee-1-*`).
 
 ## 우려
 1. **awk로 YAML 읽기.** 사람이나 에이전트가 `gates.yaml`을 흐름 표기 등으로 고치면 스크립트가 exit 2로 멈춘다. 검사가 조용히 빠지지 않고 멈추는 쪽이라 안전하지만 불편할 수 있다. 메시지에 줄 번호와 이유를 적어 고치기 쉽게 한다.

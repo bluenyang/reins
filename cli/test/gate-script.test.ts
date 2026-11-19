@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
 import { describe, expect, it } from 'vitest';
+import { buildGates } from '../src/commands/install.js';
 import { GATE_LOGS, GATE_SCRIPT, renderGateScript, requiredGates } from '../src/lib/gate-script.js';
 
 /**
@@ -330,7 +331,9 @@ describe('the script reads gates.yaml when it runs (024 S-15–S-17, V-6)', () =
 
   it.each([
     ['flow style', `gates:\n  a: { cmd: X }\n`, 2],
-    ['flow style', `gates: {}\n`, 1],
+    ['flow style', `gates: { a: { cmd: X } }\n`, 1],
+    ['no gates section', `schema: reins/gates@1\n`, 1],
+    ['no gates section', ``, 0],
     ['a multi-line value', `gates:\n  a:\n    cmd: |\n      X\n`, 3],
     ['a multi-line value', `gates:\n  a:\n    cmd: echo one\n      two\n`, 4],
     ['a tab in the indentation', `gates:\n  a:\n\tcmd: X\n`, 3],
@@ -350,6 +353,14 @@ describe('the script reads gates.yaml when it runs (024 S-15–S-17, V-6)', () =
     expect(r.stderr).toContain(`line ${line}: ${why}`);
     expect(existsSync(marker)).toBe(false);
     expect(log(d, tree(d)).trimEnd().split('\n').at(-1)).toBe('exit: 2');
+  });
+
+  it('the empty gates.yaml install writes for no gate passes with "no required gate" (review 1)', () => {
+    const { r, text } = runOn(buildGates('/x', []));
+    expect(r.status, r.stderr).toBe(0);
+    expect(text).toContain('no required gate');
+    const flow = runOn('gates: {}\norder: []\n');
+    expect(flow.r.status).toBe(0);
   });
 
   it('without gates.yaml it stops with exit 2; with no required gate it says so and passes', () => {

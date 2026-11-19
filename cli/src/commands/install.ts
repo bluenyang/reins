@@ -134,7 +134,7 @@ export function buildGates(
     evidence: 'raw',
   };
   void root;
-  return `# discovered by reins install — the loop reads only this file (design §5)\n${stringify(doc)}`;
+  return `# discovered by reins install — the loop reads only this file (design §5)\n${stringify(doc, { lineWidth: 0 })}`;
 }
 
 /** The stub install leaves; migrate may replace it with the project's real raw roadmap. */

@@ -9,6 +9,7 @@ import { formatGates, refreshGates } from '../src/commands/config-gates.js';
 import { configureGates, fileGates, gateDiff } from '../src/commands/configure.js';
 import { runInstall } from '../src/commands/install.js';
 import { defaultsAsker } from '../src/lib/ask.js';
+import { renderGateScript, requiredGates } from '../src/lib/gate-script.js';
 import { diffGates, formatGateDiff, type GateDiff } from '../src/lib/gate-refresh.js';
 import { BACK, scriptedPrompter } from '../src/lib/prompter.js';
 
@@ -168,13 +169,14 @@ describe('reins config gates --refresh (021 S-22..S-24)', () => {
     expect(text).toContain('# discovered by reins install');
     expect(text).toContain('# keep this comment');
     expect(text).toContain('gates_note: kept');
-    // the script runs exactly the required gates of the file, in its order; the hook line is as it was
-    expect(read(d, SCRIPT).match(/^run '.*'$/gm)).toEqual([
-      "run './smoke.sh'",
-      "run 'npm run verify'",
-      "run 'npm run build'",
-      "run 'npm --prefix web run check'",
+    // the script reads the file when it runs (024 S-15): it stays as it was, and so does the hook line
+    expect(requiredGates(read(d, GATES))).toEqual([
+      './smoke.sh',
+      'npm run verify',
+      'npm run build',
+      'npm --prefix web run check',
     ]);
+    expect(read(d, SCRIPT)).toBe(renderGateScript());
     expect(read(d, '.husky/pre-commit')).toBe(hook);
     // what is left is still reported
     expect(kinds(gateDiff(d)!)).toEqual(['gone build', 'new test', 'yours mine']);
@@ -227,7 +229,7 @@ describe('reins config gates --refresh (021 S-22..S-24)', () => {
       if (how === 'refresh') configureGates({ cwd: d, apply: ['web-check'] });
       else configureGates({ cwd: d, add: ['web-check'] });
       expect(gates(d).order).toEqual(['check', 'build', 'web-check']);
-      expect(read(d, SCRIPT).match(/^run '.*'$/gm)).toHaveLength(3);
+      expect(requiredGates(read(d, GATES))).toHaveLength(3);
     }
   });
 
@@ -244,14 +246,14 @@ describe('reins config gates --refresh (021 S-22..S-24)', () => {
     expect(read(d, GATES)).toContain('# mine');
   });
 
-  it('removing the last required gate removes the script', async () => {
+  it('removing the last required gate leaves the script, which then runs nothing (024 S-17)', async () => {
     const d = await project();
     rmSync(join(d, 'package.json'));
     writeFileSync(join(d, 'README.md'), 'no scripts any more\n');
     const r = configureGates({ cwd: d, apply: ['all'] });
     expect(r.applied).toEqual(['check', 'build']);
     expect(fileGates(read(d, GATES))).toEqual([]);
-    expect(() => read(d, SCRIPT)).toThrow();
+    expect(read(d, SCRIPT)).toBe(renderGateScript());
   });
 });
 
@@ -307,7 +309,7 @@ describe('a new root typecheck script (023 V-3b, V-3c)', () => {
 
     configureGates({ cwd: d, refresh: true, apply: ['typecheck'] });
     expect(gates(d).order.at(-1)).toBe('typecheck');
-    expect(read(d, SCRIPT)).toContain("run 'npm run typecheck'");
+    expect(requiredGates(read(d, GATES))).toContain('npm run typecheck');
 
     pkg(d, {
       check: 'npm run typecheck && node -e 0',

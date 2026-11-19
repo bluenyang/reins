@@ -148,10 +148,8 @@ describe('reins configure gates (spec S-7)', () => {
     const scriptBefore = readFileSync(script, 'utf8');
     const r = configureGates({ cwd: d, add: ['server-test-go'] });
     expect(r.added).toEqual(['server-test-go']);
-    // the gate script follows gates.yaml (021 S-9): the new command is in it, after the old ones
-    const scriptAfter = readFileSync(script, 'utf8');
-    expect(scriptAfter).not.toBe(scriptBefore);
-    expect(scriptAfter.match(/^run '/gm)).toHaveLength(scriptBefore.match(/^run '/gm)!.length + 1);
+    // the gate script reads gates.yaml when it runs (024 S-17): adding a gate does not rewrite it
+    expect(readFileSync(script, 'utf8')).toBe(scriptBefore);
     const g = gatesOf(d);
     expect(g.order).toEqual(['build', 'server-test-go']);
     expect(Object.keys(g.gates)).toEqual(['build', 'server-test-go']);

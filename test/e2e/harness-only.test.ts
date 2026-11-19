@@ -113,8 +113,12 @@ describe('what reins installs never runs reins (019 V-1)', () => {
       expect(existsSync(join(d, '.loctx/delegation.local.md'))).toBe(true);
       const hook = readFileSync(join(d, '.husky/pre-commit'), 'utf8');
       expect(hook).toContain('sh .agents/harness/run-gates.sh pre-commit');
+      // the script reads gates.yaml when it runs (024 S-15)
       expect(readFileSync(join(d, '.agents/harness/run-gates.sh'), 'utf8')).toContain(
-        "run 'npm run check'",
+        'gates=.agents/harness/gates.yaml',
+      );
+      expect(readFileSync(join(d, '.agents/harness/gates.yaml'), 'utf8')).toContain(
+        'npm run check',
       );
     });
 });
@@ -148,8 +152,9 @@ describe('reins config gates --refresh from the command line (021 V-10)', () => 
     expect(gates()).toBe(before);
     expect(reins(d, 'config', 'gates', '--refresh', '--apply', 'all')).toContain('applied: check');
     expect(gates()).toContain('npm run verify');
-    expect(readFileSync(join(d, '.agents/harness/run-gates.sh'), 'utf8')).toContain(
-      "run 'npm run verify'",
+    // the script is not rewritten: it reads gates.yaml when it runs (024 S-17)
+    expect(readFileSync(join(d, '.agents/harness/run-gates.sh'), 'utf8')).not.toContain(
+      'npm run verify',
     );
     const json = JSON.parse(reins(d, 'config', 'gates', '--refresh', '--json')) as {
       diff: unknown[];
@@ -173,7 +178,8 @@ describe('the installed harness works without reins and without a network (019 V
         node: process.execPath,
         npm: join(process.execPath, '..', 'npm'),
       };
-      for (const tool of ['git', 'sh', 'tee', 'date', 'mkdir', 'cat', 'rm', 'tail'])
+      // awk reads gates.yaml in the gate script (024 S-16)
+      for (const tool of ['git', 'sh', 'tee', 'date', 'mkdir', 'cat', 'rm', 'tail', 'awk'])
         tools[tool] = where(tool);
       for (const [tool, real] of Object.entries(tools)) {
         expect(existsSync(real), `${tool} at ${real}`).toBe(true);

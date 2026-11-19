@@ -175,9 +175,12 @@ describe('hooks: the project gates in the project hook tool (019 S-3)', () => {
     expect(readFileSync(join(d, '.husky/pre-push'), 'utf8')).toBe(
       '# reins:begin hooks\nsh .agents/harness/run-gates.sh pre-push\n# reins:end hooks\n',
     );
-    // the script holds the gate commands and never runs reins
+    // the script reads gates.yaml when it runs and never runs reins (024 S-15)
     const script = readFileSync(join(d, '.agents/harness/run-gates.sh'), 'utf8');
-    expect(script).toContain("run 'pnpm check'");
+    expect(script).toContain('gates=.agents/harness/gates.yaml');
+    expect(readFileSync(join(d, '.agents/harness/gates.yaml'), 'utf8')).toContain(
+      'cmd: pnpm check',
+    );
     const runs = script.split('\n').filter((l) => !l.startsWith('#'));
     expect(runs.join('\n')).not.toMatch(/npx|@bluenyang|\breins\b/);
   });
@@ -245,7 +248,7 @@ describe('hooks: the project gates in the project hook tool (019 S-3)', () => {
     expect(existsSync(join(d, '.agents/harness/run-gates.sh'))).toBe(true);
   });
 
-  it('with no required gate there is no script and no hook line', async () => {
+  it('with no required gate the script is still written, but no hook line (024 S-17)', async () => {
     const d = mkdtempSync(join(tmpdir(), 'reins-nogate-'));
     execFileSync('git', ['init', '-q'], { cwd: d });
     mkdirSync(join(d, '.husky'), { recursive: true });
@@ -256,7 +259,8 @@ describe('hooks: the project gates in the project hook tool (019 S-3)', () => {
       detectVendors: onlyClaude,
       hooks: true,
     });
-    expect(existsSync(join(d, '.agents/harness/run-gates.sh'))).toBe(false);
+    // the script is written all the same (024 S-17); only the hook line waits for a required gate
+    expect(existsSync(join(d, '.agents/harness/run-gates.sh'))).toBe(true);
     expect(existsSync(join(d, '.husky/pre-commit'))).toBe(false);
     expect(r.notes.some((n) => n.includes('run-gates.sh'))).toBe(false);
   });
@@ -321,8 +325,8 @@ describe('re-running install keeps what the project owns', () => {
     expect(
       again.applied?.changed.filter((p) => p.endsWith('bindings.yaml') || p.endsWith('gates.yaml')),
     ).toEqual([]);
-    // the gate script follows the customised gates: rewritten, so reported as changed and not as new (022 S-28)
-    expect(again.applied?.changed).toContain('.agents/harness/run-gates.sh');
+    // the gate script does not depend on the gates (024 S-17): neither rewritten nor new
+    expect(again.applied?.changed).not.toContain('.agents/harness/run-gates.sh');
     expect(again.applied?.created).not.toContain('.agents/harness/run-gates.sh');
   });
 });

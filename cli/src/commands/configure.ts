@@ -430,10 +430,10 @@ function actionFor(
 }
 
 /**
- * `reins config gates` (design §9). `--add <name>…` appends subdirectory proposals. `--refresh` runs the
- * discovery again and reports the differences; `--apply <name…|all>` applies the chosen ones: a new gate is
- * appended, a changed one gets its command and source, a gone one is removed. Comments and other keys stay,
- * a gate written by hand is never touched, and the gate script is rewritten when the file changes.
+ * `reins config gates` (design §9). `--add <name>…` appends offered candidates. `--refresh` runs the discovery
+ * again, writes every gate and candidate with its state to `.loctx/gates-refresh.md` (024 S-11, S-12) and, with
+ * `--apply <name…|all|remove:name>`, adds, removes or replaces only what is named (S-13). Comments and other keys
+ * stay; the gate script reads gates.yaml when it runs, so only gates.yaml changes (S-17).
  */
 export function configureGates(o: ConfigureGatesOptions = {}): ConfigureGatesResult {
   const root = repoRoot(o.cwd ?? process.cwd());

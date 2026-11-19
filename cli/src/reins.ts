@@ -264,7 +264,10 @@ config
     'the project gates: --add <name>… appends offered candidates; --refresh finds the gates again and shows each gate and candidate with its state',
   )
   .option('--add <names...>', 'proposal names to append after the existing gates')
-  .option('--refresh', 'run the discovery of installation again and show the differences')
+  .option(
+    '--refresh',
+    'run the discovery again and show every gate and candidate with its state (also in .loctx/gates-refresh.md)',
+  )
   .option(
     '--apply <names...>',
     'with --refresh: rows to act on by name (a candidate is added, a gate with another command gets it, a gate is removed), remove:<name>, or `all` (adds every candidate not applied)',

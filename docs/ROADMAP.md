@@ -93,7 +93,20 @@ State: **0.3.3 published** (2026-11-17, stable from the rc.1 commit; intent 023)
 - **`config` and personal settings.** Switching the scope on the models screen changes what it shows (the team file, or what applies to you, marked `(local)`), and a personal group wins only where it speaks instead of hiding the team's whole group (the maintainer, 2026-11-16).
 - Left for the next version: how a branch is updated after a rebase, which the harness forbids by force push today (0.3.2 retro, H2).
 
-## 0.4 — rollout
+## 0.4 — agent hooks and the loop
+
+State: **planned**. Work starts after 0.3 is stabilised (maintainer, 2026-11-19). Why: [the design conversation of 2026-11-19](conversation/2026-11-19_agent-hooks.md) (Korean).
+
+- **Checks in three layers.** Git hooks (husky, lefthook) keep the rules everyone follows, person or agent: secret detection, typecheck. Agent hooks keep the harness's procedure and fire only in agent sessions, so a person working alone is not made to follow the agents' approvals. CI is not generated: `install` and `update` look at it and propose, and an agent improves it when the user asks.
+- **Agent hooks per vendor.** Hooks go to the vendors that `bindings.yaml` gives work to, through one script that normalises each vendor's input before checking. reins merges them with the user's own hooks and updates only what it owns (`owned:`); the project's own checks stay the project's to change.
+- **No unreviewed head reaches a merge.** A fix after a review, a failed test, the first audit or an rc check is reviewed again (its diff only); the hooks check that the head is reviewed before a push and a merge, commits holding records only excepted (from a proposal by an agent in another project).
+- **The loop branches on the hooks.** Review and test pass, or go back: a simple fix (the spec unchanged) is redone and reviewed or tested again; anything larger changes the spec and is approved again. A failed test is investigated before it is fixed.
+- **Human commits in the audit.** Agent commits carry a trailer by default; a team that does not use trailers has the audit ask the user which commits were theirs. Which one applies is set at onboarding.
+- **The retro proposes with its reasons.** Knowledge is reviewed before AGENTS.md and proposed as "applying this because …, accept?"; an AGENTS.md change says what was found and why it is needed, in more detail. AGENTS.md is kept short and changed rarely; knowledge, history and the design conversations are used actively. Together, AGENTS.md and knowledge fit the general harness to the project.
+- **Knowledge by role.** An entry names the roles and stages that should read it, so each step reads its own.
+- Undecided: whether the first audit moves before the push (so nothing unapproved leaves the machine) with CI left to a pre-merge hook.
+
+## 0.5 — rollout
 
 - Application to Team Croffle repositories, repository by repository with the owner's permission.
 - Migration of the remaining `.ai/` harnesses.

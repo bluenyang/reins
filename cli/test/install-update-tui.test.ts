@@ -91,7 +91,7 @@ describe('manual install screens (spec S-8)', () => {
 
     await runInstall({
       mode: 'manual',
-      asker: lines(['claude,openai', 'en', 'y', 'server-test-go', 'y']),
+      asker: lines(['claude,openai', 'en', 'y', 'server-test-go']),
       cwd: b,
       detectVendors: detect,
     });

@@ -1,10 +1,11 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runConfig } from '../src/commands/config.js';
 import { runInstall } from '../src/commands/install.js';
+import { formatUpdate, runUpdate } from '../src/commands/update.js';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { generateVendorFiles } from '../src/lib/generate.js';
 import {
@@ -88,19 +89,53 @@ describe('force push with lease, per person (024 S-26a)', () => {
     });
     expect(local(d).env).toEqual({ A: '1' });
     applyLocalForcePush(d, 'allow');
-    expect(local(d).permissions).toEqual({ allow: ['Bash(gh *)'], deny: ['Mine(*)'] });
+    // the person's rule was there first, so it stays theirs (review 6)
+    expect(local(d).permissions).toEqual({
+      allow: ['Bash(gh *)'],
+      deny: ['Mine(*)', FORCE_WITH_LEASE_RULES[1]],
+    });
     expect(recordedForceWithLease(d)).toBe('allow');
-    // a rule the person wrote is theirs: allow does not take it out
+    // a rule the person wrote is theirs: deny then allow does not take it out (review 6)
+    const e = mkdtempSync(join(tmpdir(), 'reins-lease-mine-'));
+    mkdirSync(join(e, '.claude'));
     writeFileSync(
-      join(d, LOCAL_SETTINGS),
+      join(e, LOCAL_SETTINGS),
       JSON.stringify({ permissions: { deny: [FORCE_WITH_LEASE_RULES[1]] } }),
     );
-    applyLocalForcePush(d, 'allow');
-    expect(local(d).permissions?.deny).toEqual([FORCE_WITH_LEASE_RULES[1]]);
+    applyLocalForcePush(e, 'deny');
+    expect(local(e).permissions?.deny).toEqual([
+      FORCE_WITH_LEASE_RULES[1],
+      FORCE_WITH_LEASE_RULES[0],
+    ]);
+    applyLocalForcePush(e, 'allow');
+    expect(local(e).permissions?.deny).toEqual([FORCE_WITH_LEASE_RULES[1]]);
     writeFileSync(join(d, LOCAL_SETTINGS), '{ broken');
     const r = applyLocalForcePush(d, 'deny');
     expect(r.file).toBe('refused');
     expect(readFileSync(join(d, LOCAL_SETTINGS), 'utf8')).toBe('{ broken');
+  });
+
+  it('update shows the personal line and the migration from the 0.3.3 team rule (review 6)', async () => {
+    const d = await installed();
+    const m = join(d, '.agents/harness/generated.yaml');
+    writeFileSync(
+      m,
+      readFileSync(m, 'utf8').replace(
+        /owned:\n {2}\.claude\/settings\.json:\n/,
+        'owned:\n  .claude/settings.json:\n    - Bash(git push --force-with-lease *)\n',
+      ),
+    );
+    const pin = join(d, '.agents/harness/install.yaml');
+    writeFileSync(pin, readFileSync(pin, 'utf8').replace(/version: .*/, 'version: 0.3.3'));
+    const r = await runUpdate({ cwd: d, detectVendors: detect, yes: true });
+    const report = formatUpdate(r, false);
+    expect(report).toContain('force push with lease: denied to the agents on this machine');
+    expect(report).toContain('the team .claude/settings.json no longer denies it');
+    // a personal file that is not settings is named in the report
+    writeFileSync(join(d, LOCAL_SETTINGS), '{ broken');
+    rmSync(join(d, '.loctx/settings.local.owned.yaml'));
+    const bad = formatUpdate(await runUpdate({ cwd: d, detectVendors: detect, yes: true }), false);
+    expect(bad).toContain('.claude/settings.local.json is not a settings object');
   });
 
   it('the config screen changes it for this machine', async () => {

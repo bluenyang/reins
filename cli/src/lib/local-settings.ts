@@ -33,6 +33,16 @@ export function recordedForceWithLease(root: string): ForceWithLease | undefined
 export const FORCE_WITH_LEASE_QUESTION =
   'Deny `git push --force-with-lease` to the agents on this machine? (written to .claude/settings.local.json; the team settings do not deny it)';
 
+/** The string deny rules of a settings text; empty when it has none or cannot be read. */
+function denyOf(text: string): string[] {
+  try {
+    const d = (JSON.parse(text) as { permissions?: { deny?: unknown } } | null)?.permissions?.deny;
+    return Array.isArray(d) ? d.filter((r): r is string => typeof r === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
 function readOwned(root: string): string[] {
   const p = join(root, LOCAL_SETTINGS_OWNED);
   if (!existsSync(p)) return [];
@@ -70,6 +80,9 @@ export function applyLocalForcePush(
       ? `force push with lease: denied to the agents on this machine (${LOCAL_SETTINGS}; \`reins config --local\` changes it)`
       : `force push with lease: not denied on this machine (\`reins config --local\` changes it)`;
   // allow and nothing of ours there: no file to make
+  // reins owns only what it wrote: a rule the person had already is left theirs (review 6)
+  const present = before === null ? [] : denyOf(before);
+  const owned = now.filter((r) => was.includes(r) || !present.includes(r));
   const next = before === null && now.length === 0 ? null : mergeSettings(before ?? '{}', now, was);
   if (before !== null && next === null)
     return {
@@ -87,7 +100,7 @@ export function applyLocalForcePush(
   mkdirSync(dirname(p), { recursive: true });
   writeFileSync(
     p,
-    `# the deny rules reins wrote into ${LOCAL_SETTINGS} — this machine only\n${stringify({ owned: now })}`,
+    `# the deny rules reins wrote into ${LOCAL_SETTINGS} — this machine only\n${stringify({ owned })}`,
   );
   if (next === null || next === before) return { choice, file: 'unchanged', note: how };
   mkdirSync(dirname(path), { recursive: true });

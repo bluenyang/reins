@@ -394,7 +394,10 @@ export function updateNotes(r: UpdateResult): string[] {
       n.startsWith('.husky/') ||
       n.startsWith('hook proposal') ||
       n.startsWith('no hook tool found') ||
-      (n.startsWith('left alone ') && !n.includes(': edited by hand')),
+      (n.startsWith('left alone ') && !n.includes(': edited by hand')) ||
+      // the personal force-with-lease line and its migration from the team file (024 S-26a, review 6)
+      n.startsWith('force push with lease') ||
+      n.startsWith('.claude/settings.local.json'),
   );
 }
 

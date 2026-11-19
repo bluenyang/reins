@@ -469,6 +469,14 @@ describe('stage skills (019 S-9, design §3-1)', () => {
       /npx @bluenyang\/reins|node cli\/dist\/reins|`reins (check|gate|new|status|metrics|retro|knowledge|unit|approve|dispatch)/,
     );
   });
+  it('force push is open only for a named work branch (024 S-27, V-9)', () => {
+    expect(read('merge')).toContain('naming the branch');
+    expect(read('merge')).toContain('git push --force-with-lease origin <branch>');
+    expect(read('merge')).not.toMatch(/- Never force-push, /);
+    expect(read('release')).toContain('force-pushing the default branch or a tag');
+    expect(block('stops')).toContain('force push to the default branch or a tag');
+  });
+
   it('the next skills follow the flow', () => {
     const next = (n: string) =>
       [...section(read(n), '## 5. Next').matchAll(/`([a-z]+)`/g)].map((m) => m[1]);

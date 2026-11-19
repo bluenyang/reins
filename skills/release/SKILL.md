@@ -24,5 +24,5 @@ Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table 
 `audit` (the second audit — after stable, or when the user declares the version closed), then `retro`.
 
 ## 6. Stop and ask
-- Stable, force-pushing, deleting tags: ask the user every time.
+- Stable, force-pushing the default branch or a tag, deleting tags: ask the user every time.
 - A release that waits for the user is not idle time to fill: no intent, spec or code of the next version before this one's retro, unless the user says so (then record a waiver).

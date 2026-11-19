@@ -182,6 +182,45 @@ describe('hooks: the project gates in the project hook tool (019 S-3)', () => {
     expect(runs.join('\n')).not.toMatch(/npx|@bluenyang|\breins\b/);
   });
 
+  it('a husky file that already runs the gate script is not proposed or added to (024 S-19, V-7)', async () => {
+    const opts = { mode: 'auto' as const, asker: defaultsAsker, detectVendors: onlyClaude };
+    for (const line of [
+      'sh .agents/harness/run-gates.sh pre-commit',
+      'sh ./.agents/harness/run-gates.sh pre-commit',
+      "sh '.agents/harness/run-gates.sh' pre-commit",
+      'sh ".agents/harness/run-gates.sh" pre-commit',
+      '   sh  .agents/harness/run-gates.sh   pre-commit  ',
+    ]) {
+      const d = repo();
+      mkdirSync(join(d, '.husky'), { recursive: true });
+      const pre = `echo mine\n${line}\n`;
+      writeFileSync(join(d, '.husky/pre-commit'), pre);
+      writeFileSync(join(d, '.husky/pre-push'), 'sh .agents/harness/run-gates.sh pre-push\n');
+      const r = await runInstall({ ...opts, cwd: d });
+      expect(r.notes.some((n) => n.startsWith('hook proposal (husky)'))).toBe(false);
+      await runInstall({ ...opts, cwd: d, hooks: true });
+      expect(readFileSync(join(d, '.husky/pre-commit'), 'utf8')).toBe(pre);
+      expect(readFileSync(join(d, '.husky/pre-push'), 'utf8')).toBe(
+        'sh .agents/harness/run-gates.sh pre-push\n',
+      );
+    }
+    // a commented line, or the other stage's line, does not count
+    for (const pre of [
+      '# sh .agents/harness/run-gates.sh pre-commit\n',
+      'sh .agents/harness/run-gates.sh pre-push\n',
+    ]) {
+      const d = repo();
+      mkdirSync(join(d, '.husky'), { recursive: true });
+      writeFileSync(join(d, '.husky/pre-commit'), pre);
+      const r = await runInstall({ ...opts, cwd: d });
+      expect(r.notes.some((n) => n.startsWith('hook proposal (husky)'))).toBe(true);
+      await runInstall({ ...opts, cwd: d, hooks: true });
+      expect(readFileSync(join(d, '.husky/pre-commit'), 'utf8')).toBe(
+        `${pre}# reins:begin hooks\nsh .agents/harness/run-gates.sh pre-commit\n# reins:end hooks\n`,
+      );
+    }
+  });
+
   it.each([
     ['lefthook', 'lefthook.yml', 'run: sh .agents/harness/run-gates.sh pre-commit'],
     [

@@ -188,7 +188,15 @@ describe('reins config (019 S-6, design §9)', () => {
       'Models and roles (mode: single, showing: your effective settings)',
       'Configuration',
     ]);
-    expect(p.asked[0]?.values).toEqual(['models', 'tools', 'mode', 'audit', 'gates', 'exit']);
+    expect(p.asked[0]?.values).toEqual([
+      'models',
+      'tools',
+      'mode',
+      'audit',
+      'gates',
+      'lease',
+      'exit',
+    ]);
     // no PM entry: the PM is the model in the conversation (022 S-27b)
     expect(p.asked[1]?.values).toEqual([
       'back',

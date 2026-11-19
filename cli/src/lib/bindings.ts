@@ -45,6 +45,8 @@ export interface BindingsV2 {
   default?: Binding;
   tools?: Record<string, { cli?: string; use?: boolean }>;
   groups?: Partial<Record<Group, GroupSpec>>;
+  /** personal settings only, read from `.loctx/bindings.local.yaml` (024 S-26a) */
+  local?: { force_with_lease?: 'deny' | 'allow' };
 }
 
 /** The roles of each group (design §2-2). A group whose list is empty is one role of the same name. */

@@ -63,7 +63,7 @@ describe('manual install screens (spec S-8)', () => {
   it('screen answers land as the piped answers would (C-8)', async () => {
     const a = fixture();
     const b = fixture();
-    const probe = scriptedPrompter([['claude', 'openai'], 'en', true, ['server-test-go']]);
+    const probe = scriptedPrompter([['claude', 'openai'], 'en', true, ['server-test-go'], true]);
     await runInstall({
       mode: 'manual',
       asker: defaultsAsker,
@@ -76,6 +76,7 @@ describe('manual install screens (spec S-8)', () => {
       'select',
       'confirm',
       'multiselect',
+      'confirm', // force push with lease, per person (024 S-26a)
     ]);
     expect(probe.asked[0]?.values).toEqual([
       'claude',
@@ -90,7 +91,7 @@ describe('manual install screens (spec S-8)', () => {
 
     await runInstall({
       mode: 'manual',
-      asker: lines(['claude,openai', 'en', 'y', 'server-test-go']),
+      asker: lines(['claude,openai', 'en', 'y', 'server-test-go', 'y']),
       cwd: b,
       detectVendors: detect,
     });
@@ -186,7 +187,7 @@ describe('update confirmation (spec S-9)', () => {
   it('yes gives the non-interactive result', async () => {
     const a = await old();
     const b = await old();
-    await runUpdate({ cwd: a, ...opts, prompter: scriptedPrompter([true]) });
+    await runUpdate({ cwd: a, ...opts, prompter: scriptedPrompter([true, true]) });
     await runUpdate({ cwd: b, ...opts });
     const sa = snapshot(a);
     const sb = snapshot(b);
@@ -230,9 +231,9 @@ describe('update confirmation (spec S-9)', () => {
     expect(text).toContain('  - c');
   });
 
-  it('already up to date asks nothing; no prompter (--yes, non-TTY) asks nothing', async () => {
+  it('already up to date asks nothing once the lease is answered; no prompter (--yes, non-TTY) asks nothing', async () => {
     const d = await old();
-    await runUpdate({ cwd: d, ...opts });
+    await runUpdate({ cwd: d, ...opts, forceWithLease: 'deny' });
     const p = scriptedPrompter([]);
     const r = await runUpdate({ cwd: d, ...opts, prompter: p });
     expect(p.asked).toEqual([]);
@@ -241,6 +242,15 @@ describe('update confirmation (spec S-9)', () => {
     const q = scriptedPrompter([]);
     await runUpdate({ cwd: e, ...opts });
     expect(q.asked).toEqual([]);
+    // up to date but never answered: only the lease question, once (024 S-26a)
+    const f = await old();
+    await runUpdate({ cwd: f, ...opts });
+    const once = scriptedPrompter([false]);
+    await runUpdate({ cwd: f, ...opts, prompter: once });
+    expect(once.asked.map((x) => x.message)).toEqual([expect.stringContaining('force-with-lease')]);
+    const again = scriptedPrompter([]);
+    await runUpdate({ cwd: f, ...opts, prompter: again });
+    expect(again.asked).toEqual([]);
   });
 });
 

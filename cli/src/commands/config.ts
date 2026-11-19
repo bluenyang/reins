@@ -1,3 +1,8 @@
+import {
+  applyLocalForcePush,
+  FORCE_WITH_LEASE_QUESTION,
+  recordedForceWithLease,
+} from '../lib/local-settings.js';
 import { gatesScreen } from './config-gates.js';
 import { effectiveBindings, resolveRoles, type BindingsV2, type Group } from '../lib/bindings.js';
 import { newModelCache, vendors, type ModelCache, type Vendor } from '../lib/detect.js';
@@ -5,7 +10,7 @@ import { repoRoot } from '../lib/git.js';
 import { groupLine, modelsScreen } from './config-models.js';
 import { configureBindings } from './configure.js';
 import { LOCAL_DELEGATION_NOTE } from '../lib/local-delegation.js';
-import { clackPrompter, isInteractive, type Prompter } from '../lib/prompter.js';
+import { BACK, clackPrompter, EXIT, isInteractive, type Prompter } from '../lib/prompter.js';
 
 export interface ConfigOptions {
   cwd?: string;
@@ -74,7 +79,10 @@ export async function runConfig(o: ConfigOptions = {}): Promise<number> {
   const detect = o.detectVendors ?? vendors;
   for (;;) {
     const doc = effectiveBindings(root);
-    const v = await prompter.select<'models' | 'tools' | 'mode' | 'audit' | 'gates' | 'exit'>({
+    const lease = recordedForceWithLease(root);
+    const v = await prompter.select<
+      'models' | 'tools' | 'mode' | 'audit' | 'gates' | 'lease' | 'exit'
+    >({
       message: 'Configuration',
       options: [
         { value: 'models', label: 'models and roles configuration' },
@@ -85,6 +93,11 @@ export async function runConfig(o: ConfigOptions = {}): Promise<number> {
           label: `audit: ${doc?.audit?.required === false ? 'off' : 'required'}`,
         },
         { value: 'gates', label: 'gates', hint: 'the project checks: see them, find them again' },
+        {
+          value: 'lease',
+          label: `force push with lease (this machine): ${lease === 'allow' ? 'not denied' : lease === 'deny' ? 'denied' : 'not asked yet'}`,
+          hint: 'local: .claude/settings.local.json',
+        },
         { value: 'exit', label: 'exit' },
       ],
     });
@@ -96,6 +109,17 @@ export async function runConfig(o: ConfigOptions = {}): Promise<number> {
     }
     if (v === 'gates') {
       if ((await gatesScreen(root, prompter)) === 'exit') return 0;
+      continue;
+    }
+    if (v === 'lease') {
+      // personal, this machine only (024 S-26a)
+      const deny = await prompter.confirm({
+        message: FORCE_WITH_LEASE_QUESTION,
+        initial: lease !== 'allow',
+      });
+      if (deny === EXIT) return 0;
+      if (deny === BACK) continue;
+      prompter.note(applyLocalForcePush(root, deny ? 'deny' : 'allow').note);
       continue;
     }
     if (v === 'tools') {

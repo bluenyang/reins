@@ -268,7 +268,7 @@ describe('hooks: the project gates in the project hook tool (019 S-3)', () => {
   it('on a terminal it asks before adding the hooks', async () => {
     const d = repo();
     mkdirSync(join(d, '.husky'), { recursive: true });
-    const p = scriptedPrompter([true]);
+    const p = scriptedPrompter([true, true]);
     await runInstall({
       mode: 'auto',
       asker: defaultsAsker,
@@ -276,7 +276,8 @@ describe('hooks: the project gates in the project hook tool (019 S-3)', () => {
       detectVendors: onlyClaude,
       confirmHooks: p,
     });
-    expect(p.asked.map((q) => q.kind)).toEqual(['confirm']);
+    // the hooks, then force push with lease (024 S-26a)
+    expect(p.asked.map((q) => q.kind)).toEqual(['confirm', 'confirm']);
     expect(p.asked[0]!.message).toContain('sh .agents/harness/run-gates.sh <stage>');
     expect(readFileSync(join(d, '.husky/pre-commit'), 'utf8')).toContain(
       'sh .agents/harness/run-gates.sh pre-commit',

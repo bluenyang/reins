@@ -501,7 +501,7 @@ describe('reins update', () => {
     const keep = await runUpdate({
       cwd: d,
       detectVendors: claude,
-      prompter: scriptedPrompter([true, false]),
+      prompter: scriptedPrompter([true, false, true]), // apply, do not overwrite, deny the lease (024 S-26a)
     });
     expect(keep.handEdited).toEqual(['.claude/skills/intent/SKILL.md']);
     expect(readFileSync(p, 'utf8')).toBe(mine);

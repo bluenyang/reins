@@ -101,7 +101,7 @@ English edition: [ROADMAP.md](ROADMAP.md). 두 판이 다르면 한글 문서가
 - **검사 스크립트가 `gates.yaml`을 읽습니다.** `gates.yaml`만 고치면 됩니다. 스크립트가 읽지 못하는 모양이거나 `gates.yaml`이 없으면 멈춥니다.
 - **`update`가 CHANGELOG를 버전 제목 아래 보여 줍니다.**
 - **husky**에 이미 있는 게이트 줄을 다시 제안하지 않습니다.
-- **이름을 적은 작업 브랜치의 강제 푸시**(0.3.2 회고 H2): `git push --force-with-lease origin <브랜치>`는 열고, 기본 브랜치와 태그는 계속 막습니다.
+- **사람마다 정하는 force-with-lease**(0.3.2 회고 H2, 1차 감사): 팀 설정은 더 이상 막지 않습니다. install·update·`config`가 사람마다 묻고 답을 `.claude/settings.local.json`에 씁니다. merge 스킬은 기본 브랜치와 태그를 계속 빼 둡니다.
 - **0.3.3 회고의 스킬 문장**(H-1·H-2·H-3·H-5·H-7·H-10). H-4와 H-6은 감사 입력을 다시 짜는 0.4로 넘깁니다.
 
 ## 0.4 — 에이전트 훅과 루프

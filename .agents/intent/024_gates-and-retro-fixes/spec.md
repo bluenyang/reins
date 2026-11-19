@@ -209,14 +209,14 @@ summary_for_user: |
 - **스킬.** 소스는 `skills/`다. 이 저장소의 `.agents/skills/`·`.claude/skills/`·`.claude/settings.json`은 stable 뒤 자기 업데이트로만 바뀐다(R-2).
 
 ## 작업 단위
-- [ ] W-1 `update` 변경 목록의 버전 제목(S-1~S-3): `update.ts`, `update.test.ts`, 설계 양판 §9
-- [ ] W-5 husky 감지(S-19): `install.ts`, `install.test.ts`, 설계 양판 §6 훅
-- [ ] W-8 강제 푸시(S-26·S-27): `generate.ts`, `install.ts`·`update.ts`(기본 브랜치 결정), `skills/merge`·`release`, `harness/templates/agents-md-blocks.md`, `generate.test.ts`·`vendor-write.test.ts`, 테스트 매처, 설계 양판 §3-2·§6
-- [ ] W-6 스킬 문장(S-20~S-25): S-20~S-25 표의 파일, `skills.test.ts`
-- [ ] W-4 게이트 스크립트(S-15~S-18): `gate-script.ts`, `install.ts`·`update.ts`·`configure.ts`의 스크립트 쓰기, `gate-script.test.ts`, 설계 양판 §6
-- [ ] W-2 게이트 감지(S-4~S-10): `detect.ts`, `detect-workspaces.ts`, `detect-ci.ts`, `install.ts`의 후보 화면, fixture 네 곳(`cli/test/fixtures/gates/{croffle,allot,pipit-bot,pipit-music}/` — 부록 A의 파일만), `gate-proposals.test.ts`, 설계 양판 §5
-- [ ] W-3 refresh(S-11~S-14): `gate-refresh.ts`, `config-gates.ts`, `configure.ts`, `gate-refresh.test.ts`·`config.test.ts`·`install-update-tui.test.ts`, 설계 양판 §9
-- [ ] W-7 문서(S-28): 두 CHANGELOG, 로드맵 양판, 이 저장소 AGENTS.md 프로젝트 절
+- [x] W-1 `update` 변경 목록의 버전 제목(S-1~S-3): `update.ts`, `update.test.ts`, 설계 양판 §9 — `3ab4dd4`
+- [x] W-5 husky 감지(S-19): `install.ts`, `install.test.ts`, 설계 양판 §6 훅 — `3fb6156`
+- [x] W-8 강제 푸시(S-26·S-27): `generate.ts`, `install.ts`·`update.ts`(기본 브랜치 결정), `skills/merge`·`release`, `harness/templates/agents-md-blocks.md`, `generate.test.ts`·`vendor-write.test.ts`, 테스트 매처, 설계 양판 §3-2·§6 — `7653957`
+- [x] W-6 스킬 문장(S-20~S-25): S-20~S-25 표의 파일, `skills.test.ts` — `6e6cab7`
+- [x] W-4 게이트 스크립트(S-15~S-18): `gate-script.ts`, `install.ts`·`update.ts`·`configure.ts`의 스크립트 쓰기, `gate-script.test.ts`, 설계 양판 §6 — `422bdd9`
+- [x] W-2 게이트 감지(S-4~S-10): `detect.ts`, `detect-workspaces.ts`, `detect-ci.ts`, `install.ts`의 후보 화면, fixture 네 곳(`cli/test/fixtures/gates/{croffle,allot,pipit-bot,pipit-music}/` — 부록 A의 파일만), `gate-proposals.test.ts`, 설계 양판 §5 — `5064da0`
+- [x] W-3 refresh(S-11~S-14): `gate-refresh.ts`, `config-gates.ts`, `configure.ts`, `gate-refresh.test.ts`·`config.test.ts`·`install-update-tui.test.ts`, 설계 양판 §9 — `8071822`
+- [x] W-7 문서(S-28): 두 CHANGELOG, 로드맵 양판, 이 저장소 AGENTS.md 프로젝트 절 — `e53bea8`
 
 순서는 위와 같다. 작고 서로 묶이지 않은 것을 먼저 하고, W-3은 W-2의 후보 목록에 기대므로 뒤에 둔다. 각 단위는 따로 되돌릴 수 있다. W-6과 W-8은 같은 템플릿을 고치지만 커밋이 따로다.
 
@@ -372,7 +372,17 @@ summary_for_user: |
 
 ## 조정 기록
 <!-- - A-n (YYYY-MM-DD, W-n) 무엇을 · 왜 · 커밋 -->
-—
+- A-1 (2026-11-19, W-2) "끝나지 않는 것"에서 본문의 ` -w`를 뺐다(`--watch`와 이름·본문 낱말만 봄) · npm의 `-w`는 워크스페이스 옵션이라 `npm run build -w pkg`를 잘못 뺄 수 있음 · `5064da0`
+- A-2 (2026-11-19, W-2·W-3) 근거(S-9)와 상태(S-11)의 글을 CLI의 다른 출력처럼 영어로 했다: `also in CI (<file>)`, `<x> already runs it (<cmd>)`, `<x> already calls it`, `Makefile <t> depends on it`, `the body of <x> holds it`, `rewrites files`, `never ends`, `install step`, `platform packaging`, `outside the workspace (<file>)`, `unclear (<why>)` / `applied`, `applied, written by hand`, `applied, source not found`, `applied, another command`, `not applied`, `not applied, already runs` · CLI 출력과 `--json`이 영어 · `5064da0`, `8071822`
+- A-3 (2026-11-19, W-2) 게이트 이름은 스크립트 이름의 `:`를 `-`로 바꾼다(`lint-check`, `format-check`; S-5의 "이름 `lint:check`"를 바꿈) · 검사 스크립트(S-16)가 `:` 없는 이름만 읽음 · `5064da0`
+- A-4 (2026-11-19, W-2) 부록 B의 행을 구현 규칙에 맞춰 고쳤다(우려 5): croffle `apps-desktop-test`는 install에서 offer이고 refresh에서 게이트 `pnpm -r test`가 덮어 "already runs"; `packages-cli-build`는 루트 `release` 본문이 덮음; `apps-desktop-build-unpack`(covered)과 `ci-pnpm-croffledev-croffle-cli-build`(install에서 offer, refresh에서 build-cli와 명령이 같아 짝지어짐)가 더 있음; pipit-bot의 루트 `dashboard:build`는 `dashboard-build`, 워크스페이스 쪽은 `dashboard-build-2`; 하위 디렉터리의 뺀 스크립트는 목록에 내지 않음(루트만). 기대 표는 `cli/test/gate-detect.test.ts`·`gate-refresh.test.ts`에 있음 · `5064da0`, `8071822`
+- A-5 (2026-11-19, W-2) Makefile에서 다른 대상을 "이미 도는 것"으로 만드는 것은 후보 대상(`check`·`lint`·`test`·`build`·`vet`·`verify`)뿐이다 · croffle `all: check build`가 check와 build를 덮지 않게 · `5064da0`
+- A-6 (2026-11-19, W-2) 워크스페이스 명령의 따옴표로 감싼 글롭(`bun --filter "*"`)은 가려진 낱말이라 분명하지 않음으로 본다 · 0.3.3의 따옴표 규칙(A-11 of 023)과 같게 · `5064da0`
+- A-7 (2026-11-19, W-3) 짝짓기에 셋째 단계를 더했다: 출처가 있는 게이트는 이름이 같아도 짝짓는다 · `verify`를 가리키게 된 루트 `check`가 "applied, another command"로 보이게(021의 동작) · `8071822`
+- A-8 (2026-11-19, W-3) `--apply`에 `remove:<name>`을 더했고, 화면은 "another command" 줄에 replace와 remove를 함께 내며 둘 다 고르면 remove가 이긴다 · 이름 하나로는 바꾸기와 빼기를 다 고를 수 없어서 · `8071822`
+- A-9 (2026-11-19, W-3) README 양판의 refresh 설명도 고쳤다 · 0.3.3 테스트(021 S-26)가 README와 설계의 refresh 설명을 함께 봄 · `8071822`
+- A-10 (2026-11-19, W-4) install과 `config gates`가 `gates.yaml`을 `lineWidth: 0`으로 쓴다 · yaml이 긴 명령을 여러 줄로 접으면 검사 스크립트가 읽지 못함 · `422bdd9`
+- A-11 (2026-11-19, W-4) 검사 스크립트는 명령 목록을 fd 3으로 읽는다 · 게이트가 훅의 stdin(pre-push의 ref 목록)을 그대로 받게 · `422bdd9`
 
 ## 우려
 1. **awk로 YAML 읽기.** 사람이나 에이전트가 `gates.yaml`을 흐름 표기 등으로 고치면 스크립트가 exit 2로 멈춘다. 검사가 조용히 빠지지 않고 멈추는 쪽이라 안전하지만 불편할 수 있다. 메시지에 줄 번호와 이유를 적어 고치기 쉽게 한다.

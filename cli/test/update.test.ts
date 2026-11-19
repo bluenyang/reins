@@ -9,6 +9,7 @@ import { retiredFiles, runInstall } from '../src/commands/install.js';
 import {
   beforeGuide,
   changesBetween,
+  changesByVersion,
   formatUpdate,
   newer,
   PREVIOUS_WARNING,
@@ -33,6 +34,69 @@ describe('reins update', () => {
     expect(newer('0.1.0', '0.1.0')).toBe(false);
     const cl = '## 0.3.0\n- c [skill]\n## 0.2.0\n- b\n## 0.1.0\n- a\n';
     expect(changesBetween(cl, '0.1.0', '0.3.0')).toEqual(['c [skill]', 'b']);
+  });
+
+  it('groups the changelog under each version, newest first (024 S-1, S-2, V-2)', () => {
+    const cl = [
+      '# reins harness changelog',
+      '',
+      '## 0.3.3',
+      '- Stable 2026-11-17 (same harness as rc.1).',
+      '- gates',
+      '',
+      '## 0.3.2',
+      '- Stable 2026-11-15 (same harness as rc.1).',
+      '- flow',
+      '',
+      '## 0.3.1',
+      '- Stable 2026-11-11 (same harness as rc.2).',
+      '',
+      '## 0.3.0',
+      '- harness only',
+      '',
+      '## 0.2.9',
+      '',
+      '## 0.2.8',
+      '- old',
+    ].join('\n');
+    const groups = changesByVersion(cl, '0.3.0-rc.1', '0.3.3');
+    // 0.3.0 is outside (0.3.0-rc.1, 0.3.3]: `newer` reads the rc suffix as 0 (S-1)
+    expect(groups).toEqual([
+      { version: '0.3.3', items: ['Stable 2026-11-17 (same harness as rc.1).', 'gates'] },
+      { version: '0.3.2', items: ['Stable 2026-11-15 (same harness as rc.1).', 'flow'] },
+      { version: '0.3.1', items: ['Stable 2026-11-11 (same harness as rc.2).'] },
+    ]);
+    expect(changesBetween(cl, '0.3.0-rc.1', '0.3.3')).toEqual(groups.flatMap((g) => g.items));
+    // a version without entries is left out; an empty range gives nothing
+    expect(changesByVersion(cl, '0.2.7', '0.2.9').map((g) => g.version)).toEqual(['0.2.8']);
+    expect(changesByVersion(cl, '0.3.3', '0.3.3')).toEqual([]);
+    expect(changesBetween(cl, '0.3.3', '0.3.3')).toEqual([]);
+
+    const report = formatUpdate(
+      {
+        root: '/x',
+        from: '0.3.0-rc.1',
+        to: '0.3.3',
+        cliFrom: '0.3.0-rc.1',
+        cliTo: '0.3.3',
+        changes: changesBetween(cl, '0.3.0-rc.1', '0.3.3'),
+        changesByVersion: groups,
+        overrides: [],
+        removed: [],
+        cleanup: [],
+        handEdited: [],
+      },
+      true,
+    ).split('\n');
+    const at = (l: string) => report.indexOf(l);
+    expect(at('  0.3.3')).toBeGreaterThan(0);
+    expect(at('  0.3.3')).toBeLessThan(at('  0.3.2'));
+    expect(at('  0.3.2')).toBeLessThan(at('  0.3.1'));
+    expect(report).not.toContain('  0.3.0');
+    const stable32 = at('    · Stable 2026-11-15 (same harness as rc.1).');
+    expect(stable32).toBeGreaterThan(at('  0.3.2'));
+    expect(stable32).toBeLessThan(at('  0.3.1'));
+    expect(report.filter((l) => l.startsWith('  · '))).toEqual([]);
   });
 
   it('the report marks a rewritten generated file ~ and only a new one + (022 S-28, V-8)', async () => {
@@ -196,6 +260,7 @@ describe('reins update', () => {
     expect(r.cliTo).toBe(JSON.parse(readFileSync('package.json', 'utf8')).version);
     expect(r.cliFrom).toMatch(/^\d|^none$/);
     expect(r.changes.length).toBeGreaterThan(0);
+    expect(r.changesByVersion.flatMap((g) => g.items)).toEqual(r.changes);
     expect(readFileSync(role, 'utf8')).not.toContain('old text');
     expect(readFileSync(b, 'utf8')).toContain('model: claude-fable-5-1');
     expect(readFileSync(pin, 'utf8')).toContain(

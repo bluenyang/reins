@@ -46,6 +46,8 @@ export interface UpdateResult {
   /** The running package version. */
   cliTo?: string;
   changes: string[]; // changelog entries newer than the pin
+  /** the same entries under their version (024 S-2) */
+  changesByVersion: VersionChanges[];
   overrides: string[];
   /** bindings.yaml converted from version 1, with what moved and what was dropped */
   converted?: string[];
@@ -79,16 +81,33 @@ export function newer(a: string, b: string): boolean {
   return false;
 }
 
-/** Changelog entries for versions in (from, to]. */
-export function changesBetween(changelog: string, from: string, to: string): string[] {
-  const out: string[] = [];
-  let take = false;
+/** The changelog entries of one version. */
+export interface VersionChanges {
+  version: string;
+  items: string[];
+}
+
+/**
+ * Changelog entries for versions in (from, to], grouped under their version in the changelog's order
+ * (newest first); a version without entries is left out (024 S-1).
+ */
+export function changesByVersion(changelog: string, from: string, to: string): VersionChanges[] {
+  const out: VersionChanges[] = [];
+  let cur: VersionChanges | null = null;
   for (const line of changelog.split(/\r?\n/)) {
     const h = /^## (\S+)/.exec(line);
-    if (h) take = newer(h[1] ?? '0', from) && !newer(h[1] ?? '0', to);
-    else if (take && line.startsWith('- ')) out.push(line.slice(2));
+    if (h) {
+      const v = h[1] ?? '0';
+      cur = newer(v, from) && !newer(v, to) ? { version: v, items: [] } : null;
+      if (cur) out.push(cur);
+    } else if (cur && line.startsWith('- ')) cur.items.push(line.slice(2));
   }
-  return out;
+  return out.filter((g) => g.items.length > 0);
+}
+
+/** Changelog entries for versions in (from, to], as one flat list. */
+export function changesBetween(changelog: string, from: string, to: string): string[] {
+  return changesByVersion(changelog, from, to).flatMap((g) => g.items);
 }
 
 /** 0.x working files and folders under `.loctx/` that 0.3 no longer makes (design §7). */
@@ -250,6 +269,7 @@ async function updateNow(o: UpdateOptions): Promise<UpdateResult> {
   const res: UpdateResult = {
     root,
     changes: [],
+    changesByVersion: [],
     overrides: [],
     removed: [],
     cleanup: [],
@@ -272,8 +292,10 @@ async function updateNow(o: UpdateOptions): Promise<UpdateResult> {
   res.cliFrom = pin.cli ? String(pin.cli) : 'none';
   res.cliTo = packageVersion();
   const cl = join(up, 'CHANGELOG.md');
-  if (existsSync(cl) && newer(res.to, res.from))
-    res.changes = changesBetween(readFileSync(cl, 'utf8'), res.from, res.to);
+  if (existsSync(cl) && newer(res.to, res.from)) {
+    res.changesByVersion = changesByVersion(readFileSync(cl, 'utf8'), res.from, res.to);
+    res.changes = res.changesByVersion.flatMap((g) => g.items);
+  }
   const agents = join(root, 'AGENTS.md');
   if (existsSync(agents)) res.overrides = [...overrides(readFileSync(agents, 'utf8'))];
 
@@ -355,7 +377,10 @@ export function formatUpdate(r: UpdateResult, dry: boolean): string {
   out.push(
     `reins update — cli ${r.cliFrom === 'none' ? 'none' : `v${r.cliFrom}`} → v${r.cliTo}, harness v${r.from} → v${r.to}${dry ? ' (dry run)' : ''}`,
   );
-  for (const c of r.changes) out.push(`  · ${c}`);
+  for (const g of r.changesByVersion) {
+    out.push(`  ${g.version}`);
+    for (const c of g.items) out.push(`    · ${c}`);
+  }
   if (r.converted) {
     out.push(`bindings: ${dry ? 'would convert' : 'converted'} version 1 → 2`);
     for (const n of r.converted) out.push(`  · ${n}`);

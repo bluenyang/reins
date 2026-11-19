@@ -9,6 +9,7 @@ summary_for_user: |
   W-2·W-3 게이트: 이름 패턴·본문·워크스페이스·CI(`pull_request`로 도는 워크플로의 `run:` 줄)로 후보를 찾고 근거를 담. refresh는 `gone`/`new` 대신 "감지 전체 + 적용 상태" 표를 화면과 `.loctx/gates-refresh.md`에 냄. 사람이 고르면 에이전트가 `gates.yaml`을 고치고(따로 커밋), 화면·`--apply`로 바로 적용하는 길도 남김. 빼기·명령 바꾸기는 이름으로 고를 때만. W-4 `run-gates.sh`가 실행 때 `gates.yaml`을 읽음(POSIX awk, reins가 쓰는 모양만; 파일이 없거나 못 읽으면 exit 2).
   W-8 강제 푸시: `git push --force-with-lease origin <작업 브랜치>` 한 형태만 열고, 기본 브랜치·태그·브랜치를 안 적은 형태·플래그 위치가 다른 형태·`=` 형태·`+` refspec은 막음. 한계: 명령 문자열 글롭이라 `git -C`·변수·별칭은 못 막고, 테스트는 Claude Code의 매칭을 흉내 낸 매처로 함(실제 매칭의 증거는 아님) — 정확한 차단은 0.4 에이전트 훅. W-6 스킬 문장 H-1·H-2·H-3·H-5·H-7·H-10. W-7 문서.
   확인 필요(PM 판단): ① install이 미리 고르는 후보는 지금의 핵심 이름에 `lint:check`·`format:check`·`type-check`를 더한 것, `check:*`·CI·하위 디렉터리는 고르지 않은 채 보여 줌 ② **이 저장소 AGENTS.md 금지선 문장("Files reins writes (`.agents/harness/` …)")에 `gates.yaml`은 예외라고 적음** ③ 0.3.3 자신의 stable 줄이 배포본에 없는 문제는 제목 묶음으로 충분하다고 봄 ④ 상태 "적용됨·다른 명령"과 그 바꾸기를 더함(사용자가 정한 다섯 상태 밖, 이름으로 고를 때만).
+  개정 1(2026-11-20, 1차 감사 비판 1): W-8은 팀 settings.json에 `--force-with-lease` 규칙을 두지 않고, install·update·config가 사람마다 물어 `.claude/settings.local.json`에 막는 줄을 넣는다(답은 `.loctx/bindings.local.yaml`, 터미널이 아니면 막되 기록 안 함). 위의 W-8 줄은 개정 전의 것.
   검증 V-1~V-13: 고치기 전 실패 재현, 표 테스트, 기준 프로젝트 네 곳 fixture(기대값은 이 spec의 부록 표), 게이트 스크립트 sh 테스트, deny 매칭 표, 스킬 구절 표, 양판 대조, `pnpm check`와 CI. 릴리스 뒤 검증 R-1·R-2(rc 배포본 smoke, stable 뒤 자기 업데이트)는 머지 전 단계에서 판정하지 않음.
 ---
 ## 개정 1 (2026-11-20, W-8)
@@ -221,7 +222,7 @@ summary_for_user: |
 ## 작업 단위
 - [x] W-1 `update` 변경 목록의 버전 제목(S-1~S-3): `update.ts`, `update.test.ts`, 설계 양판 §9 — `3ab4dd4`
 - [x] W-5 husky 감지(S-19): `install.ts`, `install.test.ts`, 설계 양판 §6 훅 — `3fb6156`
-- [x] W-8 강제 푸시(S-26·S-27): `generate.ts`, `install.ts`·`update.ts`(기본 브랜치 결정), `skills/merge`·`release`, `harness/templates/agents-md-blocks.md`, `generate.test.ts`·`vendor-write.test.ts`, 테스트 매처, 설계 양판 §3-2·§6 — `7653957`
+- [x] W-8 강제 푸시(S-26·S-27, 개정 1 — `63f0ae3`, `08d4ae5`): `generate.ts`, `install.ts`·`update.ts`(기본 브랜치 결정), `skills/merge`·`release`, `harness/templates/agents-md-blocks.md`, `generate.test.ts`·`vendor-write.test.ts`, 테스트 매처, 설계 양판 §3-2·§6 — `7653957`
 - [x] W-6 스킬 문장(S-20~S-25): S-20~S-25 표의 파일, `skills.test.ts` — `6e6cab7`
 - [x] W-4 게이트 스크립트(S-15~S-18): `gate-script.ts`, `install.ts`·`update.ts`·`configure.ts`의 스크립트 쓰기, `gate-script.test.ts`, 설계 양판 §6 — `422bdd9`
 - [x] W-2 게이트 감지(S-4~S-10): `detect.ts`, `detect-workspaces.ts`, `detect-ci.ts`, `install.ts`의 후보 화면, fixture 네 곳(`cli/test/fixtures/gates/{croffle,allot,pipit-bot,pipit-music}/` — 부록 A의 파일만), `gate-proposals.test.ts`, 설계 양판 §5 — `5064da0`
@@ -401,6 +402,7 @@ summary_for_user: |
 - A-17 (2026-11-20, W-2) 이름에 check가 든(`typecheck` 말고) 고치는 스크립트는 `excluded`에 남기지 않고 건너뛴다(S-4의 예외) · 0.3.3에서 이어진 동작(설계 §5 "a check-named one is only passed over") · 보완 리뷰 4번 · `5064da0`
 - A-18 (2026-11-20, W-3·W-7) CHANGELOG의 `remove:<name>`을 "a gate, whatever its state"로, `configureGates` 주석과 `--refresh` 도움말을 상태 표에 맞췄다 · 보완 리뷰 2·5번 · `86a4c15`
 - 기록 유실(2026-11-20, 1차 감사 비판 4, 사용자 "ㅇㅋ"): spec 계획 검토(pl/plan-reviewer)와 검증 계획 검토(pl/qa-plan-reviewer)의 요청·답, 첫 문서 대조의 요청 원문은 `.loctx`에 남기지 않았고 `twin-1.md`는 PM이 요약한 것이다. 되살리지 않는다. 이후 호출은 요청과 답을 원문 그대로 남겼다(`review-5-*`, `committee-1-*`).
+- A-19 (2026-11-20, W-8, 개정 1) 개정 1을 구현했다: 팀 deny에서 `--force-with-lease` 규칙을 모두 빼고 `defaultBranches`를 지움, `cli/src/lib/local-settings.ts`(개인 `.claude/settings.local.json` 병합, `.loctx/settings.local.owned.yaml`), install·update·`config`의 질문, 답은 `.loctx/bindings.local.yaml`의 `local.force_with_lease`(스키마에 `local` 키 추가) · `63f0ae3`. 리뷰(`review-6-*`): 4건 — 사람이 넣어 둔 줄을 reins 소유로 기록, 파이프 manual install이 묻고 기록, update 보고가 안내를 거름, `--force`·`-f`가 인자 뒤에 올 때. 그 리뷰 요청의 diff는 승인 커밋 `97866ef`부터라 개정 본문 커밋 `0638e18`이 빠졌고 리뷰어는 체크아웃된 spec을 읽음. 고침 `08d4ae5`, 다시 리뷰(`review-7-*`): 넷 다 고쳐짐, 새 결함 없음. 문서 대조 `twin-3-*`: pass
 
 ## 우려
 1. **awk로 YAML 읽기.** 사람이나 에이전트가 `gates.yaml`을 흐름 표기 등으로 고치면 스크립트가 exit 2로 멈춘다. 검사가 조용히 빠지지 않고 멈추는 쪽이라 안전하지만 불편할 수 있다. 메시지에 줄 번호와 이유를 적어 고치기 쉽게 한다.

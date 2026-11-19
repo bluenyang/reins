@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
   chmodSync,
+  rmSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -10,6 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { stringify } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { GATE_LOGS, GATE_SCRIPT, renderGateScript, requiredGates } from '../src/lib/gate-script.js';
 
@@ -36,15 +38,28 @@ const PASS = `node -e "console.log('gate one ok')"`;
 const FAIL = `node -e "console.log('gate one broke'); process.exit(3)"`;
 const SECOND = `node -e "console.log('gate two ran')"`;
 
-/** A repository with one commit, the script for these gates, and it wired as pre-commit and pre-push hooks. */
-function repo(cmds: string[]): string {
+/** gates.yaml for these commands, as reins writes it (024 S-16): one gate per command, in order. */
+const gatesYaml = (cmds: string[]): string =>
+  `# discovered by reins install\n${stringify(
+    {
+      schema: 'reins/gates@1',
+      gates: Object.fromEntries(cmds.map((cmd, i) => [`g${i + 1}`, { cmd, from: 'package.json' }])),
+      order: cmds.map((_, i) => `g${i + 1}`),
+      mutating_forbidden: true,
+    },
+    { lineWidth: 0 },
+  )}`;
+
+/** A repository with one commit, gates.yaml for these gates, the script, and it wired as pre-commit and pre-push hooks. */
+function repo(cmds: string[], yamlText = gatesYaml(cmds)): string {
   const d = mkdtempSync(join(tmpdir(), 'reins-gates-'));
   git(d, 'init', '-q');
   writeFileSync(join(d, '.gitignore'), '.loctx/\n');
   writeFileSync(join(d, 'a.txt'), 'a\n');
   writeFileSync(join(d, 'b.txt'), 'b\n');
   mkdirSync(join(d, '.agents/harness'), { recursive: true });
-  writeFileSync(join(d, GATE_SCRIPT), renderGateScript(cmds));
+  writeFileSync(join(d, GATE_SCRIPT), renderGateScript());
+  writeFileSync(join(d, '.agents/harness/gates.yaml'), yamlText);
   // the hooks are committed too: an untracked file would make every run "dirty"
   mkdirSync(join(d, '.githooks'));
   for (const stage of ['pre-commit', 'pre-push']) {
@@ -207,7 +222,7 @@ describe('the gate script keeps the output of the project gates (021 S-9, S-10)'
 
   it('outside a repository it says so and exits 2', () => {
     const d = mkdtempSync(join(tmpdir(), 'reins-nogit-'));
-    writeFileSync(join(d, 'run-gates.sh'), renderGateScript([PASS]));
+    writeFileSync(join(d, 'run-gates.sh'), renderGateScript());
     const r = spawnSync('sh', ['run-gates.sh', 'manual'], {
       cwd: d,
       encoding: 'utf8',
@@ -218,26 +233,159 @@ describe('the gate script keeps the output of the project gates (021 S-9, S-10)'
   });
 });
 
-describe('the script is written from gates.yaml (021 S-9)', () => {
+describe('the script reads gates.yaml when it runs (024 S-15–S-17, V-6)', () => {
   const yaml = (extra = '') =>
     `schema: reins/gates@1\ngates:\n  check: { cmd: pnpm check }\n  slow: { cmd: pnpm e2e, optional: true }\n  build: { cmd: "pnpm build" }\n${extra}order: [build, check, slow]\n`;
+  const say = (w: string) => `node -e "console.log('${w}')"`;
+  /** Runs the script on this gates.yaml text; returns the run and the log of HEAD's tree. */
+  const runOn = (text: string) => {
+    const d = repo([], text);
+    const r = run(d, 'manual');
+    return { d, r, text: log(d, tree(d)) };
+  };
+  const ran = (t: string) =>
+    t
+      .split('\n')
+      .filter((l) => l.startsWith('$ '))
+      .map((l) => l.slice(2));
 
-  it('(f5) takes the required gates in the order of the file and leaves optional ones out', () => {
+  it('requiredGates still reads any YAML (for install and the hook proposals)', () => {
     expect(requiredGates(yaml())).toEqual(['pnpm build', 'pnpm check']);
     expect(requiredGates(undefined)).toEqual([]);
-    const script = renderGateScript(requiredGates(yaml()));
-    expect(script.indexOf("run 'pnpm build'")).toBeLessThan(script.indexOf("run 'pnpm check'"));
-    expect(script).not.toContain('pnpm e2e');
   });
 
-  it('(f) calls nothing but git, the shell and the gates', () => {
-    const script = renderGateScript(['pnpm check']);
+  it('holds no command: one text whatever the gates are', () => {
+    const script = renderGateScript();
     expect(script).not.toMatch(/npx|@bluenyang|curl|wget|reins\.js/);
     expect(script.split('\n').filter((l) => /\breins\b/.test(l) && !l.startsWith('#'))).toEqual([]);
     expect(script).not.toMatch(/\bunset\b|\bexport\b/);
+    expect(script).not.toContain('pnpm');
   });
 
-  it('a command with quotes is written so the shell reads it back as it was', () => {
+  it('runs order, skips names not in gates and gates not in order, and optional: true only', () => {
+    const { r, text } = runOn(
+      [
+        'schema: reins/gates@1',
+        'gates:',
+        '  a:',
+        `    cmd: ${say('a')}`,
+        '  b:',
+        `    cmd: ${say('b')}`,
+        '    optional: true',
+        '  c:',
+        `    cmd: ${say('c')}`,
+        '    optional: false',
+        '  d:',
+        `    cmd: ${say('d')}`,
+        '    optional: "true"',
+        '  e:',
+        `    cmd: ${say('e')}`,
+        'order:',
+        '  - c',
+        '  - missing',
+        '  - b',
+        '  - d',
+        '  - a',
+        '',
+      ].join('\n'),
+    );
+    expect(r.status, r.stderr).toBe(0);
+    expect(ran(text)).toEqual([say('c'), say('d'), say('a')]);
+    // without order: the order of gates
+    const two = runOn(`gates:\n  x:\n    cmd: ${say('x')}\n  y:\n    cmd: ${say('y')}\n`);
+    expect(ran(two.text)).toEqual([say('x'), say('y')]);
+  });
+
+  it('reads plain, single- and double-quoted values, comments, CRLF and shell syntax in cmd', () => {
+    const lines = [
+      'gates:',
+      `  p:`,
+      `    cmd: node -e "console.log('plain' + 1)"   # a comment`,
+      `  s:`,
+      `    cmd: 'node -e "console.log(''it''+''s'')"'`,
+      `  q:`,
+      `    cmd: "node -e \\"console.log('dq')\\" # not a comment"`,
+      `  sh:`,
+      `    cmd: X=env1; echo "$X" | cat && echo '# kept'`,
+      '',
+    ];
+    for (const eol of ['\n', '\r\n']) {
+      const { r, text } = runOn(lines.join(eol));
+      expect(r.status, r.stderr).toBe(0);
+      expect(text).toContain('plain1');
+      expect(text).toContain('its');
+      expect(text).toContain('dq');
+      expect(text).toContain('env1');
+      expect(text).toContain('# kept');
+      expect(ran(text)[2]).toBe(`node -e "console.log('dq')" # not a comment`);
+    }
+  });
+
+  it('stops at the first failure with its code', () => {
+    const { r, text } = runOn(gatesYaml([FAIL, SECOND]));
+    expect(r.status).toBe(3);
+    expect(text).not.toContain('gate two ran');
+    expect(text.trimEnd().split('\n').at(-1)).toBe('exit: 3');
+  });
+
+  it.each([
+    ['flow style', `gates:\n  a: { cmd: X }\n`, 2],
+    ['flow style', `gates: {}\n`, 1],
+    ['a multi-line value', `gates:\n  a:\n    cmd: |\n      X\n`, 3],
+    ['a multi-line value', `gates:\n  a:\n    cmd: echo one\n      two\n`, 4],
+    ['a tab in the indentation', `gates:\n  a:\n\tcmd: X\n`, 3],
+    ['an empty cmd', `gates:\n  a:\n    cmd: ""\n`, 3],
+    ['the gate a twice', `gates:\n  a:\n    cmd: X\n  a:\n    cmd: X\n`, 4],
+    ['an anchor or alias', `gates:\n  a:\n    cmd: &x X\n`, 3],
+    ['flow style', `gates:\n  a:\n    cmd: X\norder: [a]\n`, 4],
+  ])('refuses %s (line %i) and runs nothing', (why, body, line) => {
+    const d = repo([]);
+    const marker = join(d, 'ran.txt');
+    writeFileSync(
+      join(d, '.agents/harness/gates.yaml'),
+      body.replaceAll('X', `node -e "require('fs').writeFileSync('ran.txt','x')"`),
+    );
+    const r = run(d, 'manual');
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain(`line ${line}: ${why}`);
+    expect(existsSync(marker)).toBe(false);
+    expect(log(d, tree(d)).trimEnd().split('\n').at(-1)).toBe('exit: 2');
+  });
+
+  it('without gates.yaml it stops with exit 2; with no required gate it says so and passes', () => {
+    const d = repo([PASS]);
+    rmSync(join(d, '.agents/harness/gates.yaml'));
+    const r = run(d, 'manual');
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('no .agents/harness/gates.yaml');
+    const none = runOn(`gates:\n  e2e:\n    cmd: ${say('x')}\n    optional: true\n`);
+    expect(none.r.status).toBe(0);
+    expect(none.text).toContain('no required gate');
+    expect(none.text.trimEnd().split('\n').at(-1)).toBe('exit: 0');
+  });
+
+  it('a change to gates.yaml alone is what the next run does', () => {
+    const d = repo([PASS]);
+    expect(run(d, 'manual').stdout).toContain('gate one ok');
+    writeFileSync(join(d, '.agents/harness/gates.yaml'), gatesYaml([SECOND]));
+    const r = run(d, 'manual');
+    expect(r.stdout).toContain('gate two ran');
+    expect(r.stdout).not.toContain('gate one ok');
+  });
+
+  it('a gate still reads the hook stdin, not the list of commands', () => {
+    const d = repo([`node -e "process.stdin.pipe(process.stdout)"`, SECOND]);
+    const r = spawnSync('sh', [GATE_SCRIPT, 'pre-push'], {
+      cwd: d,
+      input: 'from the hook\n',
+      encoding: 'utf8',
+    });
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain('from the hook');
+    expect(r.stdout).toContain('gate two ran');
+  });
+
+  it('a command with quotes is read back as it was', () => {
     const d = repo([`node -e "console.log('its' + 'fine')"`, `node -e 'console.log("single")'`]);
     const r = run(d, 'manual');
     expect(r.status, r.stderr).toBe(0);

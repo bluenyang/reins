@@ -6,7 +6,7 @@ import { workTreeReader, type Reader } from './reader.js';
 import { resolveRoles, type BindingsV2 } from './bindings.js';
 import { agentName, claudeAgents } from './agents-md.js';
 import { splitFrontmatter } from './skills.js';
-import { GATE_SCRIPT, renderGateScript, requiredGates } from './gate-script.js';
+import { GATE_SCRIPT, renderGateScript } from './gate-script.js';
 import { defaultBranches } from './git.js';
 
 /**
@@ -204,14 +204,12 @@ export function generateVendorFiles(root: string, rd: Reader = workTreeReader(ro
         why: `skill ${name}`,
       });
   }
-  // the gate script follows gates.yaml; with no required gate there is nothing to run and no script
-  const gateCmds = requiredGates(rd.read(`${harness}/gates.yaml`));
-  if (gateCmds.length)
-    out.writes.push({
-      path: GATE_SCRIPT,
-      content: renderGateScript(gateCmds),
-      why: 'the project gates, with their output kept',
-    });
+  // the gate script reads gates.yaml when it runs: one text, written with or without a required gate (024 S-17)
+  out.writes.push({
+    path: GATE_SCRIPT,
+    content: renderGateScript(),
+    why: 'the project gates, with their output kept',
+  });
   const redText = rd.read(`${harness}/policy/common-red-lines.yaml`);
   if (redText !== undefined) {
     const deny = denyRules((parse(redText) as { rules: RedLine[] }).rules, defaultBranches(root));

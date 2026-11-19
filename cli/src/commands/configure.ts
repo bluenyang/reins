@@ -440,10 +440,8 @@ export function configureGates(o: ConfigureGatesOptions = {}): ConfigureGatesRes
         appendOrder(doc, d.name);
       }
     }
-    if (names.length) {
-      writeFileSync(path, doc.toString());
-      writeGenerated(root, generateVendorFiles(root), false);
-    }
+    // the gate script reads gates.yaml when it runs, so only the file changes (024 S-17)
+    if (names.length) writeFileSync(path, doc.toString({ lineWidth: 0 }));
     return {
       available: available.filter((g) => !names.includes(g.name)),
       added: [],
@@ -467,10 +465,6 @@ export function configureGates(o: ConfigureGatesOptions = {}): ConfigureGatesRes
     appendOrder(doc, g.name);
     added.push(g.name);
   }
-  if (added.length) {
-    writeFileSync(path, doc.toString());
-    // the gate script holds the commands of gates.yaml (design §6): it follows the file
-    writeGenerated(root, generateVendorFiles(root), false);
-  }
+  if (added.length) writeFileSync(path, doc.toString({ lineWidth: 0 }));
   return { available: available.filter((g) => !added.includes(g.name)), added };
 }

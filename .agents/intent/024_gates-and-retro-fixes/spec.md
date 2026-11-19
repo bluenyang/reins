@@ -3,6 +3,7 @@ intent: "024"
 status: accepted
 approvals:
   - { role: user, by: BlueNyang, at: 2026-11-19, words: "진행", rev: e43297e, kind: summary }
+  - { role: user, by: BlueNyang, at: 2026-11-20, words: "진행", rev: 0638e18, kind: revision-1 }
 summary_for_user: |
   W-1 `update` 변경 목록을 버전 제목 아래 묶음(`--json`은 `changes`를 두고 `changesByVersion` 추가). W-5 husky 파일에 같은 줄이 이미 있으면 다시 제안·추가하지 않음.
   W-2·W-3 게이트: 이름 패턴·본문·워크스페이스·CI(`pull_request`로 도는 워크플로의 `run:` 줄)로 후보를 찾고 근거를 담. refresh는 `gone`/`new` 대신 "감지 전체 + 적용 상태" 표를 화면과 `.loctx/gates-refresh.md`에 냄. 사람이 고르면 에이전트가 `gates.yaml`을 고치고(따로 커밋), 화면·`--apply`로 바로 적용하는 길도 남김. 빼기·명령 바꾸기는 이름으로 고를 때만. W-4 `run-gates.sh`가 실행 때 `gates.yaml`을 읽음(POSIX awk, reins가 쓰는 모양만; 파일이 없거나 못 읽으면 exit 2).
@@ -10,13 +11,14 @@ summary_for_user: |
   확인 필요(PM 판단): ① install이 미리 고르는 후보는 지금의 핵심 이름에 `lint:check`·`format:check`·`type-check`를 더한 것, `check:*`·CI·하위 디렉터리는 고르지 않은 채 보여 줌 ② **이 저장소 AGENTS.md 금지선 문장("Files reins writes (`.agents/harness/` …)")에 `gates.yaml`은 예외라고 적음** ③ 0.3.3 자신의 stable 줄이 배포본에 없는 문제는 제목 묶음으로 충분하다고 봄 ④ 상태 "적용됨·다른 명령"과 그 바꾸기를 더함(사용자가 정한 다섯 상태 밖, 이름으로 고를 때만).
   검증 V-1~V-13: 고치기 전 실패 재현, 표 테스트, 기준 프로젝트 네 곳 fixture(기대값은 이 spec의 부록 표), 게이트 스크립트 sh 테스트, deny 매칭 표, 스킬 구절 표, 양판 대조, `pnpm check`와 CI. 릴리스 뒤 검증 R-1·R-2(rc 배포본 smoke, stable 뒤 자기 업데이트)는 머지 전 단계에서 판정하지 않음.
 ---
-## 개정 1 (2026-11-20, W-8) — 승인 대기
-- **왜:** 1차 감사 비판 1(높음). 명령 문자열 글롭으로는 "이름을 적은 작업 브랜치만 허용"의 경계를 세울 수 없다(`git push --force-with-lease backup`, URL 원격; `remote.origin.push` 설정). 사용자 2026-11-19 "astra안으로 하고, 필요하면 settings.local.json 쓰라고 해야지. 그게 낫겠다." → PM이 deny는 settings.local.json의 allow보다 이긴다는 사실과 (가)·(나)를 물음 → 사용자 2026-11-20 "1번. (나) 안."
-- **S-26을 바꾼다:** reins가 만드는 팀 `.claude/settings.json`의 deny에는 `--force-with-lease` 규칙을 하나도 두지 않는다(0.3.3의 `Bash(git push --force-with-lease *)`도, 이번에 더한 기본 브랜치·태그·형태별 규칙도). 막을지는 사람마다 `.claude/settings.local.json`(개인, 커밋 안 됨)의 deny로 정한다. 남기는 것: `--force`·`-f`, `+` refspec, 훅 우회(`--no-verify`·`commit -n`, 다른 인자 뒤도). 기본 브랜치를 읽는 `defaultBranches`는 쓸 곳이 없어 뺀다.
-- **안내:** `install`과 `update`의 보고, 설계 §6, 두 CHANGELOG에 "팀 설정은 force-with-lease를 막지 않는다. 자기에게 막으려면 `.claude/settings.local.json`의 `permissions.deny`에 `Bash(git push --force-with-lease)`와 `Bash(git push --force-with-lease *)`를 넣는다"를 적는다. 0.3.3 설치를 `update`하면 reins가 썼던 그 규칙은 `owned:`에 있어 빠지므로, 보고가 이를 한 줄로 알린다.
-- **S-27은 그대로:** `merge` 스킬은 작업 브랜치를 `git push --force-with-lease origin <branch>`로 브랜치를 적어 푸시하고 기본 브랜치·태그에는 하지 않는다고 쓰고, 정지 블록은 "force push to the default branch or a tag"를 묻고 멈추는 일로 둔다. 막는 것은 글(에이전트의 규칙)이고 deny가 아님을 설계에 적는다.
-- **V-8을 바꾼다:** 생성된 deny에 `--force-with-lease`가 든 규칙이 없다. `--force`·`-f`·`+` refspec·훅 우회(인자 뒤 포함)는 매칭 표에서 막힌다. 0.3.3 설치의 `update`가 그 규칙을 지우고(사용자가 직접 넣은 같은 글은 남김) 보고에 안내 줄이 있다. install 보고에 안내 줄이 있다.
-- **R-2를 바꾼다:** 자기 업데이트 뒤 이 저장소의 `.claude/settings.json`에 `--force-with-lease` 규칙이 없다.
+## 개정 1 (2026-11-20, W-8)
+- **왜:** 1차 감사 비판 1(높음). 명령 문자열 글롭으로는 "이름을 적은 작업 브랜치만 허용"의 경계를 세울 수 없다(`git push --force-with-lease backup`, URL 원격; `remote.origin.push` 설정). 사용자 2026-11-19 "astra안으로 하고, 필요하면 settings.local.json 쓰라고 해야지. 그게 낫겠다." → PM이 deny는 settings.local.json의 allow보다 이긴다는 사실과 (가)·(나)를 물음 → 2026-11-20 "1번. (나) 안." → "아니면 install/update에서 선택하게 하고, settings.local.json에 넣어주는 건?" → PM 수정판 요약에 "진행".
+- **S-26을 바꾼다:** 팀 `.claude/settings.json`의 deny에는 `--force-with-lease` 규칙을 두지 않는다(0.3.3의 `Bash(git push --force-with-lease *)`도, 이번에 더한 기본 브랜치·태그·형태별 규칙도). 남기는 것: `--force`·`-f`, `+` refspec, 훅 우회(`--no-verify`·`commit -n`, 다른 인자 뒤도). `defaultBranches`는 뺀다.
+- **S-26a 묻고 넣는다:** `install`과 `update`가 터미널에서 "이 기계의 에이전트에게 `git push --force-with-lease`를 막을까요?"를 묻고, `reins config`의 local 범위에서도 바꿀 수 있다. 답은 `.loctx/bindings.local.yaml`에 기억하고, update는 기억된 답이 없을 때만 묻는다. 대화형이 아니면(그리고 `--yes`) 막는 쪽이 기본이다. 막기로 하면 `.claude/settings.local.json`의 `permissions.deny`에 `Bash(git push --force-with-lease)`와 `Bash(git push --force-with-lease *)`를 넣는다 — 팀 파일과 같은 병합(사용자의 다른 항목은 그대로, reins 몫만), reins가 넣은 줄의 목록은 `.loctx`에 둔다(팀 `generated.yaml`에 두지 않음). 열기로 바꾸면 그 두 줄만 뺀다. 0.3.3에서 update하면 팀 파일에서 빠지는 전체 차단을 답에 따라 개인 파일로 옮기거나 열고, 보고에 적는다.
+- **S-27은 그대로:** `merge` 스킬과 정지 블록의 글. 막는 것은 에이전트가 따르는 글이고 팀 deny가 아님을 설계에 적는다.
+- **한계:** 개인 파일의 줄은 reins를 돌린 기계에만 생긴다. 저장소를 받고 reins를 돌리지 않은 사람은 열린 상태다.
+- **V-8을 바꾼다:** 팀 deny에 `--force-with-lease`가 든 규칙이 없다. `--force`·`-f`·`+` refspec·훅 우회(인자 뒤 포함)는 매칭 표에서 막힌다. 답에 따라 `settings.local.json`에 두 줄이 생기고 빠지며, 사용자의 항목은 남는다. 대화형이 아니면 막는 쪽. update는 기억된 답을 다시 묻지 않는다. 0.3.3 설치의 update가 팀 규칙을 지우고 답에 따라 개인 파일로 옮긴다. `config` local 화면에서 바꿀 수 있다.
+- **R-2를 바꾼다:** 자기 업데이트 뒤 이 저장소의 팀 `.claude/settings.json`에 `--force-with-lease` 규칙이 없고, 이 기계의 `settings.local.json`에는 답에 따른 상태가 있다.
 
 ## 요구 해석
 <!-- 각 S-n 끝의 ← 는 그것이 나온 intent 문장이다. "PM 판단"은 intent에 없는 것을 이 spec이 정한 곳이다. 2026-11-19 계획 검토(F-1~F-3, C-1~C-4)와 검증 계획 검토를 반영한 판이다. -->

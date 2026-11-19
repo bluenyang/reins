@@ -101,7 +101,7 @@ State: **in progress** (intent 024). Origin: the maintainer's reports of 2026-11
 - **The gate script reads `gates.yaml`.** Editing `gates.yaml` is enough; a shape the script cannot read, or no `gates.yaml`, stops the run.
 - **`update` lists the changelog under version headings.**
 - **husky** is not proposed a gate line it already has.
-- **Force push for a named work branch** (0.3.2 retro, H2): `git push --force-with-lease origin <branch>` is open; the default branch and tags stay closed.
+- **Force push with lease, per person** (0.3.2 retro H2, first audit): the team settings no longer deny it; install, update and `config` ask each person and write the answer into `.claude/settings.local.json`. The merge skill keeps the default branch and tags out.
 - **Skill sentences from the 0.3.3 retro** (H-1, H-2, H-3, H-5, H-7, H-10). H-4 and H-6 wait for 0.4, which reshapes the audit's inputs.
 
 ## 0.4 — agent hooks and the loop

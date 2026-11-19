@@ -80,22 +80,3 @@ export function pushedSubjects(remoteSha: string, localSha: string, cwd: string)
     return [];
   }
 }
-
-/**
- * The default branch names the force-push deny rules protect (024 S-26): origin/HEAD without `origin/`,
- * else `init.defaultBranch`, else both `main` and `master` (also outside a git repository).
- */
-export function defaultBranches(cwd: string): string[] {
-  for (const args of [
-    ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'],
-    ['config', 'init.defaultBranch'],
-  ]) {
-    try {
-      const v = git(args, cwd).replace(/^origin\//, '');
-      if (v) return [v];
-    } catch {
-      // not set: try the next source
-    }
-  }
-  return ['main', 'master'];
-}

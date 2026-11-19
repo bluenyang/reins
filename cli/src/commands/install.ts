@@ -30,7 +30,13 @@ import {
   tidyNote,
 } from '../lib/agents-md.js';
 import { syncLocalDelegation } from '../lib/local-delegation.js';
-import { writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
+import { readManifest, writeGenerated, type GenWriteResult } from '../lib/vendor-write.js';
+import {
+  applyLocalForcePush,
+  FORCE_WITH_LEASE_QUESTION,
+  recordedForceWithLease,
+  type ForceWithLease,
+} from '../lib/local-settings.js';
 
 export interface InstallOptions {
   mode: 'manual' | 'auto';
@@ -39,6 +45,11 @@ export interface InstallOptions {
   hooks?: boolean;
   /** on a terminal (any mode): ask before adding the hook lines (design §6); without it they are only proposed */
   confirmHooks?: Prompter;
+  /**
+   * Deny force push with lease to the agents on this machine (024 S-26a). Given by update, which asks; else
+   * the answer recorded in `.loctx/bindings.local.yaml`, else asked on a terminal, else deny.
+   */
+  forceWithLease?: ForceWithLease;
   cwd?: string;
   asker: Asker;
   /**
@@ -542,6 +553,10 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
         [...retired, ...(o.pendingDeletes ?? [])],
       )
     : workTreeReader(root);
+  // the 0.3.3 team rule this run takes out of .claude/settings.json (024 revision 1)
+  const hadTeamLease = (readManifest(root).owned?.['.claude/settings.json'] ?? []).includes(
+    'Bash(git push --force-with-lease *)',
+  );
   const generated = writeGenerated(root, generateVendorFiles(root, rd), !!o.dryRun, !!o.force);
   if (generated) {
     // a generated file that was there before this run is a changed one, not a new one (022 S-28)
@@ -558,5 +573,21 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   const local = syncLocalDelegation(root, !!o.dryRun);
   if (local === 'removed') applied.removed.push(LOCAL_DELEGATION);
   else if (local) (hadLocal ? applied.changed : applied.created).push(LOCAL_DELEGATION);
+
+  // 10. force push with lease, per person (024 S-26a): asked once, kept in .loctx, written to settings.local.json
+  const recorded = recordedForceWithLease(root);
+  let lease = o.forceWithLease ?? recorded;
+  let answered = !!o.forceWithLease || !!recorded;
+  const asks = o.confirmHooks ?? screens ?? (o.mode === 'manual' ? line : undefined);
+  if (!lease && asks && !o.dryRun) {
+    const yes = await asks.confirm({ message: FORCE_WITH_LEASE_QUESTION, initial: true });
+    if (yes === EXIT) return cancelled();
+    lease = yes === false ? 'allow' : 'deny';
+    answered = true;
+  }
+  const fp = applyLocalForcePush(root, lease ?? 'deny', !!o.dryRun, answered);
+  notes.push(
+    hadTeamLease ? `${fp.note} — the team .claude/settings.json no longer denies it` : fp.note,
+  );
   return { root, generation: gen, applied, generated, notes };
 }

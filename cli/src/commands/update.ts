@@ -18,6 +18,11 @@ import { repoRoot } from '../lib/git.js';
 import { BACK, EXIT, type Prompter } from '../lib/prompter.js';
 import { harnessVersion, packageHarness, packageVersion } from '../lib/upstream.js';
 import { RUNS_REINS, runInstall, type InstallResult } from './install.js';
+import {
+  FORCE_WITH_LEASE_QUESTION,
+  recordedForceWithLease,
+  type ForceWithLease,
+} from '../lib/local-settings.js';
 
 export interface UpdateOptions {
   cwd?: string;
@@ -34,6 +39,8 @@ export interface UpdateOptions {
   show?: (plan: UpdateResult) => void;
   /** non-interactive `--yes`: also delete the 0.x working files listed in `cleanup` */
   yes?: boolean;
+  /** the answer to the force-with-lease question (024 S-26a); asked by the interactive update when none is recorded */
+  forceWithLease?: ForceWithLease;
 }
 
 export interface UpdateResult {
@@ -246,7 +253,19 @@ export async function runUpdate(o: UpdateOptions): Promise<UpdateResult> {
       plan.cleanup.length === 0 &&
       plan.handEdited.length === 0 &&
       (!a || a.created.length + a.changed.length + a.removed.length === 0);
-    if (nothing) return plan;
+    // the force-with-lease question is asked once per machine, even when nothing else changes (024 S-26a)
+    const unanswered =
+      !o.forceWithLease && !recordedForceWithLease(repoRoot(o.cwd ?? process.cwd()));
+    if (nothing && !unanswered) return plan;
+    if (nothing) {
+      const deny = await o.prompter.confirm({ message: FORCE_WITH_LEASE_QUESTION, initial: true });
+      if (deny === EXIT) return { ...plan, declined: true };
+      return runUpdate({
+        ...o,
+        prompter: undefined,
+        forceWithLease: deny === false ? 'allow' : 'deny',
+      });
+    }
     o.show?.(plan);
     const ok = await o.prompter.confirm({ message: 'Apply this update?', initial: true });
     if (ok === BACK || ok === EXIT || !ok) return { ...plan, declined: true };
@@ -259,7 +278,15 @@ export async function runUpdate(o: UpdateOptions): Promise<UpdateResult> {
       if (over === EXIT) return { ...plan, declined: true };
       force = over === true;
     }
-    return runUpdate({ ...o, prompter: undefined, yes: true, force });
+    // asked once per machine, before the run that writes (024 S-26a)
+    let forceWithLease =
+      o.forceWithLease ?? recordedForceWithLease(repoRoot(o.cwd ?? process.cwd()));
+    if (!forceWithLease) {
+      const deny = await o.prompter.confirm({ message: FORCE_WITH_LEASE_QUESTION, initial: true });
+      if (deny === EXIT) return { ...plan, declined: true };
+      forceWithLease = deny === false ? 'allow' : 'deny';
+    }
+    return runUpdate({ ...o, prompter: undefined, yes: true, force, forceWithLease });
   }
   return updateNow(o);
 }
@@ -336,6 +363,7 @@ async function updateNow(o: UpdateOptions): Promise<UpdateResult> {
   }
 
   res.install = await runInstall({
+    forceWithLease: o.forceWithLease,
     mode: pin.mode ?? 'auto',
     asker: defaultsAsker,
     cwd: root,

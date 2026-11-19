@@ -82,9 +82,12 @@ function word(v) { sub(/^ +/, "", v); sub(/ +#.*$/, "", v); sub(/ +$/, "", v); r
 /^\t/ || /^ +\t/ { if (sec == "gates" || sec == "order") fail("a tab in the indentation"); next }
 /^[^ ]/ {
   sec = $0; sub(/:.*/, "", sec)
+  if (sec == "gates") hasGates = 1
   if (sec == "gates" || sec == "order") {
-    t = $0; sub(/^[^:]*:/, "", t)
-    if (word(t) != "") fail("flow style")
+    t = $0; sub(/^[^:]*:/, "", t); t = word(t)
+    # the empty collections written for no gate (gates: {}, order: []) are read; other flow style is not
+    if ((t == "{}" && sec == "gates") || (t == "[]" && sec == "order")) { sec = ""; next }
+    if (t != "") fail("flow style")
   }
   next
 }
@@ -110,6 +113,8 @@ sec == "order" && /^  - / { o = $0; sub(/^  - +/, "", o); order[++ocount] = word
 sec == "order" { fail("an order entry that is not a list item") }
 END {
   if (bad) exit 3
+  # an empty or unrelated file is no gates.yaml: it must not pass without checks
+  if (!hasGates) { print "line " NR ": no gates section"; exit 3 }
   for (k = 1; k <= count; k++) if (!(names[k] in cmd)) { print "the gate " names[k] " has no cmd"; exit 3 }
   if (ocount) { for (k = 1; k <= ocount; k++) if ((order[k] in seen) && !(order[k] in opt)) print cmd[order[k]] }
   else for (k = 1; k <= count; k++) if (!(names[k] in opt)) print cmd[names[k]]

@@ -40,8 +40,11 @@ const status = (root: string, name: string) => byName(root).get(name)?.status;
 describe('the four reference projects (024 V-4, appendix A and B)', () => {
   it('each fixture holds only the files and keys of appendix A', () => {
     const files = (d: string): string[] =>
-      readdirSync(d).flatMap((e) =>
-        statSync(join(d, e)).isDirectory() ? files(join(d, e)) : [relative(FIX, join(d, e))],
+      readdirSync(d).flatMap(
+        (e) =>
+          statSync(join(d, e)).isDirectory()
+            ? files(join(d, e))
+            : [relative(FIX, join(d, e)).replaceAll('\\', '/')], // Windows gives backslashes,
       );
     expect(files(FIX).toSorted()).toEqual(
       [

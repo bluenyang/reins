@@ -111,6 +111,24 @@ describe('the state of each gate and candidate (024 S-11)', () => {
     expect(rows[1]!.found!.cmd).toBe('npm run verify');
   });
 
+  it('a command match is kept for its gate before any looser match takes the candidate (review 1)', () => {
+    const d = mkdtempSync(join(tmpdir(), 'reins-pass-'));
+    execFileSync('git', ['init', '-q'], { cwd: d });
+    writeFileSync(join(d, 'package.json'), '{}');
+    mkdirSync(join(d, 'srv'));
+    writeFileSync(join(d, 'srv/go.mod'), 'module x\n');
+    const rows = gateStatus(
+      d,
+      [
+        { name: 'srv-vet', cmd: 'go -C srv vet -v ./...', from: 'srv/go.mod' },
+        { name: 'srv-test', cmd: 'go -C srv test ./...', from: 'srv/go.mod' },
+      ],
+      detectCandidates(d),
+    );
+    expect(states(rows)).toEqual(['applied, another command: srv-vet', 'applied: srv-test']);
+    expect(rows[0]!.found!.cmd).toBe('go -C srv vet ./...');
+  });
+
   it('croffle with the gates of a 0.3.3 install (fixture B): nothing reads as gone (024 V-4)', () => {
     const root = join(FIX, 'croffle');
     const rows = gateStatus(

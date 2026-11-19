@@ -87,14 +87,28 @@ export function gateStatus(root: string, file: FileGate[], candidates: Candidate
     return c;
   };
   const rows: StatusRow[] = [];
+  // pairing in passes over every gate, so a looser match never takes a candidate a later gate has by
+  // command (review 1): the same command; then the same source and name, the same source and script
+  // (two go gates share one go.mod), the same source; then, with a source, the same name (the root
+  // `check` that now points at another script; 021, 024 A-7)
+  const pair = new Map<FileGate, Candidate>();
+  const pass = (match: (g: FileGate, c: Candidate) => boolean, withSource = false) => {
+    for (const g of file)
+      if (!pair.has(g) && (!withSource || g.from)) {
+        const c = take((x) => match(g, x));
+        if (c) pair.set(g, c);
+      }
+  };
+  const same = (g: FileGate, c: Candidate) => normal(c.from) === normal(g.from!);
+  const scriptOf = (cmd: string) =>
+    cmd.split(' ').find((w) => ['test', 'vet', 'build', 'check', 'lint'].includes(w));
+  pass((g, c) => c.cmd === g.cmd);
+  pass((g, c) => same(g, c) && c.name === g.name, true);
+  pass((g, c) => same(g, c) && c.script === scriptOf(g.cmd), true);
+  pass(same, true);
+  pass((g, c) => c.name === g.name, true);
   for (const g of file) {
-    // the same command, then the same source, then (with a source) the same name: the root `check`
-    // that now points at another script (021, 024 A-n)
-    const c =
-      take((x) => x.cmd === g.cmd) ??
-      (g.from
-        ? (take((x) => normal(x.from) === normal(g.from!)) ?? take((x) => x.name === g.name))
-        : undefined);
+    const c = pair.get(g);
     const base = {
       name: g.name,
       cmd: g.cmd,

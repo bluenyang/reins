@@ -10,6 +10,14 @@ summary_for_user: |
   확인 필요(PM 판단): ① install이 미리 고르는 후보는 지금의 핵심 이름에 `lint:check`·`format:check`·`type-check`를 더한 것, `check:*`·CI·하위 디렉터리는 고르지 않은 채 보여 줌 ② **이 저장소 AGENTS.md 금지선 문장("Files reins writes (`.agents/harness/` …)")에 `gates.yaml`은 예외라고 적음** ③ 0.3.3 자신의 stable 줄이 배포본에 없는 문제는 제목 묶음으로 충분하다고 봄 ④ 상태 "적용됨·다른 명령"과 그 바꾸기를 더함(사용자가 정한 다섯 상태 밖, 이름으로 고를 때만).
   검증 V-1~V-13: 고치기 전 실패 재현, 표 테스트, 기준 프로젝트 네 곳 fixture(기대값은 이 spec의 부록 표), 게이트 스크립트 sh 테스트, deny 매칭 표, 스킬 구절 표, 양판 대조, `pnpm check`와 CI. 릴리스 뒤 검증 R-1·R-2(rc 배포본 smoke, stable 뒤 자기 업데이트)는 머지 전 단계에서 판정하지 않음.
 ---
+## 개정 1 (2026-11-20, W-8) — 승인 대기
+- **왜:** 1차 감사 비판 1(높음). 명령 문자열 글롭으로는 "이름을 적은 작업 브랜치만 허용"의 경계를 세울 수 없다(`git push --force-with-lease backup`, URL 원격; `remote.origin.push` 설정). 사용자 2026-11-19 "astra안으로 하고, 필요하면 settings.local.json 쓰라고 해야지. 그게 낫겠다." → PM이 deny는 settings.local.json의 allow보다 이긴다는 사실과 (가)·(나)를 물음 → 사용자 2026-11-20 "1번. (나) 안."
+- **S-26을 바꾼다:** reins가 만드는 팀 `.claude/settings.json`의 deny에는 `--force-with-lease` 규칙을 하나도 두지 않는다(0.3.3의 `Bash(git push --force-with-lease *)`도, 이번에 더한 기본 브랜치·태그·형태별 규칙도). 막을지는 사람마다 `.claude/settings.local.json`(개인, 커밋 안 됨)의 deny로 정한다. 남기는 것: `--force`·`-f`, `+` refspec, 훅 우회(`--no-verify`·`commit -n`, 다른 인자 뒤도). 기본 브랜치를 읽는 `defaultBranches`는 쓸 곳이 없어 뺀다.
+- **안내:** `install`과 `update`의 보고, 설계 §6, 두 CHANGELOG에 "팀 설정은 force-with-lease를 막지 않는다. 자기에게 막으려면 `.claude/settings.local.json`의 `permissions.deny`에 `Bash(git push --force-with-lease)`와 `Bash(git push --force-with-lease *)`를 넣는다"를 적는다. 0.3.3 설치를 `update`하면 reins가 썼던 그 규칙은 `owned:`에 있어 빠지므로, 보고가 이를 한 줄로 알린다.
+- **S-27은 그대로:** `merge` 스킬은 작업 브랜치를 `git push --force-with-lease origin <branch>`로 브랜치를 적어 푸시하고 기본 브랜치·태그에는 하지 않는다고 쓰고, 정지 블록은 "force push to the default branch or a tag"를 묻고 멈추는 일로 둔다. 막는 것은 글(에이전트의 규칙)이고 deny가 아님을 설계에 적는다.
+- **V-8을 바꾼다:** 생성된 deny에 `--force-with-lease`가 든 규칙이 없다. `--force`·`-f`·`+` refspec·훅 우회(인자 뒤 포함)는 매칭 표에서 막힌다. 0.3.3 설치의 `update`가 그 규칙을 지우고(사용자가 직접 넣은 같은 글은 남김) 보고에 안내 줄이 있다. install 보고에 안내 줄이 있다.
+- **R-2를 바꾼다:** 자기 업데이트 뒤 이 저장소의 `.claude/settings.json`에 `--force-with-lease` 규칙이 없다.
+
 ## 요구 해석
 <!-- 각 S-n 끝의 ← 는 그것이 나온 intent 문장이다. "PM 판단"은 intent에 없는 것을 이 spec이 정한 곳이다. 2026-11-19 계획 검토(F-1~F-3, C-1~C-4)와 검증 계획 검토를 반영한 판이다. -->
 

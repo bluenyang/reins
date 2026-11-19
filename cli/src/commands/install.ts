@@ -578,7 +578,8 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
   const recorded = recordedForceWithLease(root);
   let lease = o.forceWithLease ?? recorded;
   let answered = !!o.forceWithLease || !!recorded;
-  const asks = o.confirmHooks ?? screens ?? (o.mode === 'manual' ? line : undefined);
+  // only on a terminal (screens, or the hook confirmation); piped answers keep the unrecorded default (review 6)
+  const asks = o.confirmHooks ?? screens;
   if (!lease && asks && !o.dryRun) {
     const yes = await asks.confirm({ message: FORCE_WITH_LEASE_QUESTION, initial: true });
     if (yes === EXIT) return cancelled();

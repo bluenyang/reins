@@ -98,6 +98,11 @@ export function forcePushRules(): string[] {
   return [
     'Bash(git push --force *)',
     'Bash(git push -f *)',
+    // the flag after other arguments too (review 6)
+    'Bash(git push * --force)',
+    'Bash(git push * --force *)',
+    'Bash(git push * -f)',
+    'Bash(git push * -f *)',
     'Bash(git push * +*)',
     'Bash(git push *:+*)',
     'Bash(git commit --no-verify *)',

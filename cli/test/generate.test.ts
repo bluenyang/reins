@@ -121,12 +121,16 @@ describe('Claude Code generator (design §6)', () => {
     for (const allowed of [
       'git push --force-with-lease origin fix/0.3.4',
       'git push --force-with-lease',
+      'git push origin fix/x --force-with-lease',
       'git push -u origin fix/0.3.4',
     ])
       expect(deniedBy(rules, allowed), allowed).toBeUndefined();
     for (const denied of [
       'git push --force origin fix/x',
       'git push -f origin fix/x',
+      'git push origin fix/x --force', // review 6: after other arguments
+      'git push origin fix/x -f',
+      'git push origin --force fix/x',
       'git push origin +master',
       'git push origin HEAD:+x',
       'git push --no-verify origin fix/x',

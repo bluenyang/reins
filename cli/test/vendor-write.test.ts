@@ -156,6 +156,26 @@ describe('.claude/settings.json is merged, not replaced (021 S-3..S-5)', () => {
     expect(second.unchanged).toContain(SP);
   });
 
+  it('drops the 0.3.3 force-with-lease rule reins wrote, keeps one the user wrote (024 S-26, V-8)', async () => {
+    const OLD = 'Bash(git push --force-with-lease *)';
+    for (const reinsWroteIt of [true, false]) {
+      const d = await setup();
+      const rules = reinsRules(d);
+      expect(rules).not.toContain(OLD);
+      const s = settings(d);
+      put(d, { ...s, permissions: { deny: [...rules, OLD] } });
+      const m = manifest(d);
+      const owned = reinsWroteIt ? [...rules, OLD] : rules;
+      writeFileSync(
+        join(d, '.agents/harness/generated.yaml'),
+        `schema: reins/generated@1\nfiles: ${JSON.stringify(m.files)}\nowned: ${JSON.stringify({ [SP]: owned })}\n`,
+      );
+      again(d);
+      expect(settings(d).permissions?.deny?.includes(OLD)).toBe(!reinsWroteIt);
+      expect(manifest(d).owned?.[SP]).toEqual(rules);
+    }
+  });
+
   it('puts back a reins rule the user removed', async () => {
     const d = await setup();
     const rules = reinsRules(d);

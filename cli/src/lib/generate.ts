@@ -7,6 +7,7 @@ import { resolveRoles, type BindingsV2 } from './bindings.js';
 import { agentName, claudeAgents } from './agents-md.js';
 import { splitFrontmatter } from './skills.js';
 import { GATE_SCRIPT, renderGateScript, requiredGates } from './gate-script.js';
+import { defaultBranches } from './git.js';
 
 /**
  * Files generated from `.agents/harness/` (design §6): `.claude/agents/rs-<group>-<role>.md` for roles
@@ -88,8 +89,42 @@ export function claudeAgent(
   ].join('\n');
 }
 
+/**
+ * The force-push rules (024 S-26): only `git push --force-with-lease origin <work branch>` stays open; the
+ * default branch, tags, a push that names no branch, the flag in another place, the `=` form and a `+`
+ * refspec are denied, and so are `--force`, `-f` and hook bypass. A command-string glob: `git -C`,
+ * variables and aliases get past it (design §6).
+ */
+export function forcePushRules(branches: string[]): string[] {
+  const fwl = 'git push --force-with-lease';
+  return [
+    'Bash(git push --force *)',
+    'Bash(git push -f *)',
+    `Bash(${fwl})`,
+    `Bash(${fwl} origin)`,
+    `Bash(${fwl}=*)`,
+    'Bash(git push * --force-with-lease*)',
+    ...branches.flatMap((d) => [
+      `Bash(${fwl} * ${d})`,
+      `Bash(${fwl} * ${d} *)`,
+      `Bash(${fwl} *:${d})`,
+      `Bash(${fwl} *:${d} *)`,
+      `Bash(${fwl} *refs/heads/${d}*)`,
+    ]),
+    `Bash(${fwl} *--tags*)`,
+    `Bash(${fwl} *refs/tags/*)`,
+    `Bash(${fwl} *--all*)`,
+    `Bash(${fwl} *--mirror*)`,
+    'Bash(git push * +*)',
+    'Bash(git push *:+*)',
+    'Bash(git commit --no-verify *)',
+    'Bash(git commit -n *)',
+    'Bash(git push --no-verify *)',
+  ];
+}
+
 /** C4 patterns → Claude Code deny rules. A pattern that would also hide an allowed template (`.env.*` vs `.env.example`) is narrowed. */
-export function denyRules(lines: RedLine[]): string[] {
+export function denyRules(lines: RedLine[], branches: string[] = ['main', 'master']): string[] {
   const c4 = lines.find((r) => r.id === 'C4');
   const globs = new Set<string>();
   for (const p of c4?.patterns ?? []) {
@@ -108,15 +143,8 @@ export function denyRules(lines: RedLine[]): string[] {
   const rules: string[] = [];
   for (const g of globs)
     for (const t of ['Read', 'Edit']) rules.push(`${t}(${g.startsWith('**/') ? g : `**/${g}`})`);
-  // force push and hook bypass: the user runs these explicitly, never an agent
-  rules.push(
-    'Bash(git push --force *)',
-    'Bash(git push -f *)',
-    'Bash(git push --force-with-lease *)',
-    'Bash(git commit --no-verify *)',
-    'Bash(git commit -n *)',
-    'Bash(git push --no-verify *)',
-  );
+  // force push to the default branch or a tag, and hook bypass: the user runs these, never an agent
+  rules.push(...forcePushRules(branches));
   return rules;
 }
 
@@ -186,7 +214,7 @@ export function generateVendorFiles(root: string, rd: Reader = workTreeReader(ro
     });
   const redText = rd.read(`${harness}/policy/common-red-lines.yaml`);
   if (redText !== undefined) {
-    const deny = denyRules((parse(redText) as { rules: RedLine[] }).rules);
+    const deny = denyRules((parse(redText) as { rules: RedLine[] }).rules, defaultBranches(root));
     out.writes.push({
       path: '.claude/settings.json',
       content: `${JSON.stringify({ $schema: SETTINGS_SCHEMA, permissions: { deny } }, null, 2)}\n`,

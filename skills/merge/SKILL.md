@@ -29,4 +29,4 @@ Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table 
 After CI: `audit` (the first audit). After the merge: `release`.
 
 ## 6. Stop and ask
-- Never force-push, rewrite the default branch or bypass hooks.
+- Never force-push the default branch or a tag, rewrite the default branch or bypass hooks. A work branch behind the default branch is rebased and pushed with `git push --force-with-lease origin <branch>`, naming the branch; where that is not possible, merge the default branch into it (a rebase merge drops that merge commit).

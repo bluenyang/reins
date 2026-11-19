@@ -145,6 +145,12 @@ describe('Claude Code generator (design §6)', () => {
       'git push origin HEAD:+x',
       'git push --force origin fix/x',
       'git push -f origin fix/x',
+      // review 1: the bypass flag after other arguments, and a remote named upstream
+      'git push --force-with-lease origin fix/x --no-verify',
+      'git push origin fix/x --no-verify',
+      'git commit -m x --no-verify',
+      'git commit -m x -n',
+      'git push --force-with-lease upstream',
     ])
       expect(deniedBy(rules, denied), denied).toBeDefined();
   });

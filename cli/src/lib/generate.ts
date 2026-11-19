@@ -102,6 +102,7 @@ export function forcePushRules(branches: string[]): string[] {
     'Bash(git push -f *)',
     `Bash(${fwl})`,
     `Bash(${fwl} origin)`,
+    `Bash(${fwl} upstream)`,
     `Bash(${fwl}=*)`,
     'Bash(git push * --force-with-lease*)',
     ...branches.flatMap((d) => [
@@ -120,6 +121,13 @@ export function forcePushRules(branches: string[]): string[] {
     'Bash(git commit --no-verify *)',
     'Bash(git commit -n *)',
     'Bash(git push --no-verify *)',
+    // the bypass flag after other arguments too (review 1)
+    'Bash(git push * --no-verify)',
+    'Bash(git push * --no-verify *)',
+    'Bash(git commit * --no-verify)',
+    'Bash(git commit * --no-verify *)',
+    'Bash(git commit * -n)',
+    'Bash(git commit * -n *)',
   ];
 }
 

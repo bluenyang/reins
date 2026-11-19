@@ -17,7 +17,7 @@ import { apply, listFiles, type Applied, type Write } from '../lib/fsx.js';
 import { repoRoot } from '../lib/git.js';
 import { harnessVersion, packageHarness, packageSkills, packageVersion } from '../lib/upstream.js';
 import { generateVendorFiles } from '../lib/generate.js';
-import { hookLine, requiredGates } from '../lib/gate-script.js';
+import { GATE_SCRIPT, hookLine, requiredGates } from '../lib/gate-script.js';
 import { defaultBindings, readTeam, type BindingsV2 } from '../lib/bindings.js';
 import { overlayReader, workTreeReader } from '../lib/reader.js';
 import {
@@ -162,6 +162,18 @@ const HOOK_STAGES = ['pre-commit', 'pre-push'] as const;
 
 /** A `reins:begin hooks` block in a hook file, with its body. */
 const HOOK_BLOCK = /# reins:begin hooks\n([\s\S]*?)# reins:end hooks/g;
+
+/**
+ * Whether a hook file already runs the gate script for `stage` outside a reins block (024 S-19): a line
+ * that is not a comment and, trimmed, reads `sh <path> <stage>`, the path as written, with `./`, or quoted.
+ */
+export function runsGateScript(text: string, stage: string): boolean {
+  const paths = [GATE_SCRIPT, `./${GATE_SCRIPT}`].flatMap((p) => [p, `'${p}'`, `"${p}"`]);
+  return text
+    .split(/\r?\n/)
+    .map((l) => l.trim().replace(/\s+/g, ' '))
+    .some((l) => !l.startsWith('#') && paths.some((p) => l === `sh ${p} ${stage}`));
+}
 
 /** A command that runs reins: what 0.x put into hooks and settings. */
 export const RUNS_REINS =
@@ -394,7 +406,10 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
       const p = join(root, '.husky', stage);
       return { stage, cur: existsSync(p) ? readFileSync(p, 'utf8') : '' };
     });
-    const missing = files.filter((f) => !f.cur.includes('# reins:begin hooks'));
+    // a stage is hooked by a reins block or by the gate line written outside one (024 S-19)
+    const missing = files.filter(
+      (f) => !f.cur.includes('# reins:begin hooks') && !runsGateScript(f.cur, f.stage),
+    );
     let addHooks = !!o.hooks;
     if (missing.length && !addHooks && o.confirmHooks && !o.dryRun) {
       const yes = await o.confirmHooks.confirm({
@@ -420,7 +435,7 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
         notes.push(
           `.husky/${stage}: the reins hooks block now calls the gate script — it held: ${held.join(' && ')} (move a line of your own outside the block)`,
         );
-      } else if (addHooks)
+      } else if (addHooks && !runsGateScript(cur, stage))
         add(
           `.husky/${stage}`,
           `${cur.replace(/\s*$/, '')}\n# reins:begin hooks\n${line}\n# reins:end hooks\n`.replace(

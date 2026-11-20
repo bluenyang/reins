@@ -186,6 +186,85 @@ export function runsGateScript(text: string, stage: string): boolean {
     .some((l) => !l.startsWith('#') && paths.some((p) => l === `sh ${p} ${stage}`));
 }
 
+/** The parsed lefthook or pre-commit configuration files of the root; unreadable ones are left out. */
+function hookConfigs(root: string, tool: 'lefthook' | 'pre-commit'): unknown[] {
+  const files =
+    tool === 'lefthook'
+      ? ['lefthook.yml', 'lefthook.yaml', '.lefthook.yml', '.lefthook.yaml', 'lefthook-local.yml']
+      : ['.pre-commit-config.yaml'];
+  const out: unknown[] = [];
+  for (const f of files.filter((x) => existsSync(join(root, x))))
+    try {
+      out.push(parse(readFileSync(join(root, f), 'utf8')));
+    } catch {
+      // unreadable: nothing in it counts, so the line is proposed
+    }
+  return out;
+}
+
+const obj = (v: unknown): Record<string, unknown> | null =>
+  v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+
+/** Whether a command value is the gate script for `stage`: `sh <path> <stage>`, the path quoted or with `./`. */
+export function isGateCommand(cmd: unknown, stage: string): boolean {
+  if (typeof cmd !== 'string') return false;
+  // only horizontal space is evened out: a newline is a command boundary for the shell (review 10)
+  const c = cmd.trim().replace(/[ \t]+/g, ' ');
+  return new RegExp(`^sh (['"]?)(\\./)?\\.agents/harness/run-gates\\.sh\\1 ${stage}$`).test(c);
+}
+
+/** The `run:` values lefthook runs at `stage`: its `commands`, `jobs` (and job `group`s) and `scripts`' runners. */
+function lefthookRuns(doc: unknown, stage: string): unknown[] {
+  const hook = obj(obj(doc)?.[stage]);
+  if (!hook) return [];
+  const runs: unknown[] = [];
+  for (const c of Object.values(obj(hook['commands']) ?? {})) runs.push(obj(c)?.['run']);
+  const jobs = (list: unknown) => {
+    if (!Array.isArray(list)) return;
+    for (const j of list) {
+      runs.push(obj(j)?.['run']);
+      jobs(obj(obj(j)?.['group'])?.['jobs']);
+    }
+  };
+  jobs(hook['jobs']);
+  return runs;
+}
+
+const PRE_COMMIT_STAGE: Record<string, string> = { commit: 'pre-commit', push: 'pre-push' };
+
+/** The `entry` values pre-commit runs at `stage`: each hook's `stages`, else `default_stages`, else every stage. */
+function preCommitEntries(doc: unknown, stage: string): unknown[] {
+  const d = obj(doc);
+  const defaults = Array.isArray(d?.['default_stages']) ? (d['default_stages'] as unknown[]) : null;
+  const out: unknown[] = [];
+  for (const repo of Array.isArray(d?.['repos']) ? (d['repos'] as unknown[]) : [])
+    for (const h of Array.isArray(obj(repo)?.['hooks']) ? (obj(repo)!['hooks'] as unknown[]) : []) {
+      const hook = obj(h);
+      const stages = Array.isArray(hook?.['stages']) ? (hook['stages'] as unknown[]) : defaults;
+      const runs =
+        stages === null || stages.some((x) => (PRE_COMMIT_STAGE[String(x)] ?? String(x)) === stage);
+      if (runs) out.push(hook?.['entry']);
+    }
+  return out;
+}
+
+/**
+ * Whether the lefthook or pre-commit configuration already runs the gate script for `stage` (A-20): a
+ * parsed `run:` (lefthook, under that hook) or `entry:` (pre-commit, for a hook that runs at that stage)
+ * whose value is the gate command. Comments, names and other fields never count.
+ */
+export function configRunsGateScript(
+  docs: unknown[],
+  tool: 'lefthook' | 'pre-commit',
+  stage: string,
+): boolean {
+  return docs.some((d) =>
+    (tool === 'lefthook' ? lefthookRuns(d, stage) : preCommitEntries(d, stage)).some((c) =>
+      isGateCommand(c, stage),
+    ),
+  );
+}
+
 /** A command that runs reins: what 0.x put into hooks and settings. */
 export const RUNS_REINS =
   /@bluenyang\/reins|reins\.js\b|(^|[\s;&|])reins\s+(check|hook|gate|status)\b/;
@@ -469,15 +548,19 @@ export async function runInstall(o: InstallOptions): Promise<InstallResult> {
       notes.push(
         `hook proposal (husky): add \`${hookLine('pre-commit')}\` to .husky/pre-commit and \`${hookLine('pre-push')}\` to .husky/pre-push; re-run with --hooks to add them`,
       );
-  } else if (gated && tool === 'lefthook')
-    notes.push(
-      `hook proposal (lefthook): under \`pre-commit: commands:\` add \`gates: { run: ${hookLine('pre-commit')} }\`, and the same under \`pre-push:\` with \`${hookLine('pre-push')}\` (reins proposes lefthook lines only; add them to its config yourself)`,
-    );
-  else if (gated && tool === 'pre-commit')
-    notes.push(
-      `hook proposal (pre-commit): under \`repos:\` add \`- repo: local\` with a hook \`{ id: gates, name: project gates, entry: ${hookLine('pre-commit')}, language: system, pass_filenames: false }\`, and one with \`stages: [pre-push]\` and \`${hookLine('pre-push')}\` (reins proposes pre-commit lines only; add them to its config yourself)`,
-    );
-  else if (gated)
+  } else if (gated && (tool === 'lefthook' || tool === 'pre-commit')) {
+    // a config that already runs the gate script for a stage is not proposed it again (0.3.4-rc.2, A-20)
+    const docs = hookConfigs(root, tool);
+    const missing = HOOK_STAGES.filter((s) => !configRunsGateScript(docs, tool, s));
+    if (missing.length && tool === 'lefthook')
+      notes.push(
+        `hook proposal (lefthook): ${missing.map((s) => `under \`${s}: commands:\` add \`gates: { run: ${hookLine(s)} }\``).join(', and ')} (reins proposes lefthook lines only; add them to its config yourself)`,
+      );
+    else if (missing.length)
+      notes.push(
+        `hook proposal (pre-commit): under \`repos:\` add \`- repo: local\` with ${missing.map((s) => `a hook \`{ id: gates${s === 'pre-push' ? '-push' : ''}, name: project gates, entry: ${hookLine(s)}, language: system, pass_filenames: false, stages: [${s}] }\``).join(' and ')} (reins proposes pre-commit lines only; add them to its config yourself)`,
+      );
+  } else if (gated)
     notes.push(
       `no hook tool found — the PM asks which one to use during onboarding; whichever it is runs \`${hookLine('pre-commit')}\` and \`${hookLine('pre-push')}\``,
     );

@@ -10,7 +10,8 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runInstall } from '../src/commands/install.js';
+import { configRunsGateScript, isGateCommand, runInstall } from '../src/commands/install.js';
+import { parse } from 'yaml';
 import { defaultsAsker } from '../src/lib/ask.js';
 import { scriptedPrompter } from '../src/lib/prompter.js';
 import { discoverGates } from '../src/lib/detect.js';
@@ -246,6 +247,124 @@ describe('hooks: the project gates in the project hook tool (019 S-3)', () => {
     expect(note).toContain('sh .agents/harness/run-gates.sh pre-push');
     expect(readFileSync(join(d, file), 'utf8')).toBe('# mine\n');
     expect(existsSync(join(d, '.agents/harness/run-gates.sh'))).toBe(true);
+  });
+
+  it.each([
+    [
+      'lefthook',
+      'lefthook.yml',
+      'pre-commit:\n  jobs:\n    - name: gates\n      run: sh .agents/harness/run-gates.sh pre-commit\npre-push:\n  jobs:\n    - name: gates\n      run: sh .agents/harness/run-gates.sh pre-push\n',
+    ],
+    [
+      'lefthook',
+      'lefthook.yml',
+      'pre-commit:\n  commands:\n    gates: { run: "sh ./.agents/harness/run-gates.sh pre-commit" }\npre-push:\n  commands:\n    gates: { run: "sh ./.agents/harness/run-gates.sh pre-push" }\n',
+    ],
+    [
+      'pre-commit',
+      '.pre-commit-config.yaml',
+      'repos:\n  - repo: local\n    hooks:\n      - { id: g, name: g, entry: sh .agents/harness/run-gates.sh pre-commit, language: system }\n      - { id: p, name: p, entry: sh .agents/harness/run-gates.sh pre-push, language: system, stages: [pre-push] }\n',
+    ],
+  ])(
+    '%s: a config that already runs the gate script is not proposed it again (0.3.4-rc.2)',
+    async (tool, file, text) => {
+      const d = repo();
+      writeFileSync(join(d, file), text);
+      const r = await runInstall({
+        mode: 'auto',
+        asker: defaultsAsker,
+        cwd: d,
+        detectVendors: onlyClaude,
+      });
+      expect(r.notes.some((n) => n.startsWith(`hook proposal (${tool})`))).toBe(false);
+      expect(readFileSync(join(d, file), 'utf8')).toBe(text);
+      // one stage only: only the other one is proposed
+      const e = repo();
+      const oneStage =
+        tool === 'lefthook'
+          ? 'pre-commit:\n  jobs:\n    - run: sh .agents/harness/run-gates.sh pre-commit\n'
+          : 'repos:\n  - repo: local\n    hooks:\n      - { id: g, name: g, entry: sh .agents/harness/run-gates.sh pre-commit, language: system, stages: [pre-commit] }\n';
+      writeFileSync(join(e, file), oneStage);
+      const one = await runInstall({
+        mode: 'auto',
+        asker: defaultsAsker,
+        cwd: e,
+        detectVendors: onlyClaude,
+      });
+      const note = one.notes.find((n) => n.startsWith(`hook proposal (${tool})`))!;
+      expect(note).toContain('sh .agents/harness/run-gates.sh pre-push');
+      expect(note).not.toContain('sh .agents/harness/run-gates.sh pre-commit');
+    },
+  );
+
+  it('only a parsed command at its own stage counts (0.3.4-rc.2, review 9)', () => {
+    const lf = (t: string, stage: string) => configRunsGateScript([parse(t)], 'lefthook', stage);
+    const pc = (t: string, stage: string) => configRunsGateScript([parse(t)], 'pre-commit', stage);
+    // a comment after the command, or a name holding it, does not run it
+    expect(
+      lf(
+        'pre-commit:\n  commands:\n    t:\n      run: npm test # sh .agents/harness/run-gates.sh pre-commit\n',
+        'pre-commit',
+      ),
+    ).toBe(false);
+    expect(
+      lf(
+        'pre-commit:\n  jobs:\n    - name: sh .agents/harness/run-gates.sh pre-commit\n      run: npm test\n',
+        'pre-commit',
+      ),
+    ).toBe(false);
+    // the line under the other hook is not this stage's
+    expect(
+      lf(
+        'pre-push:\n  jobs:\n    - run: sh .agents/harness/run-gates.sh pre-commit\n',
+        'pre-commit',
+      ),
+    ).toBe(false);
+    // a folded value is read as YAML reads it; a job group too
+    expect(
+      lf(
+        'pre-commit:\n  jobs:\n    - run: >-\n        sh .agents/harness/run-gates.sh\n        pre-commit\n',
+        'pre-commit',
+      ),
+    ).toBe(true);
+    expect(
+      lf(
+        'pre-commit:\n  jobs:\n    - group:\n        jobs:\n          - run: sh .agents/harness/run-gates.sh pre-commit\n',
+        'pre-commit',
+      ),
+    ).toBe(true);
+    // pre-commit: stages, default_stages, the old stage names
+    const hook = (extra: string) =>
+      `repos:\n  - repo: local\n    hooks:\n      - { id: g, name: g, entry: sh .agents/harness/run-gates.sh pre-commit, language: system${extra} }\n`;
+    expect(pc(hook(''), 'pre-commit')).toBe(true);
+    expect(pc(hook(', stages: [manual]'), 'pre-commit')).toBe(false);
+    expect(pc(hook(', stages: [commit]'), 'pre-commit')).toBe(true);
+    expect(pc(`default_stages: [pre-push]\n${hook('')}`, 'pre-commit')).toBe(false);
+    expect(isGateCommand('sh "./.agents/harness/run-gates.sh" pre-push', 'pre-push')).toBe(true);
+    expect(isGateCommand('sh .agents/harness/run-gates.sh pre-pushx', 'pre-push')).toBe(false);
+    // a literal block keeps its newline: two commands, the script gets no stage (review 10)
+    expect(
+      lf(
+        'pre-commit:\n  jobs:\n    - run: |-\n        sh .agents/harness/run-gates.sh\n        pre-commit\n',
+        'pre-commit',
+      ),
+    ).toBe(false);
+  });
+
+  it('the pre-commit proposal names the stage of each hook (review 9)', async () => {
+    const d = repo();
+    writeFileSync(join(d, '.pre-commit-config.yaml'), 'repos: []\n');
+    const r = await runInstall({
+      mode: 'auto',
+      asker: defaultsAsker,
+      cwd: d,
+      detectVendors: onlyClaude,
+    });
+    const note = r.notes.find((n) => n.startsWith('hook proposal (pre-commit)'))!;
+    expect(note).toContain(
+      'entry: sh .agents/harness/run-gates.sh pre-commit, language: system, pass_filenames: false, stages: [pre-commit]',
+    );
+    expect(note).toContain('stages: [pre-push]');
   });
 
   it('with no required gate the script is still written, but no hook line (024 S-17)', async () => {

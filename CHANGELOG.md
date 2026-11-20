@@ -11,12 +11,12 @@ has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md).
 
 ## [0.3.4] — unreleased
 
-rc.1: 2026-11-20 (intent 024). Gate discovery and refresh fitted to real projects (croffle, allot, pipit-hub), the gate script reading `gates.yaml`, `update`'s changelog under version headings, force push open for a named work branch, and the skill sentences of the 0.3.3 retro. Origin: the maintainer's reports of 2026-11-17 and 2026-11-18, the 0.3.3 retro (H-1, H-2, H-3, H-5, H-7, H-9, H-10) and the 0.3.2 retro (H2).
+rc.2: 2026-11-21 (lefthook and pre-commit configs that already run the gate script, found applying rc.1 to real projects). rc.1: 2026-11-20 (intent 024). Gate discovery and refresh fitted to real projects (croffle, allot, pipit-hub), the gate script reading `gates.yaml`, `update`'s changelog under version headings, force push open for a named work branch, and the skill sentences of the 0.3.3 retro. Origin: the maintainer's reports of 2026-11-17 and 2026-11-18, the 0.3.3 retro (H-1, H-2, H-3, H-5, H-7, H-9, H-10) and the 0.3.2 retro (H2).
 
 ### Fixed
 - `reins update` lists the harness changelog under a heading per version, newest first, so a "Stable …" line reads as its own version's (before, the entries of several versions ran together). `--json` keeps `changes` and adds `changesByVersion`.
 - `reins config gates --refresh` no longer reports healthy gates as gone (a source reins did not write, the old `Makefile#check` notation, a different command) or offers subdirectory gates a root script already runs. It shows every gate and candidate with its state and reasons and never removes a gate by itself.
-- `reins install` with husky no longer proposes, or adds with `--hooks`, the gate line a hook file already has outside a reins block.
+- `reins install` with husky no longer proposes, or adds with `--hooks`, the gate line a hook file already has outside a reins block; with lefthook or pre-commit it no longer proposes a stage whose configuration already runs the gate script (rc.2, found applying rc.1 to a lefthook project).
 
 ### Changed
 - Gate discovery: candidates by name pattern and body below the root, workspace packages (pnpm, npm, yarn, bun, turbo, nx, lerna) a root script already runs, Makefile dependencies and recipes, and the one-line `run:` commands of pull-request workflows, each with a state and its reasons. `lint:check` is no bundle check any more; `format:check`, `lint:check` and `type-check` are picked at install; `check:*`, CI and subdirectory candidates are offered, not picked.

@@ -3,7 +3,7 @@ intent: "024"
 status: accepted
 approvals:
   - { role: user, by: BlueNyang, at: 2026-11-19, words: "진행", rev: e43297e, kind: summary }
-  - { role: user, by: BlueNyang, at: 2026-11-20, words: "진행", rev: 0638e18, kind: revision-1 }
+  - { role: user, by: BlueNyang, at: 2026-11-20, words: "진행", rev: 97866ef, kind: revision-1, note: "the summary approved was the revised one shown in chat (asked at install/update, written to settings.local.json); 0638e18 held the earlier draft (each person adds the lines by hand) and was recorded here by mistake until the re-audit — corrected" }
 summary_for_user: |
   W-1 `update` 변경 목록을 버전 제목 아래 묶음(`--json`은 `changes`를 두고 `changesByVersion` 추가). W-5 husky 파일에 같은 줄이 이미 있으면 다시 제안·추가하지 않음.
   W-2·W-3 게이트: 이름 패턴·본문·워크스페이스·CI(`pull_request`로 도는 워크플로의 `run:` 줄)로 후보를 찾고 근거를 담. refresh는 `gone`/`new` 대신 "감지 전체 + 적용 상태" 표를 화면과 `.loctx/gates-refresh.md`에 냄. 사람이 고르면 에이전트가 `gates.yaml`을 고치고(따로 커밋), 화면·`--apply`로 바로 적용하는 길도 남김. 빼기·명령 바꾸기는 이름으로 고를 때만. W-4 `run-gates.sh`가 실행 때 `gates.yaml`을 읽음(POSIX awk, reins가 쓰는 모양만; 파일이 없거나 못 읽으면 exit 2).

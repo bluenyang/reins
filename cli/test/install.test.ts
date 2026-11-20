@@ -248,6 +248,53 @@ describe('hooks: the project gates in the project hook tool (019 S-3)', () => {
     expect(existsSync(join(d, '.agents/harness/run-gates.sh'))).toBe(true);
   });
 
+  it.each([
+    [
+      'lefthook',
+      'lefthook.yml',
+      'pre-commit:\n  jobs:\n    - name: gates\n      run: sh .agents/harness/run-gates.sh pre-commit\npre-push:\n  jobs:\n    - name: gates\n      run: sh .agents/harness/run-gates.sh pre-push\n',
+    ],
+    [
+      'lefthook',
+      'lefthook.yml',
+      'pre-commit:\n  commands:\n    gates: { run: "sh ./.agents/harness/run-gates.sh pre-commit" }\npre-push:\n  commands:\n    gates: { run: "sh ./.agents/harness/run-gates.sh pre-push" }\n',
+    ],
+    [
+      'pre-commit',
+      '.pre-commit-config.yaml',
+      'repos:\n  - repo: local\n    hooks:\n      - { id: g, name: g, entry: sh .agents/harness/run-gates.sh pre-commit, language: system }\n      - { id: p, name: p, entry: sh .agents/harness/run-gates.sh pre-push, language: system, stages: [pre-push] }\n',
+    ],
+  ])(
+    '%s: a config that already runs the gate script is not proposed it again (0.3.4-rc.2)',
+    async (tool, file, text) => {
+      const d = repo();
+      writeFileSync(join(d, file), text);
+      const r = await runInstall({
+        mode: 'auto',
+        asker: defaultsAsker,
+        cwd: d,
+        detectVendors: onlyClaude,
+      });
+      expect(r.notes.some((n) => n.startsWith(`hook proposal (${tool})`))).toBe(false);
+      expect(readFileSync(join(d, file), 'utf8')).toBe(text);
+      // one stage only: only the other one is proposed; a commented line does not count
+      const e = repo();
+      writeFileSync(
+        join(e, file),
+        `${text.split('pre-push')[0]}\n# sh .agents/harness/run-gates.sh pre-push\n`,
+      );
+      const one = await runInstall({
+        mode: 'auto',
+        asker: defaultsAsker,
+        cwd: e,
+        detectVendors: onlyClaude,
+      });
+      const note = one.notes.find((n) => n.startsWith(`hook proposal (${tool})`))!;
+      expect(note).toContain('sh .agents/harness/run-gates.sh pre-push');
+      expect(note).not.toContain('sh .agents/harness/run-gates.sh pre-commit');
+    },
+  );
+
   it('with no required gate the script is still written, but no hook line (024 S-17)', async () => {
     const d = mkdtempSync(join(tmpdir(), 'reins-nogate-'));
     execFileSync('git', ['init', '-q'], { cwd: d });

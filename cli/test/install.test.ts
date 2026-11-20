@@ -342,6 +342,13 @@ describe('hooks: the project gates in the project hook tool (019 S-3)', () => {
     expect(pc(`default_stages: [pre-push]\n${hook('')}`, 'pre-commit')).toBe(false);
     expect(isGateCommand('sh "./.agents/harness/run-gates.sh" pre-push', 'pre-push')).toBe(true);
     expect(isGateCommand('sh .agents/harness/run-gates.sh pre-pushx', 'pre-push')).toBe(false);
+    // a literal block keeps its newline: two commands, the script gets no stage (review 10)
+    expect(
+      lf(
+        'pre-commit:\n  jobs:\n    - run: |-\n        sh .agents/harness/run-gates.sh\n        pre-commit\n',
+        'pre-commit',
+      ),
+    ).toBe(false);
   });
 
   it('the pre-commit proposal names the stage of each hook (review 9)', async () => {

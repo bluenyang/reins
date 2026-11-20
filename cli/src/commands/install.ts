@@ -208,7 +208,8 @@ const obj = (v: unknown): Record<string, unknown> | null =>
 /** Whether a command value is the gate script for `stage`: `sh <path> <stage>`, the path quoted or with `./`. */
 export function isGateCommand(cmd: unknown, stage: string): boolean {
   if (typeof cmd !== 'string') return false;
-  const c = cmd.trim().replace(/\s+/g, ' ');
+  // only horizontal space is evened out: a newline is a command boundary for the shell (review 10)
+  const c = cmd.trim().replace(/[ \t]+/g, ' ');
   return new RegExp(`^sh (['"]?)(\\./)?\\.agents/harness/run-gates\\.sh\\1 ${stage}$`).test(c);
 }
 

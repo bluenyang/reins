@@ -220,14 +220,14 @@ summary_for_user: |
 - **스킬.** 소스는 `skills/`다. 이 저장소의 `.agents/skills/`·`.claude/skills/`·`.claude/settings.json`은 stable 뒤 자기 업데이트로만 바뀐다(R-2).
 
 ## 작업 단위
-- [x] W-1 `update` 변경 목록의 버전 제목(S-1~S-3): `update.ts`, `update.test.ts`, 설계 양판 §9 — `3ab4dd4`
-- [x] W-5 husky 감지(S-19): `install.ts`, `install.test.ts`, 설계 양판 §6 훅 — `3fb6156`
-- [x] W-8 강제 푸시(S-26·S-27, 개정 1 — `63f0ae3`, `08d4ae5`): `generate.ts`, `install.ts`·`update.ts`(기본 브랜치 결정), `skills/merge`·`release`, `harness/templates/agents-md-blocks.md`, `generate.test.ts`·`vendor-write.test.ts`, 테스트 매처, 설계 양판 §3-2·§6 — `7653957`
-- [x] W-6 스킬 문장(S-20~S-25): S-20~S-25 표의 파일, `skills.test.ts` — `6e6cab7`
-- [x] W-4 게이트 스크립트(S-15~S-18): `gate-script.ts`, `install.ts`·`update.ts`·`configure.ts`의 스크립트 쓰기, `gate-script.test.ts`, 설계 양판 §6 — `422bdd9`
-- [x] W-2 게이트 감지(S-4~S-10): `detect.ts`, `detect-workspaces.ts`, `detect-ci.ts`, `install.ts`의 후보 화면, fixture 네 곳(`cli/test/fixtures/gates/{croffle,allot,pipit-bot,pipit-music}/` — 부록 A의 파일만), `gate-proposals.test.ts`, 설계 양판 §5 — `5064da0`
-- [x] W-3 refresh(S-11~S-14): `gate-refresh.ts`, `config-gates.ts`, `configure.ts`, `gate-refresh.test.ts`·`config.test.ts`·`install-update-tui.test.ts`, 설계 양판 §9 — `8071822`
-- [x] W-7 문서(S-28): 두 CHANGELOG, 로드맵 양판, 이 저장소 AGENTS.md 프로젝트 절 — `e53bea8`
+- [x] W-1 `update` 변경 목록의 버전 제목(S-1~S-3): `update.ts`, `update.test.ts`, 설계 양판 §9 — `bfaff3c`
+- [x] W-5 husky 감지(S-19): `install.ts`, `install.test.ts`, 설계 양판 §6 훅 — `dff7d79`
+- [x] W-8 강제 푸시(S-26·S-27, 개정 1 — `5d93b63`, `94274f6`): `generate.ts`, `install.ts`·`update.ts`(기본 브랜치 결정), `skills/merge`·`release`, `harness/templates/agents-md-blocks.md`, `generate.test.ts`·`vendor-write.test.ts`, 테스트 매처, 설계 양판 §3-2·§6 — `9346133`
+- [x] W-6 스킬 문장(S-20~S-25): S-20~S-25 표의 파일, `skills.test.ts` — `57a089d`
+- [x] W-4 게이트 스크립트(S-15~S-18): `gate-script.ts`, `install.ts`·`update.ts`·`configure.ts`의 스크립트 쓰기, `gate-script.test.ts`, 설계 양판 §6 — `b8f2899`
+- [x] W-2 게이트 감지(S-4~S-10): `detect.ts`, `detect-workspaces.ts`, `detect-ci.ts`, `install.ts`의 후보 화면, fixture 네 곳(`cli/test/fixtures/gates/{croffle,allot,pipit-bot,pipit-music}/` — 부록 A의 파일만), `gate-proposals.test.ts`, 설계 양판 §5 — `6dfb4f4`
+- [x] W-3 refresh(S-11~S-14): `gate-refresh.ts`, `config-gates.ts`, `configure.ts`, `gate-refresh.test.ts`·`config.test.ts`·`install-update-tui.test.ts`, 설계 양판 §9 — `ddef9e4`
+- [x] W-7 문서(S-28): 두 CHANGELOG, 로드맵 양판, 이 저장소 AGENTS.md 프로젝트 절 — `b10d74b`
 
 순서는 위와 같다. 작고 서로 묶이지 않은 것을 먼저 하고, W-3은 W-2의 후보 목록에 기대므로 뒤에 둔다. 각 단위는 따로 되돌릴 수 있다. W-6과 W-8은 같은 템플릿을 고치지만 커밋이 따로다.
 
@@ -382,6 +382,7 @@ summary_for_user: |
 - **pipit-music**: `lint:check`·`format:check`·`typecheck`·`build`는 pick이고, 셋은 근거 "CI에도 있음 (ci.yml)"을 단다(`typecheck`, `lint:check`, `format:check`). `corepack enable`·`yarn install --immutable`은 후보가 아니다. `lint`·`format`·`dev`·`start`·`start:dev`는 excluded다.
 
 ## 조정 기록
+<!-- 작업 단위의 체크는 기본 브랜치의 SHA(rebase 머지 뒤, `.agents/audit/0.3.4.md`의 SHA 대응). 조정 기록의 SHA는 브랜치의 SHA. -->
 <!-- - A-n (YYYY-MM-DD, W-n) 무엇을 · 왜 · 커밋 -->
 - A-1 (2026-11-19, W-2) "끝나지 않는 것"에서 본문의 ` -w`를 뺐다(`--watch`와 이름·본문 낱말만 봄) · npm의 `-w`는 워크스페이스 옵션이라 `npm run build -w pkg`를 잘못 뺄 수 있음 · `5064da0`
 - A-2 (2026-11-19, W-2·W-3) 근거(S-9)와 상태(S-11)의 글을 CLI의 다른 출력처럼 영어로 했다: `also in CI (<file>)`, `<x> already runs it (<cmd>)`, `<x> already calls it`, `Makefile <t> depends on it`, `the body of <x> holds it`, `rewrites files`, `never ends`, `install step`, `platform packaging`, `outside the workspace (<file>)`, `unclear (<why>)` / `applied`, `applied, written by hand`, `applied, source not found`, `applied, another command`, `not applied`, `not applied, already runs` · CLI 출력과 `--json`이 영어 · `5064da0`, `8071822`

@@ -9,6 +9,10 @@
       "properties": { "required": { "type": "boolean" } }
     },
     "default": { "$ref": "#/$defs/binding" },
+    "local": {
+      "type": "object", "additionalProperties": false,
+      "properties": { "force_with_lease": { "enum": ["deny", "allow"] } }
+    },
     "tools": {
       "type": "object",
       "additionalProperties": {

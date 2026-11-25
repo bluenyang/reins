@@ -9,7 +9,7 @@ description: Implement the spec's work units in order, committing at meaningful 
 The spec is accepted and has open work units.
 
 ## 2. Procedure
-1. Work on a feature branch (`type/topic`), never the default branch.
+1. When work starts, check whether `.loctx/delegation.local.md` exists; if it does, open it before anything else and use its table. Work on a feature branch (`type/topic`), never the default branch.
 2. Take the next open work unit. Implement it so the requirement holds everywhere it applies — never to pass.
 3. Run the project's gates (`.agents/harness/gates.yaml`; the hooks run them too). Keep the raw output under `.loctx/reports/<version>/`.
 4. Commit at meaningful units: each commit is a point you can revert or reset to without taking other working work or features with it. One work unit may take several commits (implementation, review fixes); small units that may be reverted together may share one; never mix unrelated work in one commit. Adding, dropping or rescoping a work unit is a change of the spec: stop, change the spec with the reason, and get the user's 진행 or 수정 on the summary. Anything smaller is an adjustment — another method inside the same unit, a small fix that a review, an audit or the check of an rc asks for, another order of the units, a change with a similar precedent in `.agents/knowledge/` or history: go on, record it in the spec's adjustment record as `- A-n (date, W-n) what · why · commit`, and list the adjustments in the report at the end of the flow. If you cannot tell which it is, stop and ask.
@@ -17,7 +17,7 @@ The spec is accepted and has open work units.
 6. When the plan turns out wrong, update the intent or spec in the same commit, or stop and ask.
 
 ## 3. Delegation
-Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Implementer (code, qa, doc) does the units when switched on; independent units may run in parallel; the code, tests and documents of one feature stay in one run.
+Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Always keep the request sent to another model and its final answer in .loctx/reports/<version>/ as they came, when you get them; they are deleted after the retro. Implementer (code, qa, doc) does the units when switched on; independent units may run in parallel; the code, tests and documents of one feature stay in one run.
 
 ## 4. Files and lifetime
 - Commits — kept.

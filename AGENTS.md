@@ -103,7 +103,7 @@ The first conversation after installation, and any conversation that finds a pen
 <!-- reins:begin delegation v=0.3.0 -->
 ## Delegation
 
-If `.loctx/delegation.local.md` exists, follow it instead of this section (your personal settings; `reins config --local` writes it).
+If `.loctx/delegation.local.md` exists, follow it instead of this section (your personal settings; `reins config --local` writes it): open it before anything else and use its table.
 
 Mode: **multi** — you are the PM — the model in this conversation. Hand a role its work with the list of files and decisions it needs; every report comes back to you, and a role never calls another model itself. Roles not listed are yours.
 
@@ -144,7 +144,7 @@ Audit: **required every version, before the merge and after the release**; run i
 <!-- reins:begin stops v=0.3.0 -->
 ## When to stop and ask
 
-- **Ask the user and stop:** an irreversible action (force push, deleting a tag, rewriting the default branch, data or production changes); a merge; a stable release; work that would touch a red line; a work unit that has to be added, dropped or rescoped; scope moving outside the intent and spec; a conflict with a past decision; a next step that needs an approval not yet given. Pushing a branch of the work in progress and opening its PR is part of the flow (an accepted spec's work units, their records, release documents); taking anything else out of the machine still needs the user's word.
+- **Ask the user and stop:** an irreversible action (force push to the default branch or a tag, deleting a tag, rewriting the default branch, data or production changes); a merge; a stable release; work that would touch a red line; a work unit that has to be added, dropped or rescoped; scope moving outside the intent and spec; a conflict with a past decision; a next step that needs an approval not yet given. Pushing a branch of the work in progress and opening its PR is part of the flow (an accepted spec's work units, their records, release documents); taking anything else out of the machine still needs the user's word.
 - **While you wait for the user** — a release approval, a merge instruction, a stable instruction — report and wait; do not start another unit's work. Stabilising the same version is this loop's work.
 - **The retro ends the loop:** report that it is closed and stop.
 - **Stop and find the cause:** two failures in the same work unit; empty or doubtful check output; a pass without evidence (a pass needs the raw output's path).

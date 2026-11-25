@@ -15,7 +15,7 @@ The user brings an idea, a change of plan, or asks what comes next.
 4. Name the version of the next work. Hand over to `intent` when the user starts that work and the previous loop is closed (its retro is done).
 
 ## 3. Delegation
-Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you.
+Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Always keep the request sent to another model and its final answer in .loctx/reports/<version>/ as they came, when you get them; they are deleted after the retro.
 
 ## 4. Files and lifetime
 - `.loctx/ROADMAP.local.md` — local, the user keeps it.

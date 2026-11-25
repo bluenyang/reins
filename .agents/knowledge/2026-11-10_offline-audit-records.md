@@ -7,7 +7,7 @@ topics: [audit, ci, records]
 decisions: [audit-input, raw-records, verdict-not-stronger-than-evidence]
 symptoms: []
 applies_to: all
-source: ".agents/audit/0.3.0.md; .loctx/history/0.3.0.md; .agents/audit/0.3.1.md; .loctx/history/0.3.1.md; .agents/audit/0.3.2.md; .agents/audit/0.3.3.md; .loctx/history/0.3.3.md"
+source: ".agents/audit/0.3.0.md; .loctx/history/0.3.0.md; .agents/audit/0.3.1.md; .loctx/history/0.3.1.md; .agents/audit/0.3.2.md; .agents/audit/0.3.3.md; .loctx/history/0.3.3.md; .agents/audit/0.3.4.md (1차 비판 4)"
 approved: { by: user, at: 2026-11-10, words: "B. 1, 2, 3, 4, 8 인용" }
 updated: { by: user, at: 2026-11-11, words: "K1 받음. 대신, 작업 후에 꼭 정리하는 방향으로" }
 updated_2: { by: user, at: 2026-11-15, words: "K2 수용" }
@@ -23,6 +23,7 @@ updated_3: { by: user, at: 2026-11-17, words: "기존 항목 갱신해." / H-3 "
 받은 것은 **줄이지도 않는다**(0.3.2 회고에서 더함). 일부만 저장했으면 그렇다고 밝히는 것으로는 모자라고, 전문을 둔다. 그리고 판정을 증거보다 강하게 적지 않는다: 경계 사례가 남은 결과는 통과가 아니다. 다시 확인하거나, 남은 것을 그대로 적는다.
 ## 이유
 0.3.0·rc.2 감사는 GitHub를 읽지 못해 머지·CI를 "확인 불가"로 판정했다. 사용자 결정 "감사자 부분은 a로"(intent 020 ST-7). 이후 rc.3·rc.4 감사에서 머지·CI가 확인됐고, PR 본문의 게이트 출력은 rc.3 감사 지적 3으로 더했다. 0.3.1에서는 원본 없이 PM이 옮겨 적은 것이 세 번 "확인 불가"로 남았다: spec 검토 보고(첫 감사), 양판 대조 보고와 웹·세션 확인(추가 감사 A3). 0.3.2에서도 두 번 반복됐다: 경계 사례 둘이 남은 양판 대조를 통과로 적었고(1차 감사 비판 2, 높음), 대조 보고 둘을 줄여 저장했다(비판 4). 머지 전 감사라 고칠 수 있었다. 0.3.3에서는 spec 검토 원문을 감사 뒤에야 저장했고(1차 감사 비판 3), 양판 대조의 실행 출처가 없었으며(재실행 비판 3), stable 지시와 공개 승인을 감사 입력에 넣지 않았다(2차 감사).
+0.3.4에서 spec 계획 검토·검증 계획 검토의 서브에이전트 답과 첫 문서 대조의 원문을 대화로만 받고 남기지 않았다(1차 비판 4). 되살리지 않고 spec에 '기록 유실'로 적었으며, 이후 호출은 요청과 답을 원문 그대로 남겼다(사용자 "ㅇㅋ", 2026-11-25 갱신 수용).
 ## 적용
 audit 스킬 ② 1단계. 감사 요청에는 기록 파일 경로만 넘기고 작업 대화는 넘기지 않는다. 서브에이전트나 외부 모델을 부를 때는 답을 파일로 받는다(출력을 파일로 돌리거나, 받은 보고를 바로 저장). 웹 확인은 받은 페이지를 시각·상태 코드와 함께 저장한다. 정리는 `retro` 스킬의 마지막 단계에서 한다.
 ## 바뀌면

@@ -36,6 +36,9 @@ the project can follow them. reins is never called while a project works.
 - Running reins on this repository: use an installed copy (`npm i -g @bluenyang/reins@<version>`, then `reins …`).
   `npx @bluenyang/reins` inside this repository resolves to the repository's own package and fails with
   `reins: command not found`.
+- Before an rc: apply the local build to clones of the reference projects (`../croffle`, `../allot`,
+  `../pipit-hub/pipit-bot`, `../pipit-hub/pipit-music`; the originals stay untouched) and keep the logs in
+  `.loctx/reports/<version>/apply/` (knowledge `apply-to-real-clones-before-rc`).
 - Releases: `.github/workflows/publish.yml` (`version`, `dry_run`), staged on npm until the maintainer approves it
   with 2FA. A stable version is cut only from the last rc's commit, so stable documents follow in a PR after it.
 

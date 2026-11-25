@@ -11,7 +11,7 @@ has its own notes in [harness/CHANGELOG.md](harness/CHANGELOG.md).
 
 ## [0.3.4] — 2026-11-25
 
-Stable: 2026-11-25 (the rc.2 commit, unchanged). rc.2: 2026-11-21 (lefthook and pre-commit configs that already run the gate script, found applying rc.1 to real projects). rc.1: 2026-11-20 (intent 024). Gate discovery and refresh fitted to real projects (croffle, allot, pipit-hub), the gate script reading `gates.yaml`, `update`'s changelog under version headings, force push open for a named work branch, and the skill sentences of the 0.3.3 retro. Origin: the maintainer's reports of 2026-11-17 and 2026-11-18, the 0.3.3 retro (H-1, H-2, H-3, H-5, H-7, H-9, H-10) and the 0.3.2 retro (H2).
+Stable: 2026-11-25 (the rc.2 commit, unchanged). rc.2: 2026-11-21 (lefthook and pre-commit configs that already run the gate script, found applying rc.1 to real projects). rc.1: 2026-11-20 (intent 024). Gate discovery and refresh fitted to real projects (croffle, allot, pipit-hub), the gate script reading `gates.yaml`, `update`'s changelog under version headings, force push with lease decided per person in `.claude/settings.local.json`, and the skill sentences of the 0.3.3 retro. Origin: the maintainer's reports of 2026-11-17 and 2026-11-18, the 0.3.3 retro (H-1, H-2, H-3, H-5, H-7, H-9, H-10) and the 0.3.2 retro (H2).
 
 ### Fixed
 - `reins update` lists the harness changelog under a heading per version, newest first, so a "Stable …" line reads as its own version's (before, the entries of several versions ran together). `--json` keeps `changes` and adds `changesByVersion`.

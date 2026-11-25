@@ -20,7 +20,7 @@ For `tidy` only: reins brought the AGENTS.md guide to an install that was made b
 5. Set the marker to `done` (`<!-- reins:onboarding done -->` / `<!-- reins:reconcile done -->` / `<!-- reins:tidy done -->`), delete `.agents/AGENTS.previous.md` once the user has accepted where each part of it went — until then it stays — and commit on a branch.
 
 ## 3. Delegation
-Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Onboarding itself stays with the PM.
+Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Always keep the request sent to another model and its final answer in .loctx/reports/<version>/ as they came, when you get them; they are deleted after the retro. Onboarding itself stays with the PM.
 
 ## 4. Files and lifetime
 - AGENTS.md project sections — committed, kept.

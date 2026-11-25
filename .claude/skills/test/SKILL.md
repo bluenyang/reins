@@ -10,11 +10,11 @@ Every work unit of the version is reviewed.
 
 ## 2. Procedure
 1. Build, then run every check V-n as written. Keep the raw output under `.loctx/reports/<version>/`.
-2. Judge each against its expected result. Ambiguous is a fail.
+2. Judge each against its expected result. Ambiguous is a fail. If one language edition of a document changed, compare the two language editions again after the last change; a waiver or a skipped check does not stand in for it.
 3. A fail goes back to the PM → `implement`.
 
 ## 3. Delegation
-Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Executor (qa-runner) runs the checks when switched on; tool-executor summarises a large log.
+Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Always keep the request sent to another model and its final answer in .loctx/reports/<version>/ as they came, when you get them; they are deleted after the retro. Executor (qa-runner) runs the checks when switched on; tool-executor summarises a large log.
 
 ## 4. Files and lifetime
 - `.loctx/reports/<version>/` test logs — deleted after the retro, once summarised.

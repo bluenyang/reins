@@ -15,7 +15,7 @@ The first audit is done (its findings fixed or accepted by the user) and the wor
 4. After the rc, a defect found while checking it is fixed in the same version, then the next rc. A small fix is an adjustment recorded in the spec (`A-n`); one that needs a new work unit changes the spec first and is approved.
 
 ## 3. Delegation
-Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Executor (deployer) does this when switched on, within the same limits.
+Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Always keep the request sent to another model and its final answer in .loctx/reports/<version>/ as they came, when you get them; they are deleted after the retro. Executor (deployer) does this when switched on, within the same limits.
 
 ## 4. Files and lifetime
 - Tags, release notes — on the forge, kept.
@@ -24,5 +24,5 @@ Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table 
 `audit` (the second audit — after stable, or when the user declares the version closed), then `retro`.
 
 ## 6. Stop and ask
-- Stable, force-pushing, deleting tags: ask the user every time.
+- Stable, force-pushing the default branch or a tag, deleting tags: ask the user every time.
 - A release that waits for the user is not idle time to fill: no intent, spec or code of the next version before this one's retro, unless the user says so (then record a waiver).

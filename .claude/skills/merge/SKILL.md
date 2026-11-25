@@ -18,7 +18,7 @@ The version is tested.
 7. When the merge made the commits again (rebase, squash), a record written after the merge names the default branch's SHAs. Do not rewrite the first audit's record: right after the merge, write the table of branch SHAs and default-branch SHAs under `.loctx/reports/<version>/`, hand it to the second audit and commit it under `### SHA 대응` of the audit record. Correct the spec's ticks to the default branch's SHAs in the next record commit.
 
 ## 3. Delegation
-Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Executor (deployer) does this when switched on, within the same limits.
+Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Always keep the request sent to another model and its final answer in .loctx/reports/<version>/ as they came, when you get them; they are deleted after the retro. Executor (deployer) does this when switched on, within the same limits.
 
 ## 4. Files and lifetime
 - The PR — on the forge, kept.
@@ -29,4 +29,4 @@ Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table 
 After CI: `audit` (the first audit). After the merge: `release`.
 
 ## 6. Stop and ask
-- Never force-push, rewrite the default branch or bypass hooks.
+- Never force-push the default branch or a tag, rewrite the default branch or bypass hooks. A work branch behind the default branch is rebased and pushed with `git push --force-with-lease origin <branch>`, naming the branch; where that is not possible, merge the default branch into it (a rebase merge drops that merge commit).

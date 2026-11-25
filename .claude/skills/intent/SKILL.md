@@ -9,13 +9,13 @@ description: Write the intent of one piece of work — the direction and the pla
 A settled roadmap item has no approved intent, the user started this work, and the previous loop is closed (its retro is done). An intent added to the version in work belongs to the same loop. If the user asks for the next intent before the retro, record a waiver and write it.
 
 ## 2. Procedure
-1. Create `.agents/intent/<NNN>_<slug>/intent.md` from `.agents/harness/templates/intent.md` (next free number).
+1. When work starts, check whether `.loctx/delegation.local.md` exists; if it does, open it before anything else and use its table. Then create `.agents/intent/<NNN>_<slug>/intent.md` from `.agents/harness/templates/intent.md` (next free number).
 2. Write it in the user's words: problem, desired result, **plan** (order of work), scope, constraints, open questions, not doing. Quote the user; mark your own interpretation as yours. Decisions you made go under "decided by agents" with the alternative and the reason.
 3. Ask only the open questions the user must answer. For a large or abstract request, get opinions first (pl/discussion or advisor/committee, if switched on) and show where they differ.
 4. Show the intent and ask for approval. When the user approves, add `{ role: user, by, at, words, rev }` to `approvals:` (quote the words; `rev` is the commit you showed), set `status: approved`, commit.
 
 ## 3. Delegation
-Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. The intent itself is always written by the PM.
+Check `.loctx/delegation.local.md` if it exists, otherwise the delegation table in AGENTS.md. If the role group named here has a model, hand it the work with the list of files and decisions it needs and wait for its report; otherwise do it yourself. Read-heavy work (research, large log summaries, review) or urgent parallel work on independent units may go to subagents of your own model. A role never calls another model; it returns to you. Always keep the request sent to another model and its final answer in .loctx/reports/<version>/ as they came, when you get them; they are deleted after the retro. The intent itself is always written by the PM.
 
 ## 4. Files and lifetime
 - `intent.md` — committed, kept.

@@ -2,7 +2,7 @@
 id: "024"
 slug: gates-and-retro-fixes
 version: "0.3.4"
-status: approved
+status: released
 origin: user
 approvals:
   - { role: user, by: BlueNyang, at: 2026-11-19, words: "승인", rev: e5afe70 }

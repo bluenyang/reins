@@ -93,9 +93,9 @@ State: **0.3.3 published** (2026-11-17, stable from the rc.1 commit; intent 023)
 - **`config` and personal settings.** Switching the scope on the models screen changes what it shows (the team file, or what applies to you, marked `(local)`), and a personal group wins only where it speaks instead of hiding the team's whole group (the maintainer, 2026-11-16).
 - Left for the next version: how a branch is updated after a rebase, which the harness forbids by force push today (0.3.2 retro, H2).
 
-### 0.3.4 — rc.2
+### 0.3.4 — published
 
-State: 0.3.4-rc.2 (2026-11-21; rc.1 2026-11-20, intent 024); stable on the maintainer's instruction. rc.2 stops proposing the gate line to a lefthook or pre-commit config that already runs it (found applying rc.1 to real projects). Origin: the maintainer's reports of 2026-11-17 and 2026-11-18, the 0.3.3 retro and the 0.3.2 retro (H2).
+State: **0.3.4 published** (2026-11-25, stable from the rc.2 commit; rc.1 2026-11-20, intent 024). rc.2 stops proposing the gate line to a lefthook or pre-commit config that already runs it (found applying rc.1 to real projects). Origin: the maintainer's reports of 2026-11-17 and 2026-11-18, the 0.3.3 retro and the 0.3.2 retro (H2).
 
 - **Gate discovery and refresh fit real projects.** Candidates by name and body, workspaces and pull-request CI, each with a state and its reasons; refresh shows every gate and candidate as applied or not, never "gone", and leaves the list in `.loctx/gates-refresh.md` so a person picks and an agent edits `gates.yaml`.
 - **The gate script reads `gates.yaml`.** Editing `gates.yaml` is enough; a shape the script cannot read, or no `gates.yaml`, stops the run.
